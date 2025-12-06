@@ -128,23 +128,20 @@ jobs:
             fi
           "
 
-      - name: Create .env file from secret
+      - name: Deploy .env file
         run: |
           REMOTE_USER="${{ vars.SSH_USER }}"
           REMOTE_HOST="${{ vars.SSH_HOST }}"
           REMOTE_DIR="/home/starck/domains/${{ env.DOMAIN_NAME }}"
-
-          # Создаем .env файл из секрета
-          echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env' && chmod 600 '$REMOTE_DIR/.env'"
-
-          echo "✅ .env file deployed"
-
-      - name: Warn about missing .env secret
-        if: ${{ secrets.PROD_ENV_FILE == '' }}
-        run: |
-          echo "⚠️  WARNING: PROD_ENV_FILE secret is not set!"
-          echo "Assuming .env already exists on server or will be created manually"
-          echo "Deployment will fail if .env is missing during Django setup"
+          
+          # Проверяем наличие секрета
+          if [ -n "${{ secrets.PROD_ENV_FILE }}" ]; then
+            echo "✅ PROD_ENV_FILE secret found, deploying .env..."
+            echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env' && chmod 600 '$REMOTE_DIR/.env'"
+          else
+            echo "⚠️  WARNING: PROD_ENV_FILE secret is not set!"
+            echo "Assuming .env already exists on server"
+          fi
 
       - name: Sync files to server
         run: |
