@@ -9,8 +9,8 @@ on:
 
 env:
   NODE_VERSION: '22'
-  DOMAIN_NAME: 'sd43.ru'
   PROJECT_NAME: 'sd43'
+  DOMAIN_NAME: 'sd43.ru'
 
 jobs:
   build-and-deploy:
@@ -72,7 +72,7 @@ jobs:
 
           echo "📤 Copying built assets to server..."
 
-          # Копируем только static директорию
+          # Копируем static директорию
           if [ -d "static" ]; then
             rsync -avz \
               static/ \
@@ -104,17 +104,6 @@ jobs:
           cat > .deploy/rsync_exclude.txt << 'EOF'
           .git/
           .github/
-          .env
-          *.env
-          node_modules/
-          venv/
-          resources/
-          docs/
-          media/*
-          !media/site/
-          static/
-          !static/fonts/
-          !static/favicons/
           *.md
           *.jpg
           EOF
@@ -133,8 +122,10 @@ jobs:
 
           # Создаем только корневую директорию проекта
           ssh "$REMOTE_USER@$REMOTE_HOST" "
-            mkdir -p '$REMOTE_DIR'
-            chown -R starck:starck '$REMOTE_DIR' 2>/dev/null || true
+            if [ ! -d '$REMOTE_DIR' ]; then
+              mkdir -p '$REMOTE_DIR'
+              chown -R starck:starck '$REMOTE_DIR' 2>/dev/null || true
+            fi
           "
 
       - name: Create .env file from secret
@@ -144,20 +135,16 @@ jobs:
           REMOTE_DIR="/home/starck/domains/${{ env.DOMAIN_NAME }}"
 
           # Создаем .env файл из секрета
-          cat > /tmp/.env << 'EOF'
-          ${{ secrets.PROD_ENV_FILE }}
-          EOF
-
-          # Копируем на сервер
-          scp /tmp/.env "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/.env"
-
-          # Устанавливаем права
-          ssh "$REMOTE_USER@$REMOTE_HOST" "chmod 600 '$REMOTE_DIR/.env' && chown starck:starck '$REMOTE_DIR/.env'"
-
-          # Удаляем локальную копию
-          rm -f /tmp/.env
+          echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env' && chmod 600 '$REMOTE_DIR/.env'"
 
           echo "✅ .env file deployed"
+
+      - name: Warn about missing .env secret
+        if: ${{ secrets.PROD_ENV_FILE == '' }}
+        run: |
+          echo "⚠️  WARNING: PROD_ENV_FILE secret is not set!"
+          echo "Assuming .env already exists on server or will be created manually"
+          echo "Deployment will fail if .env is missing during Django setup"
 
       - name: Sync files to server
         run: |
@@ -170,18 +157,11 @@ jobs:
           # Основная синхронизация
           rsync -avz \
             --delete \
+            --exclude-from=.gitignore \
             --exclude-from=.deploy/rsync_exclude.txt \
             --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r \
             ./ \
             "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
-          
-          # Отдельно синхронизируем папку site если она есть
-          if [ -d "./media/site" ]; then
-            echo "📁 Syncing media/site directory..."
-            rsync -avz \
-              ./media/site/ \
-              "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/media/site/"
-          fi
           
           echo "✅ Files synced successfully"
 
@@ -232,9 +212,9 @@ jobs:
             fi
           
             # Проверяем сокет
-            if [ -S '/run/gunicorn.sd43.sock' ]; then
-              echo '✅ Socket /run/gunicorn.sd43.sock exists'
-              ls -la /run/gunicorn.sd43.sock
+            if [ -S '/run/gunicorn/sd43.sock' ]; then
+              echo '✅ Socket /run/gunicorn/sd43.sock exists'
+              ls -la /run/gunicorn/sd43.sock
             else
               echo '⚠️  Socket not found, checking service...'
             fi

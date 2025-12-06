@@ -7,12 +7,12 @@ Requires=postgresql.service redis-server.service
 Type=notify
 User=starck
 Group=starck
-WorkingDirectory=/home/starck/domains/sd43
-Environment="PATH=/home/starck/domains/sd43/venv/bin"
+WorkingDirectory=/home/starck/domains/sd43.ru
+Environment="PATH=/home/starck/domains/sd43.ru/venv/bin"
 Environment="DJANGO_SETTINGS_MODULE=crm.settings"
-Environment="PYTHONPATH=/home/starck/domains/sd43"
+Environment="PYTHONPATH=/home/starck/domains/sd43.ru"
 
-ExecStart=/home/starck/domains/sd43/venv/bin/gunicorn \
+ExecStart=/home/starck/domains/sd43.ru/venv/bin/gunicorn \
     --access-logfile - \
     --workers 3 \
     --bind unix:/run/gunicorn/sd43.sock \

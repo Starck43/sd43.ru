@@ -37,7 +37,7 @@ migrations/
 
 # Environment
 .env
-prod.env
+*.env
 .venv
 venv/
 

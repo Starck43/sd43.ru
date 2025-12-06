@@ -8,7 +8,7 @@ set -e # Exit on error
 
 # Обязательные параметры
 PROJECT_NAME="${1:-app}"                     # Имя проекта (используется для именования сервисов)
-PROJECT_DIR="${2:-/home/starck/domains/$PROJECT_NAME}"  # Путь к проекту
+PROJECT_DIR="${2:-/home/starck/domains/$PROJECT_NAME.ru}"  # Путь к проекту
 DJANGO_ADMIN_EMAIL="$3"                      # Email администратора
 DJANGO_ADMIN_SUPERUSER="$4"                  # Имя пользователя администратора
 DJANGO_ADMIN_PASSWORD="$5"                   # Пароль администратора
