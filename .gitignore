@@ -8,7 +8,7 @@
 
 # development
 resources/
-src/
+docs/
 
 media/*
 !media/.gitkeep

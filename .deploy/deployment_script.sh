@@ -120,62 +120,17 @@ setup_system_services() {
 
     print_header "SYSTEM SERVICES SETUP"
 
-    # 1. Генерируем gunicorn.service с подстановкой
-    print_step "Creating gunicorn service file..."
+    # 1. Gunicorn service
+    if copy_if_changed "$GUNICORN_SERVICE" "/etc/systemd/system/$PROJECT_NAME.service" "systemd service"; then
+        config_changed=true
+    fi
 
-    sudo tee "/etc/systemd/system/$PROJECT_NAME.service" > /dev/null << EOF
-[Unit]
-Description=gunicorn daemon for $PROJECT_NAME
-After=network.target postgresql.service redis-server.service
-Requires=postgresql.service redis-server.service
+    # 2. Gunicorn socket
+    if copy_if_changed "$GUNICORN_SOCKET" "/etc/systemd/system/$PROJECT_NAME.socket" "systemd socket"; then
+        config_changed=true
+    fi
 
-[Service]
-Type=notify
-User=$SERVICE_USER
-Group=$SERVICE_GROUP
-WorkingDirectory=$PROJECT_DIR
-Environment="PATH=$VENV_DIR/bin"
-Environment="DJANGO_SETTINGS_MODULE=crm.settings"
-Environment="PYTHONPATH=$PROJECT_DIR"
-
-ExecStart=$VENV_DIR/bin/gunicorn \\
-    --access-logfile - \\
-    --workers 3 \\
-    --bind unix:/run/gunicorn.$PROJECT_NAME.sock \\
-    crm.wsgi:application
-
-ExecReload=/bin/kill -s HUP \\\$MAINPID
-ExecStop=/bin/kill -s TERM \\\$MAINPID
-PrivateTmp=true
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    config_changed=true
-
-    # 2. Генерируем gunicorn.socket
-    print_step "Creating gunicorn socket file..."
-
-    sudo tee "/etc/systemd/system/$PROJECT_NAME.socket" > /dev/null << EOF
-[Unit]
-Description=gunicorn socket for $PROJECT_NAME
-
-[Socket]
-ListenStream=/run/gunicorn.$PROJECT_NAME.sock
-SocketUser=$SERVICE_USER
-SocketGroup=$SERVICE_GROUP
-SocketMode=0660
-
-[Install]
-WantedBy=sockets.target
-EOF
-
-    config_changed=true
-
-    # 3. Nginx config (оставляем как есть)
+    # 3. Nginx config
     if copy_if_changed "$NGINX_CONF" "/etc/nginx/sites-available/$DOMAIN_NAME" "nginx config"; then
         config_changed=true
         sudo ln -sf "/etc/nginx/sites-available/$DOMAIN_NAME" "/etc/nginx/sites-enabled/"

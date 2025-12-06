@@ -1,5 +1,5 @@
 [Unit]
-Description=gunicorn daemon for %i
+Description=gunicorn daemon for sd43
 After=network.target postgresql.service redis-server.service
 Requires=postgresql.service redis-server.service
 
@@ -7,15 +7,15 @@ Requires=postgresql.service redis-server.service
 Type=notify
 User=starck
 Group=starck
-WorkingDirectory=/home/starck/domains/%i
-Environment="PATH=/home/starck/domains/%i/venv/bin"
+WorkingDirectory=/home/starck/domains/sd43
+Environment="PATH=/home/starck/domains/sd43/venv/bin"
 Environment="DJANGO_SETTINGS_MODULE=crm.settings"
-Environment="PYTHONPATH=/home/starck/domains/%i"
+Environment="PYTHONPATH=/home/starck/domains/sd43"
 
-ExecStart=/home/starck/domains/%i/venv/bin/gunicorn \
+ExecStart=/home/starck/domains/sd43/venv/bin/gunicorn \
     --access-logfile - \
     --workers 3 \
-    --bind unix:/run/gunicorn.%i.sock \
+    --bind unix:/run/gunicorn/sd43.sock \
     crm.wsgi:application
 
 ExecReload=/bin/kill -s HUP $MAINPID

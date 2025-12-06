@@ -7,19 +7,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
-# Основные настройки
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
-# Добавляем Docker хосты если в контейнере
-if os.getenv('DOCKER_CONTAINER', False):
-	ALLOWED_HOSTS.extend([
-		'0.0.0.0',
-		'172.18.0.6',
-		'172.18.0.0/16',
-		'172.17.0.0/16',
-	])
 
 # Application definition
 INSTALLED_APPS = [
