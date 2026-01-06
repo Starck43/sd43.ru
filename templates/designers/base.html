@@ -22,17 +22,17 @@
     <meta property="og:image:secure_url" content="{% if object.owner.logo %}{{ object.owner.logo.url }}{% endif %}">
     <meta property="og:description" content="{% block meta_og_description %}{{ meta.description }}{% endblock %}">
 
-    <link rel="canonical" href="{{ scheme }}://{{ object.slug }}.{{ site_host }}{{ page_path }}"/>
+    <link rel="canonical" href="{{ scheme }}://{{ site_host }}{{ page_path }}"/>
 
-    <link rel="icon" href="/{{ object.slug }}/favicons/favicon.svg">
-    <link rel="shortcut icon" href="/{{ object.slug }}/favicons/apple-touch-icon.png">
-    <link rel="icon" type="image/x-icon" href="/{{ object.slug }}/favicons/apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/{{ object.slug }}/favicons/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="/{{ object.slug }}/favicons/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/{{ object.slug }}/favicons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/{{ object.slug }}/favicons/favicon-16x16.png">
-    <link rel="manifest" href="/{{ object.slug }}/favicons/site.webmanifest">
-    <link rel="mask-icon" href="/{{ object.slug }}/favicons/safari-pinned-tab.svg">
+    <link rel="icon" href="{% static 'designers/favicons/favicon.svg' %}">
+    <link rel="shortcut icon" href="{% static 'designers/favicons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'designers/favicons/apple-touch-icon.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'designers/favicons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'designers/favicons/favicon-96x96.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'designers/favicons/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'designers/favicons/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'designers/favicons/site.webmanifest' %}">
+    <link rel="mask-icon" href="{% static 'designers/favicons/safari-pinned-tab.svg' %}">
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="theme-color" content="#ffffff">
 
@@ -42,10 +42,11 @@
 
     <!-- CSS only -->
     <link href="{% md5url 'css/designer.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
-    <link href="/{{ object.slug }}/css/variables.css" rel="stylesheet" type="text/css" media="screen"/>
+    <link href="{% md5url 'designers/css/custom.css' %}" rel="stylesheet" type="text/css" media="screen"/>
 
     {% block styles %}
-        <link rel="preload" href="fonts/OrchideaPro-Light.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="{% static 'fonts/OrchideaPro-Light.woff2' %}" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="{% static 'designers/orlov/fonts/custom.woff2' %}" as="font" type="font/woff2" crossorigin>
     {% endblock %}
 
     <!-- Yandex & Google Analytics block -->
@@ -55,7 +56,7 @@
 
 <body style="overflow-x:hidden">
 
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" style="display:none">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none">
     {% block svg_icons %}
         <symbol id="arrow-icon" height="30" viewBox="0 0 24 24" fill="transparent" stroke-width="2" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
             <path d="M7 2 L17 12 L7 22"></path>
@@ -133,14 +134,14 @@
 
             {% if object.logo %}
                 <div class="brand-logo logo">
-                    <a href="{{ scheme }}://{{ object.slug }}.{{ site_host }}">
+                    <a href="{{ scheme }}://{{ site_host }}">
                         <img src="{{ object.logo.url }}" alt="">
                     </a>
                 </div>
             {% endif %}
 
             {% if object.title %}
-                <a href="{{ scheme }}://{{ object.slug }}.{{ site_host }}">
+                <a href="{{ scheme }}://{{ site_host }}">
                     <h1 class="brand-title no-select">{{ object.title }}</h1>
                 </a>
             {% endif %}
