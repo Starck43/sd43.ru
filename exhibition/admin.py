@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group, User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ImageField
@@ -60,19 +61,36 @@ class UserAdmin(BaseUserAdmin):
 	# form = CustomSignupForm
 	# add_form = CustomSignupForm
 
+	list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
+	list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+	search_fields = ('username', 'first_name', 'last_name', 'email')
+	ordering = ('username',)
+
+	fieldsets = (
+		(None, {'fields': ('username', 'password')}),
+		('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
+		('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+		('Important dates', {'fields': ('last_login', 'date_joined')}),
+	)
+
+	add_fieldsets = (
+		(None, {
+			'classes': ('wide',),
+			'fields': ('username', 'email', 'password1', 'password2'),
+		}),
+	)
+
 	def get_fieldsets(self, request, obj=None):
-		return (
-			(
-				_("Personal info"), {
-					'fields': ('username', 'password', 'first_name', 'last_name', 'email',),
-				}
-			),
-			(
-				_("Permissions"), {
-					'fields': ('is_active', 'groups', 'date_joined', 'last_login',),
-				}
-			),
-		)
+		if not obj:
+			return self.add_fieldsets
+		return self.fieldsets
+
+	def get_form(self, request, obj=None, **kwargs):
+		defaults = {}
+		if obj is None:
+			defaults['form'] = UserCreationForm
+		defaults.update(kwargs)
+		return super().get_form(request, obj, **defaults)
 
 
 admin.site.unregister(Group)  # Unregister the existing registration
