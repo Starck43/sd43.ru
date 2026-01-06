@@ -1,4 +1,4 @@
-Django
+Django==5.2.8
 django-allauth
 django-ckeditor==6.5.1
 crispy-bootstrap5
