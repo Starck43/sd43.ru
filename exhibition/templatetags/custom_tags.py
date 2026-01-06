@@ -105,18 +105,19 @@ def md5url(model_object):
 
 @register.filter('input_type')
 def input_type(ob):
-	'''
+	"""
 	Extract form field type
 	:param ob: form field
 	:return: string of form field widget type
-	'''
+	"""
 	return ob.field.widget.__class__.__name__
 
 
 @register.filter(name='add_classes')
 def add_classes(value, arg):
 	"""
-	Add provided classes to form field	:param value:
+	Add provided classes to form field
+	:param value:
 	:param arg: string of classes seperated by ' '
 	:return: edited field
 	"""
