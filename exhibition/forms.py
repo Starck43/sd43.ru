@@ -10,6 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import OuterRef, Subquery
 from django.db.models.expressions import F
+from django.forms import FileInput
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
@@ -65,6 +66,27 @@ class AccountSignupForm(SignupForm):
 		user = set_user_group(request, user)
 
 		return user
+
+
+class MultipleFileInput(FileInput):
+	"""Кастомный виджет для множественной загрузки файлов"""
+	allow_multiple_selected = True
+
+	def __init__(self, attrs=None):
+		if attrs is None:
+			attrs = {}
+		attrs['multiple'] = True
+		super().__init__(attrs)
+
+	def value_from_datadict(self, data, files, name):
+		"""
+		Возвращает список файлов, вместо одного файла
+		"""
+		try:
+			return files.getlist(name)  # Для Django forms
+		except AttributeError:
+			# Для совместимости
+			return files.get(name)
 
 
 class CategoriesAdminForm(forms.ModelForm):
@@ -237,7 +259,10 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 	files = forms.FileField(
 		label='Фото',
-		widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
+		widget=MultipleFileInput(attrs={
+			'class': 'form-control',
+			'accept': 'image/*'
+		}),
 		required=False,
 		help_text='Общий размер загружаемых фото не должен превышать %s Мб' % round(
 			settings.MAX_UPLOAD_FILES_SIZE / 1024 / 1024)
@@ -415,13 +440,19 @@ class ImageForm(forms.ModelForm):
 	class Meta:
 		model = Image
 		fields = '__all__'
+		widgets = {
+			'file': MultipleFileInput(attrs={
+				'class': 'form-control',
+				'accept': 'image/*'
+			})
+		}
 
 	# exclude = ('portfolio',)
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.fields['description'].widget = forms.Textarea(
-			attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Описание'})
+			attrs={'class': 'form-control', 'rows': 6, 'placeholder': 'Описание'})
 
 
 class ImageFormHelper(FormHelper):

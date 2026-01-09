@@ -181,10 +181,11 @@ class ProfileAdmin(admin.ModelAdmin):
 @admin.register(Exhibitors)
 class ExhibitorsAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	fieldsets = PersonAdmin.fieldsets + ProfileAdmin.fieldsets + MetaSeoFieldsAdmin.fieldsets
+	ordering = ('name',)
 	# prepopulated_fields = {"slug": ('name',)} # adding name to slug field
 
 	list_display = ('logo_thumb', 'name', 'user_name',)
-	search_fields = PersonAdmin.search_fields  # + ('user',)
+	search_fields = PersonAdmin.search_fields
 
 	# list_editable = ['user']
 	# add_form = PersonUserForm
@@ -199,6 +200,16 @@ class ExhibitorsAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.Model
 			return "%s %s" % (obj.user.first_name, obj.user.last_name)
 
 	user_name.short_description = 'Пользователь'
+
+	def get_search_results(self, request, queryset, search_term):
+		queryset, use_distinct = super().get_search_results(
+			request, queryset, search_term
+		)
+
+		if 'autocomplete' in request.path:
+			queryset = queryset.order_by('name')
+
+		return queryset, use_distinct
 
 	def save_model(self, request, obj, form, change):
 		delete_cached_fragment('persons', 'exhibitors', None)
