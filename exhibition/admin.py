@@ -68,9 +68,9 @@ class UserAdmin(BaseUserAdmin):
 
 	fieldsets = (
 		(None, {'fields': ('username', 'password')}),
-		('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
-		('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
-		('Important dates', {'fields': ('last_login', 'date_joined')}),
+		('Персональные данные', {'fields': ('first_name', 'last_name', 'email')}),
+		('Разрешения', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+		('Даты', {'fields': ('last_login', 'date_joined')}),
 	)
 
 	add_fieldsets = (
@@ -469,6 +469,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		'nominations__title'
 	)
 	date_hierarchy = 'exhibition__date_start'
+	autocomplete_fields = ('owner', 'exhibition')
 
 	list_per_page = 50
 	save_on_top = True
@@ -476,31 +477,37 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	view_on_site = True
 	inlines = [ImagesInline, RatingInline, ReviewInline]
 
-	class Media:
-		js = ('admin/js/portfolio_admin.js',)
-
 	def nominations_list(self, obj):
-		return ', '.join(obj.nominations.values_list('title', flat=True))
+		"""Отображение списка номинаций в админке"""
+		if obj.nominations.exists():
+			return ', '.join(obj.nominations.values_list('title', flat=True))
+		return 'Нет номинаций'
 
 	nominations_list.short_description = 'Номинации'
 	nominations_list.admin_order_field = 'nominations__title'
 
-	# def attributes_list(self, obj):
-	# 	return ', '.join(obj.attributes.values_list('name', flat=True))
-	# attributes_list.short_description = 'Аттрибуты для фильтра'
-	# attributes_list.admin_order_field = 'attributes__group'
-
-	# Отобразим список участников с указанием сортировки по новому полю
 	def formfield_for_foreignkey(self, db_field, request, **kwargs):
 		if db_field.name == "owner":
-			kwargs["queryset"] = Exhibitors.objects.order_by('name')
+			kwargs["queryset"] = Exhibitors.objects.all().order_by('name')
+
+		# if db_field.name == "exhibition":
+		# 	# В админке показываем все выставки изначально,
+		# 	# JavaScript будет их фильтровать динамически
+		# 	kwargs["queryset"] = Exhibitions.objects.all().order_by('-date_start')
 
 		return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+	# Метод для фильтрации выставок в админке
 	def get_form(self, request, obj=None, **kwargs):
-		form = super().get_form(request, obj=obj, **kwargs)
-		form.request = request
-		return form
+		form_class = super().get_form(request, obj, **kwargs)
+
+		class AdminForm(form_class):
+			def __init__(self, *args, **inner_kwargs):
+				inner_kwargs['request'] = request
+				inner_kwargs['is_admin'] = True
+				super().__init__(*args, **inner_kwargs)
+
+		return AdminForm
 
 	def save_model(self, request, obj, form, change):
 		images = request.FILES.getlist('files')
@@ -567,6 +574,7 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	form = ExhibitionsForm
 	list_display = ('title', 'date_start', 'date_end',)
 	list_display_links = ('title',)
+	search_fields = ('title',)
 	date_hierarchy = 'date_start'
 	filter_horizontal = ('nominations', 'exhibitors',)
 	# list_select_related = ('events',)
@@ -598,6 +606,17 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 			'fields': MetaSeoFieldsAdmin.meta_fields
 		}),
 	)
+
+	def get_search_results(self, request, queryset, search_term):
+		queryset, use_distinct = super().get_search_results(
+			request, queryset, search_term
+		)
+
+		owner_id = request.GET.get('owner')
+		if owner_id:
+			queryset = queryset.filter(exhibitors__id=owner_id)
+
+		return queryset, use_distinct
 
 	# Отобразим список участников с указанием сортировки по новому полю
 	def formfield_for_manytomany(self, db_field, request, **kwargs):

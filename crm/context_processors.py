@@ -1,6 +1,6 @@
-from .apps import ExhibitionConfig
-from .logic import IsMobile
-from .models import Exhibitions
+from exhibition.apps import ExhibitionConfig
+from exhibition.logic import is_mobile
+from exhibition.models import Exhibitions
 
 
 def common_context(request):
@@ -13,17 +13,27 @@ def common_context(request):
 	}
 
 	scheme = request.is_secure() and "https" or "http"
-	site_url = '%s://%s' % (scheme, request.META['HTTP_HOST'])
-	site_host = request.META['HTTP_HOST']
+	site_host = request.META.get('HTTP_HOST', '')
+
+	# Убираем /designers/... из host если есть
+	if 'designers/' in site_host:
+		site_host = site_host.split('/')[0]  # Берем только доменную часть
+
+	site_url = f'{scheme}://{site_host}'
+
+	# Для поддоменов: если есть X-Subdomain header
+	subdomain = request.META.get('HTTP_X_SUBDOMAIN')
+	if subdomain:
+		site_url = f'{scheme}://{subdomain}.sd43.ru'
 
 	return {
-		'is_mobile': IsMobile(request),
+		'is_mobile': is_mobile(request),
 		'separator': '|',
 		'main_title': ExhibitionConfig.verbose_name,
 		'exhibitions_list': exh_list,
 		'site_url': site_url,
 		'site_host': site_host,
 		'scheme': scheme,
-		# 'page_url'			: site_url + request.path,
+		# 'page_url': site_url + request.path,
 		'default_meta': meta,
 	}

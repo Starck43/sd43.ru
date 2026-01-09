@@ -14,7 +14,7 @@ from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
 from .logic import set_user_group
-from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO
+from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations
 
 
 class AccountSignupForm(SignupForm):
@@ -243,6 +243,9 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 			settings.MAX_UPLOAD_FILES_SIZE / 1024 / 1024)
 	)
 
+	class Media:
+		js = ('admin/js/vendor/jquery/jquery.js', 'admin/js/portfolio_admin.js',)
+
 	class Meta:
 		model = Portfolio
 		fields = (
@@ -266,34 +269,32 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 	def __init__(self, *args, **kwargs):
 		self.exhibitor = kwargs.pop('owner', None)
 		request = kwargs.pop('request', None)
+		self.is_admin = kwargs.pop('is_admin', False)
+
 		if request:
 			self.request = request
 
 		super().__init__(*args, **kwargs)
-		self.fields['files'].widget.attrs['multiple'] = True
-		self.css_class = 'form-control'
 
-		# Добавляем placeholders для полей
-		self.fields['title'].widget.attrs['placeholder'] = 'Название проекта'
-		self.fields['description'].widget.attrs['placeholder'] = 'Описание проекта'
-		self.fields['exhibition'].widget.attrs['placeholder'] = 'Выберите выставку'
-		self.fields['exhibition'].empty_label = 'Выберите выставку'
-		self.fields['nominations'].help_text = 'Выберите номинации для проекта'
+		if 'nominations' in self.fields and hasattr(self.fields['nominations'], 'queryset'):
+			# Фильтруем номинации вручную через JavaScript
+			self.fields['nominations'].queryset = Nominations.objects.all()
 
-		if self.exhibitor is not None:
-			if self.exhibitor == 'staff':
-				# Для администратора/редактора показываем все выставки
-				from django.utils.timezone import now
-				self.fields['exhibition'].queryset = Exhibitions.objects.all().order_by('-date_start')
-				self.fields['exhibition'].help_text = 'Выберите выставку для участия проекта в конкурсе'
-				self.fields['exhibition'].required = False
+		# Настройка поля выставки
+		if 'exhibition' in self.fields:
+			if self.is_admin:
+				# В админке - динамическая фильтрация через JavaScript.
 
-				# Администратор/редактор может выбрать любого участника как автора проекта
-				self.fields['owner'].queryset = Exhibitors.objects.all().order_by('name')
-				self.fields['owner'].empty_label = 'Выберите участника'
-				self.fields['owner'].widget.attrs['placeholder'] = 'Выберите участника'
-				self.fields['owner'].required = True
-			else:
+				# Если объект уже существует, показываем связанную выставку
+				if self.instance.pk and self.instance.owner_id and self.instance.exhibition_id:
+					self.fields['exhibition'].queryset = Exhibitions.objects.filter(
+						id=self.instance.exhibition_id
+					)
+				else:
+					# Устанавливаем пустой queryset, который будет заполняться через AJAX
+					self.fields['exhibition'].queryset = Exhibitions.objects.none()
+
+			elif self.exhibitor and self.exhibitor != 'staff':
 				# Для дизайнеров скрываем owner и status
 				self.fields['owner'].initial = self.exhibitor
 				self.fields['owner'].widget = forms.HiddenInput()
@@ -301,13 +302,23 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 
 				# Для дизайнеров фильтруем только активные и будущие выставки
 				from django.utils.timezone import now
-				self.fields['exhibition'].queryset = Exhibitions.objects.prefetch_related('exhibitors').filter(
+
+				self.fields['exhibition'].queryset = Exhibitions.objects.filter(
 					exhibitors=self.exhibitor,
 					date_end__gte=now().date()
 				).order_by('-date_start')
-				self.fields['exhibition'].help_text = 'Выберите выставку для участия проекта'
-				self.fields['exhibition'].required = False
-				self.fields['nominations'].required = False
+
+			else:
+				# Для администратора на фронтенде - все выставки
+				self.fields['exhibition'].queryset = Exhibitions.objects.all().order_by('-date_start')
+
+		# Добавляем data-атрибуты для JavaScript
+		# if self.is_admin and 'exhibition' in self.fields:
+		# 	self.fields['exhibition'].widget.attrs.update({
+		# 		'data-filter-url': '/api/get-exhibitions-by-owner/',
+		# 		'data-filter-by': 'owner',
+		# 		'data-empty-label': 'Сначала выберите участника'
+		# 	})
 
 	@property
 	def helper(self):
@@ -361,6 +372,17 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 
 	def clean(self):
 		cleaned_data = super().clean()
+		owner = cleaned_data.get('owner')
+		exhibition = cleaned_data.get('exhibition')
+
+		# Для админки проверяем, что выставка доступна участнику
+		if self.is_admin and owner and exhibition:
+			if not owner.exhibitors_for_exh.filter(id=exhibition.id).exists():
+				self.add_error(
+					'exhibition',
+					f'Участник "{owner.name}" не зарегистрирован на выставку "{exhibition.title}". '
+					f'Сначала добавьте участника на выставку.'
+				)
 
 		if self.exhibitor is not None:
 			# Очищаем categories всегда, так как они привязаны к nominations

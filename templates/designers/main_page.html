@@ -15,7 +15,7 @@
 
 {% block script %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'js/swiper.min.js' %}" defer></script>
+    <script type="text/javascript" src="{% md5url 'js/swiper.min.js' %}" defer></script>
 {% endblock script %}
 
 {% block title %}{{ block.super }} {{ separator }} Главная страница{% endblock %}
@@ -50,7 +50,7 @@
     </nav>
     <div class="navigation centered">
         {% if portfolio_list %}
-            <a href="portfolio" class="nav-link">Портфолио</a>
+            <a href="{{ site_url }}/portfolio" class="nav-link">Портфолио</a>
         {% endif %}
 
         {% if exh_victories_list or competitions or publications %}
@@ -150,7 +150,7 @@
                 </div>
             </div>
 
-            <a class="all-portfolio-link btn" href="portfolio">
+            <a class="all-portfolio-link btn" href="{{ site_url }}/portfolio">
                 Смотреть все проекты
             </a>
         </section>

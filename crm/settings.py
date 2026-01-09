@@ -14,8 +14,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 INSTALLED_APPS = [
 	'jazzmin',
-	'django_static_jquery_ui',
-	'django_tabbed_changeform_admin',
+	#'django_static_jquery_ui',
+	#'django_tabbed_changeform_admin',
 	'django.contrib.admin',
 	'django.contrib.auth',
 	'django.contrib.sites',
@@ -55,7 +55,8 @@ MIDDLEWARE = [
 	'django.middleware.clickjacking.XFrameOptionsMiddleware',
 	'django.middleware.cache.FetchFromCacheMiddleware',
 	'watson.middleware.SearchContextMiddleware',
-	'exhibition.middleware.AjaxMiddleware',
+	'crm.middleware.AjaxMiddleware',
+	# 'designers.middleware.SubdomainMiddleware',
 	'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -80,7 +81,7 @@ TEMPLATES = [
 				'django.template.context_processors.request',
 				'django.contrib.auth.context_processors.auth',
 				'django.contrib.messages.context_processors.messages',
-				'exhibition.context_processors.common_context',
+				'crm.context_processors.common_context',
 			],
 		},
 	},
@@ -311,8 +312,8 @@ else:
 
 FILES_UPLOAD_FOLDER = 'uploads/'
 
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
-MAX_UPLOAD_FILES_SIZE = 20 * 5 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
+MAX_UPLOAD_FILES_SIZE = 25 * 10 * 1024 * 1024
 FILE_UPLOAD_PERMISSIONS = 0o775
 
 if os.path.exists(os.path.join(MEDIA_ROOT, 'tmp')):

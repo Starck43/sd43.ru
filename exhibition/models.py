@@ -149,7 +149,8 @@ class Exhibitors(Person, Profile):
 				new_portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.slug)
 				# переименуем имя папки с проектами текущего участника
 				rename(portfolio_folder, new_portfolio_folder)
-				# почистим кэшированные файлы и изменим путь к файлам в таблице Image для всех портфолио принадлежащих текущему участнику
+				# почистим кэшированные файлы и изменим путь к файлам в таблице Image для всех портфолио,
+				# принадлежащих текущему участнику
 				owner_images = Image.objects.filter(portfolio__owner__slug=self.original_slug)
 				for image in owner_images:
 					# Only clears key-value store data in thumbnail-kvstore, but does not delete image file
@@ -317,7 +318,9 @@ class Exhibitions(models.Model):
 	partners = models.ManyToManyField(Partners, related_name='partners_for_exh', verbose_name='Партнеры', blank=True)
 	jury = models.ManyToManyField(Jury, related_name='jury_for_exh', verbose_name='Жюри', blank=True)
 	nominations = models.ManyToManyField(
-		Nominations, related_name='nominations_for_exh', verbose_name='Номинации',
+		Nominations,
+		related_name='nominations_for_exh',
+		verbose_name='Номинации',
 		blank=True
 	)
 
@@ -457,13 +460,8 @@ class PortfolioManager(models.Manager):
 class Portfolio(models.Model):
 	project_id = models.IntegerField(null=True)
 	owner = models.ForeignKey(Exhibitors, on_delete=models.CASCADE, verbose_name='Участник')
-	exhibition = ChainedForeignKey(
+	exhibition = models.ForeignKey(
 		Exhibitions,
-		chained_field="owner",
-		chained_model_field="exhibitors",
-		# show_all=True,
-		auto_choose=False,
-		sort=True,
 		on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Выставка',
 		help_text='Выберите год, если проект будет участвовать в конкурсе'
 	)
@@ -475,13 +473,11 @@ class Portfolio(models.Model):
 		verbose_name='Категории',
 		help_text='Отметьте нужные категории соответствующие вашему проекту'
 	)
-	nominations = ChainedManyToManyField(
+	nominations = models.ManyToManyField(
 		Nominations,
-		chained_field="exhibition",
-		chained_model_field="nominations_for_exh",
-		# horizontal=True,
-		auto_choose=True,
-		related_name='nominations_for_portfolio', blank=True, verbose_name='Номинации',
+		related_name='nominations_for_portfolio',
+		blank=True,
+		verbose_name='Номинации',
 		help_text='Отметьте номинации, в которых заявляетесь с Вашим проектом'
 	)
 

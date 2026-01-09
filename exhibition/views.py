@@ -1,15 +1,19 @@
 import math
+import traceback
 from collections import defaultdict
 from datetime import timedelta
+from os import SEEK_END
 
 from allauth.account.models import EmailAddress
 from allauth.account.signals import user_signed_up
 from allauth.account.views import PasswordResetView
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.signals import social_account_removed
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.files.uploadhandler import FileUploadHandler
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection, OperationalError
 from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count
 from django.dispatch import receiver
@@ -33,7 +37,7 @@ from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from rating.utils import is_jury_member
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
-from .logic import SendEmail, SendEmailAsync, set_user_group
+from .logic import send_email, send_email_async, set_user_group
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
 
@@ -744,7 +748,7 @@ def contacts(request):
 				'message': form.cleaned_data['message'],
 			})
 
-			if SendEmail('Получено новое сообщение с сайта sd43.ru!', template):
+			if send_email('Получено новое сообщение с сайта sd43.ru!', template):
 				return redirect('/success/')
 
 	else:
@@ -779,6 +783,17 @@ class ProgressBarUploadHandler(FileUploadHandler):
 		...
 
 
+def get_nominations_categories_mapping(request):
+	""" API endpoint для получения маппинга номинаций к категориям """
+	nominations = Nominations.objects.select_related('category').all()
+	mapping = {}
+	for nom in nominations:
+		if nom.category:
+			mapping[str(nom.id)] = str(nom.category.id)
+
+	return JsonResponse(mapping)
+
+
 @login_required
 def get_nominations_for_exhibition(request):
 	""" AJAX view для получения номинаций по выбранной выставке """
@@ -795,15 +810,36 @@ def get_nominations_for_exhibition(request):
 	return JsonResponse({'nominations': []})
 
 
-def get_nominations_categories_mapping(request):
-	""" API endpoint для получения маппинга номинаций к категориям """
-	nominations = Nominations.objects.select_related('category').all()
-	mapping = {}
-	for nom in nominations:
-		if nom.category:
-			mapping[str(nom.id)] = str(nom.category.id)
+@login_required
+def get_exhibitions_by_owner(request):
+	"""AJAX view для получения выставок по выбранному участнику"""
+	try:
+		owner_id = request.GET.get('owner_id')
 
-	return JsonResponse(mapping)
+		if owner_id:
+			try:
+				owner = Exhibitors.objects.get(id=owner_id)
+				exhibitions = owner.exhibitors_for_exh.all().order_by('-date_start')
+
+				exhibitions_data = []
+				for exh in exhibitions:
+					exhibitions_data.append({
+						'id': exh.id,
+						'title': exh.title,
+						'year': exh.date_start.year if exh.date_start else '',
+						'date_start': exh.date_start.strftime('%d-%m-%Y') if exh.date_start else '',
+						'slug': exh.slug
+					})
+
+				return JsonResponse({'exhibitions': exhibitions_data})
+
+			except (Exhibitors.DoesNotExist, ValueError) as e:
+				return JsonResponse({'exhibitions': []})
+
+		return JsonResponse({'exhibitions': []})
+
+	except Exception as e:
+		return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -843,6 +879,34 @@ def portfolio_upload(request, **kwargs):
 			from django.http import HttpResponseForbidden
 			return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
 
+	# Проверяем общий размер всех файлов
+	if request.method == 'POST' and request.FILES:
+		total_size = 0
+		for file_key in request.FILES:
+			for file in request.FILES.getlist(file_key):
+				try:
+					file.seek(0, SEEK_END)
+					total_size += file.tell()
+					file.seek(0)
+				except (AttributeError, OSError):
+					pass
+
+		max_total_size = settings.MAX_UPLOAD_FILES_SIZE \
+			if hasattr(settings, 'MAX_UPLOAD_FILES_SIZE') \
+			else 100 * 1024 * 1024
+
+		if total_size > max_total_size:
+			if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
+				return JsonResponse({
+					'status': 'error',
+					'message': (
+						f'Общий размер файлов ({total_size / (1024 * 1024):.1f} MB) '
+						f'превышает лимит {max_total_size / (1024 * 1024)} MB'
+					)
+				}, status=400)
+			else:
+				messages.error(request, f'Общий размер файлов слишком большой!')
+
 	form = PortfolioForm(owner=owner, instance=portfolio)
 	inline_form_set = inlineformset_factory(Portfolio, Image, form=ImageForm, extra=0, can_delete=True)
 	formset = inline_form_set(instance=portfolio)
@@ -877,7 +941,7 @@ def portfolio_upload(request, **kwargs):
 
 				# Отправка email уведомления (раскомментировать при необходимости)
 				# template = render_to_string('account/portfolio_upload_confirm.html', context)
-				# SendEmailAsync('%s портфолио на сайте sd43.ru!' % ('Внесены изменения в' if pk else 'Добавлено новое'), template)
+				# send_email_async('%s портфолио на сайте sd43.ru!' % ('Внесены изменения в' if pk else 'Добавлено новое'), template)
 
 				# Если это AJAX запрос, возвращаем JSON с URL для перенаправления
 				if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
@@ -1071,7 +1135,7 @@ def user_signed_up_(request, user, **kwargs):
 		'email': user.email,
 		'group': list(user.groups.all().values_list('name', flat=True)),
 	})
-	SendEmailAsync('Регистрация нового пользователя на сайте sd43.ru!', template)
+	send_email_async('Регистрация нового пользователя на сайте sd43.ru!', template)
 
 
 class HealthCheckView(View):

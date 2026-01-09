@@ -5,7 +5,7 @@ import unicodedata
 from threading import Thread
 from PIL import ImageFile, Image as Im
 from io import BytesIO
-from os import path, remove
+from os import path, remove, SEEK_END
 from sys import getsizeof
 
 import PIL
@@ -214,19 +214,36 @@ def image_resize(obj, size=None, uploaded_file=None):
 
 def limit_file_size(file):
 	""" Image file size validator """
-	limit = settings.FILE_UPLOAD_MAX_MEMORY_SIZE if hasattr(settings,
-	                                                        'FILE_UPLOAD_MAX_MEMORY_SIZE') else 2.5 * 1024 * 1024
-	if path.exists(file.path) and file.size > limit:
-		raise ValidationError(
-			'Размер файла превышает лимит %s Мб. Рекомендуемый размер фото 1500x1024 пикс.' % (limit / (1024 * 1024))
-		)
+	limit = settings.FILE_UPLOAD_MAX_MEMORY_SIZE \
+		if hasattr(settings, 'FILE_UPLOAD_MAX_MEMORY_SIZE') \
+		else 5 * 1024 * 1024
+
+	try:
+		# Получаем размер файла
+		if hasattr(file, 'size'):
+			file_size = file.size
+		else:
+			# Для файлов сохраненных на диск
+			file.seek(0, SEEK_END)
+			file_size = file.tell()
+			file.seek(0)  # Возвращаем указатель в начало
+
+		if file_size > limit:
+			raise ValidationError(
+				'Размер файла превышает лимит %s Мб. Рекомендуемый размер 1500x1024 пикс.' % (limit / (1024 * 1024))
+			)
+	except (AttributeError, OSError) as e:
+		# Если не удалось определить размер
+		logging.warning(f"Could not determine file size: {e}")
+		# Можно пропустить или поднять ошибку в зависимости от требований
+		pass
 
 
 class CustomClearableFileInput(ClearableFileInput):
 	template_name = 'admin/exhibition/widgets/file_input.html'
 
 
-def SendEmail(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
+def send_email(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
 	""" Sending email """
 	email = EmailMessage(
 		subject,
@@ -257,10 +274,10 @@ class EmailThread(Thread):
 		Thread.__init__(self)
 
 	def run(self):
-		return SendEmail(self.subject, self.html_content, self.recipient_list)
+		return send_email(self.subject, self.html_content, self.recipient_list)
 
 
-def SendEmailAsync(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
+def send_email_async(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
 	""" Sending email to recipients """
 	EmailThread(subject, template, email_recipients).start()
 
@@ -285,7 +302,7 @@ def portfolio_upload_confirmation(images, request, obj):
 			'host_url': host_url,
 			'uploaded_images': uploaded_images,
 		})
-		SendEmailAsync(subject, template, [obj.owner.user.email])
+		send_email_async(subject, template, [obj.owner.user.email])
 
 
 def set_user_group(request, user):
@@ -307,7 +324,7 @@ def set_user_group(request, user):
 	return user
 
 
-def IsMobile(request):
+def is_mobile(request):
 	""" Return True if the request comes from a mobile device """
 	import re
 

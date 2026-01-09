@@ -12,7 +12,7 @@
 
 {% block script %}
     {{ block.super }}
-    <script type="text/javascript" src="{% static 'js/masonry-portfolio.min.js' %}" defer></script>
+    <script type="text/javascript" src="{% md5url 'js/masonry-portfolio.min.js' %}" defer></script>
 {% endblock script %}
 
 {% block title %}{{ block.super }} {{ separator }} Портфолио работ{% endblock %}
@@ -22,8 +22,8 @@
 
     {{ block.super }}
     <symbol id="award-icon" width="100%" height="100%" fill="orange" viewBox="0 0 16 16">
-        <path d="m8 0 1.669.864 1.858.282.842 1.68 1.337 1.32L13.4 6l.306 1.854-1.337 1.32-.842 1.68-1.858.282L8 12l-1.669-.864-1.858-.282-.842-1.68-1.337-1.32L2.6 6l-.306-1.854 1.337-1.32.842-1.68L6.331.864 8 0z"/>
-        <path d="M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1 4 11.794z"/>
+        <path d="m8 0 1.669.864 1.858.282.842 1.68 1.337 1.32L13.4 6l.306 1.854-1.337 1.32-.842 1.68-1.858.282L8 12l-1.669-.864-1.858-.282-.842-1.68-1.337-1.32L2.6 6l-.306-1.854 1.337-1.32.842-1.68L6.331.864 8 0z"></path>
+        <path d="M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1 4 11.794z"></path>
     </symbol>
 
 {% endblock svg_icons %}
@@ -34,7 +34,7 @@
 {% endblock brand_block %}
 
 {% block navigation %}
-    <a class="back-link arrow-left" href="{{ site_url }}{{ parent_link }}">
+    <a class="back-link arrow-left" href="{{ parent_link }}">
         <svg class="icon arrow-icon">
             <use xlink:href="#arrow-icon"></use>
         </svg>
@@ -65,13 +65,12 @@
 
                             {% with nominations=e.nominations_list %}
                                 {% with categories=e.categories_list %}
-                                    <a id="project-{{ e.project_id }}" class="grid-cell grid-item
-
+                                    <a href="{{ site_url }}{{ page_path }}{{ e.project_id }}"
+                                       id="project-{{ e.project_id }}" class="grid-cell grid-item
 
                                             {% for n in nominations %}{% ifchanged %} {{ n.category.slug }}{% endifchanged %}{% endfor %}
 
-                                            {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}"
-                                       href={{ page_url }}{{ e.project_id }}>
+                                            {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}">
                                         <figure>
                                             {% thumbnail cover "320" crop="center" as xs %}
                                                 {% thumbnail cover "576" crop="center" as sm %}

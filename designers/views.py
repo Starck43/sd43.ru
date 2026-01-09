@@ -9,14 +9,13 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.detail import DetailView
 
-from exhibition.logic import SendEmail
+from exhibition.logic import send_email
 from exhibition.mixins import MetaSeoMixin
 from exhibition.models import Categories, Nominations, Winners, Portfolio, Image
 from .forms import FeedbackForm
 from .models import Designer, Achievement
 
 
-# @method_decorator(csrf_exempt, name='dispatch')
 class MainPage(MetaSeoMixin, DetailView):
 	""" Главная страница дизайнера """
 	model = Designer
@@ -127,7 +126,7 @@ class PortfolioPage(MetaSeoMixin, DetailView):
 		)
 		context['page_url'] = self.request.build_absolute_uri()
 		context['page_path'] = '/portfolio/'
-		context['parent_link'] = reverse('designers:designer-page-url', args=[self.kwargs['slug']])
+		context['parent_link'] = '/'
 		context['form'] = FeedbackForm()
 		return context
 
@@ -151,14 +150,16 @@ class PortfolioDetailPage(MetaSeoMixin, DetailView):
 		context = super().get_context_data(**kwargs)
 
 		portfolio = Portfolio.objects.filter(
-			owner=self.object.owner, project_id=self.kwargs['project_id'], status=True
+			owner=self.object.owner,
+			project_id=self.kwargs['project_id'],
+			status=True
 		).first()
 
 		context['html_classes'] = ['designer-page', 'project']
 		context['project'] = portfolio
 		context['page_url'] = self.request.build_absolute_uri()
 		context['page_path'] = f'/portfolio/{self.kwargs["project_id"]}/'
-		context['parent_link'] = self.model.get_absolute_url(self.object)
+		context['parent_link'] = '/portfolio/'
 		context['cache_timeout'] = 86400  # one day
 		context['form'] = FeedbackForm()
 		return context
@@ -170,9 +171,9 @@ def send_message(request, slug):
 	try:
 		designer = Designer.objects.get(slug=slug)
 		if designer.owner.email:
-			recepients = [designer.owner.email]
+			recipients = [designer.owner.email]
 		else:
-			recepients = [designer.owner.user.email]
+			recipients = [designer.owner.user.email]
 
 		if request.is_ajax():
 			data = {
@@ -182,11 +183,12 @@ def send_message(request, slug):
 				'message': request.GET.get("message", None)
 			}
 
-			if email_confirmation(data, recepients):
+			if email_confirmation(data, recipients):
 				return JsonResponse({'status': 'success'}, safe=False)
 			# return HttpResponse(status=201)
 			else:
 				return JsonResponse({'status': 'error'}, safe=False)
+
 	# return HttpResponse(status=400)
 
 	# form = FeedbackForm(request.POST)
@@ -197,15 +199,15 @@ def send_message(request, slug):
 	# 		'email'		:form.cleaned_data['from_email'],
 	# 		'message'	:form.cleaned_data['message']
 	# 	}
-	# 	print(data, recepients)
-	# 	if email_confirmation(data, recepients):
+	# 	print(data, recipients)
+	# 	if email_confirmation(data, recipients):
 	# 		return redirect('/success/')
 
 	except Designer.DoesNotExist:
 		redirect('/')
 
 
-def email_confirmation(data, recepients):
+def email_confirmation(data, recipients):
 	""" Отправка уведомления дизайнеру на почту """
 	if data['message'] and data['email']:
 		template = render_to_string('designers/confirm_email.html', {
@@ -215,4 +217,4 @@ def email_confirmation(data, recepients):
 			'message': data['message'],
 		})
 		# отправка письма на почту дизайнера
-		return SendEmail('Сообщение с сайта', template, recepients)
+		return send_email('Сообщение с сайта', template, recipients)

@@ -7,7 +7,7 @@ urlpatterns = [
 	path('', views.index, name='index'),
 
 	path('exhibitions/', views.ExhibitionsList.as_view(), kwargs={'exh_year': None}, name='exhibitions-list-url'),
-	path('exhibition/<exh_year>/',views.ExhibitionDetail.as_view(), name='exhibition-detail-url'),
+	path('exhibition/<exh_year>/', views.ExhibitionDetail.as_view(), name='exhibition-detail-url'),
 	path('exhibition/<exh_year>/<slug>/', views.WinnerProjectDetail.as_view(), name='winner-detail-url'),
 
 	path('category/', views.CategoryList.as_view(), kwargs={'slug': None}, name='category-list-url'),
@@ -34,19 +34,21 @@ urlpatterns = [
 	path('events/<exh_year>/', views.EventsList.as_view(), name='events-list-url'),
 	path('events/<exh_year>/<pk>/', views.EventDetail.as_view(), name='event-detail-url'),
 
-
-	#path('exhibition/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
-	#path('exhibition/<exh_year>/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
+	# path('exhibition/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
+	# path('exhibition/<exh_year>/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
 	path('contacts/', views.contacts, name='contacts-url'),
 	path('policy/', views.registration_policy, name='policy-url'),
 
 	re_path(r'^search/', views.SearchSite.as_view(), name='search-results'),
 	path('account/', views.account, name='account-url'),
-	path('account/deactivate/',views.deactivate_user, name="deactivate-user"),
+	path('account/deactivate/', views.deactivate_user, name="deactivate-user"),
 	path('reset_password/', views.send_reset_password_email),
 	path('api/get-nominations/', views.get_nominations_for_exhibition, name='get-nominations-url'),
-	path('api/nominations-categories-mapping/', views.get_nominations_categories_mapping, name='nominations-categories-mapping-url'),
-	path('portfolio/new/', views.portfolio_upload, kwargs={'pk': None}, name='portfolio-upload-url'),
+	path('api/nominations-categories-mapping/', views.get_nominations_categories_mapping, name='nominations-mapping-url'),
+	path('api/get-nominations/', views.get_nominations_for_exhibition, name='get-nominations-for-exhibition-url'),
+	path('api/get-exhibitions-by-owner/', views.get_exhibitions_by_owner, name='get_exhibitions_by_owner'),
+
+	path('portfolio/add/', views.portfolio_upload, kwargs={'pk': None}, name='portfolio-upload-url'),
 	path('portfolio/edit/<pk>', views.portfolio_upload, name='portfolio-upload-url'),
 	re_path(r'^success/$', views.success_message, name='success-message-url'),
 	path('health/', views.HealthCheckView.as_view(), name='health-check'),
