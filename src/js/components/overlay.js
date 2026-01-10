@@ -162,7 +162,7 @@ export class Overlay {
             }
 
             this.target.dispatchEvent(new CustomEvent('overlay:hidden'));
-        }, 350);
+        }, 200);
 
         window.openOverlays.delete(this.target);
     }
@@ -217,7 +217,7 @@ export const OverlayFactory = {
     modal(target) {
         return new Overlay(target, {
             bodyClass: 'modal-open',
-            backdrop: false, // ← ИЗМЕНИТЕ НА false - не создаем внешний backdrop
+            backdrop: false,
             useSelfAsBackdrop: true
         });
     },

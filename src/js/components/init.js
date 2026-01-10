@@ -86,7 +86,6 @@ function initOffcanvases() {
 /**
  * Инициализация уведомлений
  */
-
 export function initAlerts() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {

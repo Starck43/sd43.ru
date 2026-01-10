@@ -283,6 +283,11 @@ h3, h4
 	.person-title
 		margin-top: 0.5em
 
+	.partners-container
+		.partners-list
+			+mixins.media-min(md)
+				grid-template-columns: repeat(3, 1fr) !important
+
 	.organizers-container
 		.organizers-list
 			margin: 0 -1.5rem

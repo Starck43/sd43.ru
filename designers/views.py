@@ -63,7 +63,6 @@ class MainPage(MetaSeoMixin, DetailView):
 		context['exh_victories_list'] = victories
 		context['competitions'] = competitions
 		context['publications'] = publications
-		context['page_path'] = '/'
 		context['form'] = FeedbackForm()
 
 		return context
@@ -125,8 +124,8 @@ class PortfolioPage(MetaSeoMixin, DetailView):
 			filter(lambda x: x[0] is not None, set(tuple(exh_category) + tuple(add_category)))
 		)
 		context['page_url'] = self.request.build_absolute_uri()
-		context['page_path'] = '/portfolio/'
-		context['parent_link'] = '/'
+		context['parent_link'] = reverse('designers:designer-page-url', kwargs={'slug': self.object.slug})
+		context['page_path'] = reverse('designers:portfolio-page-url', kwargs={'slug': self.object.slug})
 		context['form'] = FeedbackForm()
 		return context
 
@@ -158,8 +157,15 @@ class PortfolioDetailPage(MetaSeoMixin, DetailView):
 		context['html_classes'] = ['designer-page', 'project']
 		context['project'] = portfolio
 		context['page_url'] = self.request.build_absolute_uri()
-		context['page_path'] = f'/portfolio/{self.kwargs["project_id"]}/'
-		context['parent_link'] = '/portfolio/'
+		context['page_path'] = reverse(
+			'designers:portfolio-detail-page-url',
+			kwargs={'slug': self.object.slug, 'project_id': self.kwargs['project_id']}
+		)
+		context['parent_link'] = reverse(
+			'designers:portfolio-page-url',
+			kwargs={'slug': self.object.slug}
+		)
+
 		context['cache_timeout'] = 86400  # one day
 		context['form'] = FeedbackForm()
 		return context

@@ -24,13 +24,22 @@
 
 		figcaption
 			background-color: inherit
+			>div
+				flex-wrap: wrap
+				padding: 0.5rem 0
+
+		figcaption, figcaption>div
 			transition: all .3s ease-in-out
 
 		&:hover
 			outline: var(--border-thickness) solid var(--highlight-border-color)
 			color: var(--light-color) !important
+
 			figcaption
 				background-color: var(--dark-color)
+				>div
+					padding: 0.5rem 2%
+					transform: scale(95%)
 
 		img
 			display: block

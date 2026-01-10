@@ -5,62 +5,73 @@
 
 
 {% block meta_og_type %}article{% endblock %}
-{% block meta_og_image %}{{site_url}}{% get_media_prefix %}{{ person.logo }}{% endblock %}
+{% block meta_og_image %}{{ site_url }}{% get_media_prefix %}{{ person.logo }}{% endblock %}
 
-{% block title %}{{ block.super }} {{separator}} Статья "{{object.title}}"{% endblock %}
+{% block title %}{{ block.super }} {{ separator }} Статья "{{ object.title }}"{% endblock %}
 
 
 {% block site_title %}
-{% if general_banner %}
-{% with general_banner as banner %}
-	{% include "ads/banner_horizontal.html" %}
-{% endwith %}
-{% endif %}
+    {% if general_banner %}
+        {% with general_banner as banner %}
+            {% include "ads/banner_horizontal.html" %}
+        {% endwith %}
+    {% endif %}
 
 
-<h1>
-	{{object.title}}
-	{% if user.is_staff %}
-	<a class="admin-edit-link" href="{% url 'article'|admin_change_url:"blog" object.id %}"><svg><use xlink:href="#edit-icon"></use></svg></a>
-	{% endif %}
-</h1>
+    <h1>
+        {{ object.title }}
+        {% if user.is_staff %}
+            <a class="admin-edit-link" href="{% url 'article'|admin_change_url:"blog" object.id %}">
+                <svg>
+                    <use xlink:href="#edit-icon"></use>
+                </svg>
+            </a>
+        {% endif %}
+    </h1>
 {% endblock site_title %}
 
 {% block link %}
-	<div class="controls">
-		<a class="back-link arrow-left" href="{{parent_link}}" onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}">
-			<svg class="icon arrow-icon"><use xlink:href="#arrow-icon"></use></svg>
-			&nbsp;назад
-		</a>
-	</div>
+    <div class="controls">
+        <a
+                class="back-link centered"
+                href="{{ parent_link }}"
+                onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
+        >
+            <svg class="icon arrow-icon arrow-left">
+                <use xlink:href="#arrow-icon"></use>
+            </svg>
+            &nbsp;назад
+        </a>
+    </div>
 {% endblock link %}
 
 {% block sidebar %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar %}
 
 {% block content %}
 
-	{% cache cache_timeout article object.id %}
+    {% cache cache_timeout article object.id %}
 
-	<article id="{{object.id}}" class="article-content">
-		{% with object.person as person %}
-		{% if person %}
-			<span>автор: </span><a class="article-author" href="{{person.get_absolute_url}}"><i><b>{{ person.name }}</b></i></a>
-		{% endif %}
-		{% endwith %}
+        <article id="{{ object.id }}" class="article-content">
+            {% with object.person as person %}
+                {% if person %}
+                    <span>автор: </span>
+                    <a class="article-author" href="{{ person.get_absolute_url }}"><i><b>{{ person.name }}</b></i></a>
+                {% endif %}
+            {% endwith %}
 
-		<div class="modified-date">{{object.modified_date|date:"d.m.Y"}}</div>
-		<div class="article-text">{{object.content|safe}}</div>
+            <div class="modified-date">{{ object.modified_date|date:"d.m.Y" }}</div>
+            <div class="article-text">{{ object.content|safe }}</div>
 
-		<div class="article-ads-block">
-			{% for banner in ads_banners %}
-				{% if banner.article.id == article_id and banner.file_1000 %}
-					{% include "ads/banner_horizontal.html" %}
-				{% endif %}
-			{% endfor %}
-		</div>
-	</article>
+            <div class="article-ads-block">
+                {% for banner in ads_banners %}
+                    {% if banner.article.id == article_id and banner.file_1000 %}
+                        {% include "ads/banner_horizontal.html" %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </article>
 
-	{% endcache %}
+    {% endcache %}
 
 {% endblock content %}
 

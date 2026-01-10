@@ -33,7 +33,7 @@
 {% block cover %}
     {% if object.background %}
         <div class="cover" style="background-image: url({{ object.background.url }});">
-            <div class="scroll-down centered">
+            <div class="scroll-down btn-lg centered">
                 <svg class="icon arrow-icon arrow-down">
                     <use xlink:href="#arrow-icon"></use>
                 </svg>
@@ -50,7 +50,7 @@
     </nav>
     <div class="navigation centered">
         {% if portfolio_list %}
-            <a href="{{ site_url }}/portfolio" class="nav-link">Портфолио</a>
+            <a href="{% url 'designers:portfolio-page-url' slug=object.slug %}" class="nav-link">Портфолио</a>
         {% endif %}
 
         {% if exh_victories_list or competitions or publications %}
@@ -103,12 +103,15 @@
                     {% for e in portfolio_list %}
                         {% with cover=e.project_cover %}
                             {% if cover %}
-                                <a id="project-{{ e.id }}" class="gallery-photo swiper-slide"
-                                   href="{{ e.get_absolute_url }}">
+                                <a
+                                        id="project-{{ e.id }}"
+                                        class="gallery-photo swiper-slide"
+                                        href="{% url 'designers:portfolio-detail-page-url' slug=object.slug project_id=e.project_id %}"
+                                >
                                     <figure class="ratio ratio-4x3 swiper-slide-transform">
-                                        {% thumbnail cover "320" crop="center" as xs %}
-                                            {% thumbnail cover "576" crop="center" as sm %}
-                                                {% thumbnail cover "992" crop="center" as md %}
+                                        {% thumbnail cover "320" as xs %}
+                                            {% thumbnail cover "576" as sm %}
+                                                {% thumbnail cover "992" as md %}
                                                     <img class="project-cover slide-img lazyload"
                                                          src="{{ xs.url }}"
                                                          srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w, {{ md.url }} {{ md.x }}w">
@@ -150,7 +153,7 @@
                 </div>
             </div>
 
-            <a class="all-portfolio-link btn" href="{{ site_url }}/portfolio">
+            <a class="all-portfolio-link btn" href="{% url 'designers:portfolio-page-url' slug=object.slug %}">
                 Смотреть все проекты
             </a>
         </section>

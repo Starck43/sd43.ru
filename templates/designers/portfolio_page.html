@@ -9,7 +9,6 @@
 {% block meta_og_description %}{% if meta.description %}{{ meta.description }}{% endif %}{% endblock %}
 {% block meta_og_title %}{% if meta.title %}{{ meta.title }}{% endif %}{% endblock %}
 
-
 {% block script %}
     {{ block.super }}
     <script type="text/javascript" src="{% md5url 'js/masonry-portfolio.min.js' %}" defer></script>
@@ -34,8 +33,8 @@
 {% endblock brand_block %}
 
 {% block navigation %}
-    <a class="back-link arrow-left" href="{{ parent_link }}">
-        <svg class="icon arrow-icon">
+    <a class="back-link centered" href="{% url 'designers:designer-page-url' slug=object.slug %}">
+        <svg class="icon arrow-icon arrow-left">
             <use xlink:href="#arrow-icon"></use>
         </svg>
         <span>&nbsp;Назад</span>
@@ -65,73 +64,76 @@
 
                             {% with nominations=e.nominations_list %}
                                 {% with categories=e.categories_list %}
-                                    <a href="{{ site_url }}{{ page_path }}{{ e.project_id }}"
-                                       id="project-{{ e.project_id }}" class="grid-cell grid-item
-
-                                            {% for n in nominations %}{% ifchanged %} {{ n.category.slug }}{% endifchanged %}{% endfor %}
-
-                                            {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}">
+                                    <a
+                                            href="{% url 'designers:portfolio-detail-page-url' slug=object.slug project_id=e.project_id %}"
+                                            id="project-{{ e.project_id }}"
+                                            class="grid-cell grid-item {% for n in nominations %}{% ifchanged %} {{ n.category.slug }}{% endifchanged %}{% endfor %} {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}"
+                                    >
                                         <figure>
                                             {% thumbnail cover "320" crop="center" as xs %}
                                                 {% thumbnail cover "576" crop="center" as sm %}
                                                     {% thumbnail cover "992" crop="center" as md %}
                                                         <img class="project-cover slide-img lazyload"
                                                              src="{{ xs.url }}"
-                                                             srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w, {{ md.url }} {{ md.x }}w">
+                                                             srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w, {{ md.url }} {{ md.x }}w"
+                                                             alt="{{ e.title }}"
+                                                        >
                                                     {% endthumbnail %}
                                                 {% endthumbnail %}
                                             {% endthumbnail %}
 
                                             <figcaption>
-                                                {% if e.title %}
-                                                    <h4 class="title">{{ e.title }}</h4>
-                                                {% endif %}
+                                                <div class="d-flex">
+                                                    {% if e.title %}
+                                                        <h4 class="title">{{ e.title }}</h4>
+                                                    {% endif %}
 
-                                                {% if e.win_year %}
-                                                    <div class="portfolio-award"
-                                                         title="Победитель в выставке Сфера дизайна {{ e.win_year }}">
-                                                        <svg class="award">
-                                                            <use xlink:href="#award-icon"></use>
-                                                        </svg>
-                                                    </div>
-                                                {% endif %}
+                                                    {% if e.win_year %}
+                                                        <div class="portfolio-award"
+                                                             title="Победитель в выставке Сфера дизайна {{ e.win_year }}">
+                                                            <svg class="award">
+                                                                <use xlink:href="#award-icon"></use>
+                                                            </svg>
+                                                        </div>
+                                                    {% endif %}
 
-                                                <div class="meta">
-                                                    <div class="detail">
-                                                        {% if e.win_year %}
-                                                            Победитель в выставке
-                                                            <span>Сфера Дизайна {{ e.win_year }}</span>
-                                                        {% elif e.exh_year %}
-                                                            Участие в выставке
-                                                            <span>Сфера Дизайна {{ e.exh_year }}</span>
-                                                        {% else %}
-                                                            Вневыставочный проект
-                                                        {% endif %}
-                                                    </div>
+                                                    <div class="meta">
+                                                        <div class="detail">
+                                                            {% if e.win_year %}
+                                                                Победитель в выставке
+                                                                <span>Сфера Дизайна {{ e.win_year }}</span>
+                                                            {% elif e.exh_year %}
+                                                                Участие в выставке
+                                                                <span>Сфера Дизайна {{ e.exh_year }}</span>
+                                                            {% else %}
+                                                                Вневыставочный проект
+                                                            {% endif %}
+                                                        </div>
 
-                                                    {% if nominations %}
-                                                        <div class="category">
-                                                            Категория:
-                                                            <span>
+                                                        {% if nominations %}
+                                                            <div class="category">
+                                                                Категория:
+                                                                <span>
 															{% for n in nominations %}
                                                                 {% if forloop.first %}{{ n.category.title }}{% else %}
                                                                     {% ifchanged %}/{{ n.category.title }}
                                                                     {% endifchanged %}{% endif %}
                                                             {% endfor %}
 															</span>
-                                                        </div>
-                                                    {% elif categories %}
-                                                        <div class="category">
-                                                            Категория:
-                                                            <span>
+                                                            </div>
+                                                        {% elif categories %}
+                                                            <div class="category">
+                                                                Категория:
+                                                                <span>
 															{% for c in categories %}
                                                                 {% if forloop.first %}{{ c.title }}{% else %}
                                                                     {% ifchanged %}/ {{ c.title }}
                                                                     {% endifchanged %}{% endif %}
                                                             {% endfor %}
 															</span>
-                                                        </div>
-                                                    {% endif %}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
                                             </figcaption>
 

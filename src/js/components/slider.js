@@ -50,8 +50,8 @@ const getSwiperConfig = (type) => {
             slidesPerView: 1,
             spaceBetween: 0,
             breakpoints: {
-                992: {slidesPerView: 2, spaceBetween: 24},
-                1400: {slidesPerView: 3, spaceBetween: 30},
+                992: {slidesPerView: 2, spaceBetween: 16},
+                1400: {slidesPerView: 3, spaceBetween: 24},
             },
             autoplay: {
                 delay: 4000,
@@ -135,10 +135,17 @@ export function getSwiper(swiperInstance, container, type = 'gallery', slideInde
  * Инициализирует модальную галерею с ленивой загрузкой
  */
 function initLazyGallery(gallery) {
-    let gallerySwiper = null;
+        let gallerySwiper = null;
     const galleryId = '#' + gallery.id;
+    let cleanupTimeout = null;
 
     const openSlide = (slideIndex = 0) => {
+        // Очищаем предыдущий таймаут, если есть
+        if (cleanupTimeout) {
+            clearTimeout(cleanupTimeout);
+            cleanupTimeout = null;
+        }
+
         // Всегда пересоздаем Swiper для гарантии корректной работы
         if (gallerySwiper) {
             gallerySwiper.destroy(true, true);
@@ -157,7 +164,7 @@ function initLazyGallery(gallery) {
         }, {once: true});
     };
 
-    // Способ 1: Если modal.js инициализировал модальное окно
+    // Если modal.js инициализировал модальное окно
     if (window.modalInstances?.has(galleryId)) {
         gallery.addEventListener('modal:shown', (e) => {
             const slideIndex = e.detail?.slideIndex ?? 0;
@@ -167,12 +174,19 @@ function initLazyGallery(gallery) {
         // Cleanup при закрытии модалки
         gallery.addEventListener('modal:hidden', () => {
             if (gallerySwiper) {
-                gallerySwiper.destroy(true, true);
-                gallerySwiper = null;
+                // ВАЖНО: Не уничтожаем Swiper сразу, а ждем завершения анимации закрытия.
+                // Устанавливаем таймаут чуть больше чем длительность анимации
+                cleanupTimeout = setTimeout(() => {
+                    if (gallerySwiper) {
+                        gallerySwiper.destroy(true, true);
+                        gallerySwiper = null;
+                    }
+                    cleanupTimeout = null;
+                }, 300);
             }
         });
     }
-    // Способ 2: Fallback - если modal.js не подключен
+    // Fallback - если modal.js не подключен
     else {
         const triggers = document.querySelectorAll(`[data-toggle="modal"][data-target="${galleryId}"]`);
 
@@ -238,8 +252,11 @@ export function initSliders(types = null) {
         // Для модальных галерей пропускаем проверку видимости
         const isModalGallery = type === 'gallery' && container.classList.contains('modal');
 
+        const isEagerSlider = ['slider', 'banner'].includes(type);
+
         const style = window.getComputedStyle(container);
-        const isHidden = !isModalGallery && (style.display === 'none' || style.visibility === 'hidden');
+        const isHidden = !isModalGallery && !isEagerSlider &&
+            (style.display === 'none' || style.visibility === 'hidden');
 
         if (isHidden) return;
 

@@ -23,7 +23,7 @@ export class Modal {
             true;
 
         this.overlay = useSelfBackdrop
-            ? OverlayFactory.modalSelfBackdrop(this.modal)
+            ? OverlayFactory.modalWithBackdrop(this.modal)
             : OverlayFactory.modal(this.modal);
 
         this.isOpen = false;

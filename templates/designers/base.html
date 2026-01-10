@@ -42,12 +42,14 @@
 
     <!-- CSS only -->
     <link href="{% md5url 'css/designer.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
-    <link href="{% static 'designers/css/custom.css' %}" rel="stylesheet" type="text/css" media="screen"/>
+    <!-- Пользовательские стили по slug дизайнера -->
+    <link href="{% static 'designers/'|add:object.slug|add:'/css/custom.css' %}" rel="stylesheet" type="text/css" media="screen"/>
 
-    {% block styles %}
-        <link rel="preload" href="{% static 'fonts/OrchideaPro-Light.woff2' %}" as="font" type="font/woff2" crossorigin>
-        <link rel="preload" href="{% static 'designers/fonts/base-font.woff2' %}" as="font" type="font/woff2" crossorigin>
-    {% endblock %}
+    <link rel="preload" href="{% static 'fonts/OrchideaPro-Light.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'designers/fonts/base-font-light.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'designers/fonts/base-font-regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+
+    {% block styles %}{% endblock %}
 
     <!-- Yandex & Google Analytics block -->
 
@@ -58,17 +60,20 @@
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none">
     {% block svg_icons %}
-        <symbol id="arrow-icon" height="30" viewBox="0 0 24 24" fill="transparent" stroke-width="2" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+        <symbol id="arrow-icon" height="100%" width="100%" viewBox="0 0 24 24" fill="transparent" stroke-width="2"
+                stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
             <path d="M7 2 L17 12 L7 22"></path>
         </symbol>
-        <symbol id="close-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor">
+        <symbol id="close-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round"
+                stroke-linecap="round" stroke="currentColor">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </symbol>
         <symbol id="close2-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path d="M1 1 L23 23 M23 1 L1 23"></path>
         </symbol>
-        <symbol id="search-icon" width="100%" height="100%" viewBox="0 0 30 30" fill="transparent" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2">
+        <symbol id="search-icon" width="100%" height="100%" viewBox="0 0 30 30" fill="transparent" stroke="currentColor"
+                stroke-linejoin="round" stroke-linecap="round" stroke-width="2">
             <circle cx="13" cy="13" r="10"></circle>
             <path d="M20 20 L27 27"></path>
         </symbol>
@@ -173,13 +178,19 @@
         <div class="contacts-content container d-flex justify-between">
             <div class="main-info">
                 {% for name, label, value, link in object.owner %}
-                    {% if label and value and name != "email" and name != "phone" or name == "email" and object.show_email == True or name == "phone" and object.show_phone == True %}
-                        <span class="{{ name }}">
-						{% if link %}<a href="{{ link }}" target="_blank">{% endif %}
-                            <svg class="icon {{ name }}-icon"><use xlink:href="#logo-{{ name }}"></use></svg>
-						{{ value }}
-                            {% if link %}</a>{% endif %}
-					</span>
+                    {% if label and value %}
+                        {% if name != "email" and name != "phone" or name == "email" and object.show_email or name == "phone" and object.show_phone %}
+                            {% if link %}
+                                <a href="{{ link }}" target="_blank" class="{{ name }} d-flex align-center">{% else %}
+                                <span class="{{ name }} d-flex align-center">{% endif %}
+
+                        <svg class="icon {{ name }}-icon">
+                    <use xlink:href="#logo-{{ name }}"></use>
+                </svg>
+                        {{ value }}
+
+                        {% if link %}</a>{% else %}</span>{% endif %}
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
             </div>
@@ -188,7 +199,7 @@
                 {% spaceless %}
                     {% for name, label, value, link in object.owner %}
                         {% if not label and link %}
-                            <a class="social-link btn-lg" href="{{ link }}" target="_blank">
+                            <a class="social-link" href="{{ link }}" target="_blank">
                                 <svg class="icon {{ name }}-icon">
                                     <use xlink:href="#logo-{{ name }}"></use>
                                 </svg>
@@ -202,7 +213,7 @@
                 {% if object.owner.email or object.owner.user.email %}
                     <button
                             type="button"
-                            class="btn"
+                            class="btn centered"
                             data-toggle="modal"
                             data-target="#feedbackContainer"
                     >
@@ -215,7 +226,7 @@
 
                 {% for name, label, value, link in object %}
                     {% if link and name == 'whatsapp' or link and name == 'telegram' %}
-                        <a href="{{ link }}" class="btn {{ name }}">
+                        <a href="{{ link }}" class="btn centered {{ name }}">
                             <svg class="icon {{ name }}-icon">
                                 <use xlink:href="#logo-{{ name }}"></use>
                             </svg>
@@ -251,7 +262,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h4 id="feedbackTitle" class="modal-title">Форма обратной связи</h4>
-                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Закрыть">
+                <button type="button" class="btn-close btn-md" data-dismiss="modal" aria-label="Закрыть">
                     <svg class="close-icon icon">
                         <use xlink:href="#close-icon"></use>
                     </svg>

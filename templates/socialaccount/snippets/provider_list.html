@@ -7,7 +7,7 @@
         {% for brand in provider.get_brands %}
             <li>
                 <a title="{{ brand.name }}"
-                   class="socialaccount_provider {{ provider.id }} {{ brand.id }} d-block btn-lg"
+                   class="socialaccount_provider {{ provider.id }} {{ brand.id }} d-block"
                    href="{% provider_login_url provider.id openid=brand.openid_url process=process %}"
                 >{{ brand.name }}</a>
             </li>
@@ -16,7 +16,7 @@
 
     <li>
         <a title="{{ provider.name }}"
-           class="socialaccount_provider {{ provider.id }} d-block btn-lg"
+           class="socialaccount_provider {{ provider.id }} d-block"
            href="{% provider_login_url provider.id process=process scope=scope auth_params=auth_params %}"
         >
             <svg class="icon {{ provider.name|lower }}">

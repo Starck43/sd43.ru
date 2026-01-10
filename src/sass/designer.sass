@@ -6,6 +6,7 @@
 @use "designer/buttons"
 @use "designer/navigation"
 @use "designer/slider"
+@use "designer/portfolio"
 
 @use "main/reset"
 @use "main/common"
@@ -20,7 +21,8 @@
 :root
 	--gap: max(1rem, 3vw)
 	--separator-w: 5px
-	--bs-body-font-family: #{$font-family-text}
+	--bs-body-font-family: "#{$font-family-text}"
+	--bs-header-font-family: "#{$font-family-header}"
 	--bs-body-bg: #{$body-bg}
 	--bs-body-color: #{$text-color}
 	--main-color: #{$main-color}
@@ -56,6 +58,7 @@
 	--section-contacts-color: #{$light-color}
 
 html
+	font-family: var(--bs-body-font-family), Arial, serif
 	font-size: 15px
 	+mixins.media-min(sm)
 		font-size: 16px
@@ -63,6 +66,9 @@ html
 		font-size: 17px
 	+mixins.media-min(xl)
 		font-size: 18px
+
+h1, h2, h3, h4, button, a
+	font-family: var(--bs-header-font-family), Arial, serif
 
 h1
 	color: var(--title-color)
@@ -76,7 +82,6 @@ h1
 		color: var(--bs-body-color)
 
 h2
-	margin-bottom: 0
 	flex: 100%
 	color: var(--main-color)
 	font-weight: 600
@@ -105,29 +110,23 @@ h3, h4
 
 
 a, .btn
+	font-weight: 400
 	transition: all .15ms ease-in-out
 
 	&:hover svg
 		fill: var(--link-hover-color) !important
-		opacity: 1
 
-svg.burger-icon
+.btn
+	background-color: transparent
+
+svg.burger-icon, .social-link
 	width: 2rem
 	height: 2rem
 
 figcaption
-	position: relative
-	padding: max(0.5rem, 4%)
-	display: flex
-	flex-wrap: wrap
-	transition: opacity 300ms ease-in
-	background-color: color.adjust(white, $alpha: -0.3)
-	user-select: none
-	//flex: 1 1 auto
-
 	.title
 		flex: 1
-		margin-bottom: 0.25em
+		margin: 0 0 0.25em
 		color: var(--main-color)
 		text-transform: uppercase
 
@@ -477,9 +476,12 @@ figcaption
 			bottom: 1.2rem
 			transform: translateY(-100%)
 
-	&:not(.portfolio):not(.project) .container
-		max-width: 1200px
-		margin: 0 auto 0
+	&:not(.portfolio):not(.project)
+		.container
+			max-width: 1200px
+			margin: 0 auto 0
+		section
+			padding-top: 3rem
 
 	header
 		padding: 0 0 2rem
@@ -501,7 +503,7 @@ figcaption
 
 	section
 		box-sizing: border-box
-		padding: 3rem var(--gap)
+		padding: 0 var(--gap) 3rem
 		>div
 			flex: auto
 
@@ -589,7 +591,7 @@ figcaption
 				img
 					object-fit: cover
 					width: 100%
-					height: auto
+					height: 100%
 
 			figure
 				display: flex
@@ -601,6 +603,7 @@ figcaption
 
 			figcaption
 				position: relative
+				top: 0
 
 				.title
 					flex: auto
@@ -795,9 +798,11 @@ figcaption
 			opacity: 0.7
 			fill: var(--section-contacts-color)
 
-		.main-info span
-			display: block
+		.main-info > a, span
 			margin-bottom: 0.5em
+			svg
+				margin-right: 2px
+
 			svg.phone-icon
 				height: 18px
 
@@ -819,6 +824,7 @@ figcaption
 				text-decoration: none
 
 			>*
+				transform: unset
 				margin-bottom: 0.75rem
 
 		.main-info,
