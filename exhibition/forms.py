@@ -73,8 +73,7 @@ class MultipleFileInput(FileInput):
 	allow_multiple_selected = True
 
 	def __init__(self, attrs=None):
-		if attrs is None:
-			attrs = {}
+		attrs = attrs or {}
 		attrs['multiple'] = True
 		super().__init__(attrs)
 
@@ -82,11 +81,36 @@ class MultipleFileInput(FileInput):
 		"""
 		Возвращает список файлов, вместо одного файла
 		"""
-		try:
-			return files.getlist(name)  # Для Django forms
-		except AttributeError:
-			# Для совместимости
-			return files.get(name)
+		if hasattr(files, 'getlist'):
+			file_list = files.getlist(name)
+			return file_list if file_list else None
+
+		# Для совместимости
+		value = files.get(name)
+		if value is None:
+			return None
+		if isinstance(value, list):
+			return value if value else None
+		return [value]
+
+
+class MultipleFileField(forms.FileField):
+	"""Кастомное поле для множественной загрузки файлов"""
+
+	def __init__(self, *args, **kwargs):
+		kwargs.setdefault("widget", MultipleFileInput())
+		super().__init__(*args, **kwargs)
+
+	def clean(self, data, initial=None):
+		# Если данные - список файлов
+		if isinstance(data, list):
+			result = []
+			for file in data:
+				# Валидируем каждый файл отдельно
+				result.append(super().clean(file, initial))
+			return result
+		# Если один файл
+		return super().clean(data, initial)
 
 
 class CategoriesAdminForm(forms.ModelForm):
@@ -257,7 +281,7 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 
 
 class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
-	files = forms.FileField(
+	files = MultipleFileField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
 			'class': 'form-control',
@@ -284,7 +308,7 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 		)
 
 		widgets = {
-			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'multiple': False}),
+			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
 			# 'categories': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
 			# 'nominations': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
 			# 'attributes': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
@@ -300,6 +324,12 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 			self.request = request
 
 		super().__init__(*args, **kwargs)
+
+		if 'cover' in self.fields:
+			self.fields['cover'].widget.attrs.update({
+				'class': 'form-control cover-upload',
+				'data-preview': 'cover-preview'
+			})
 
 		if 'nominations' in self.fields and hasattr(self.fields['nominations'], 'queryset'):
 			# Фильтруем номинации вручную через JavaScript
@@ -337,13 +367,13 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 				# Для администратора на фронтенде - все выставки
 				self.fields['exhibition'].queryset = Exhibitions.objects.all().order_by('-date_start')
 
-		# Добавляем data-атрибуты для JavaScript
-		# if self.is_admin and 'exhibition' in self.fields:
-		# 	self.fields['exhibition'].widget.attrs.update({
-		# 		'data-filter-url': '/api/get-exhibitions-by-owner/',
-		# 		'data-filter-by': 'owner',
-		# 		'data-empty-label': 'Сначала выберите участника'
-		# 	})
+	# Добавляем data-атрибуты для JavaScript
+	# if self.is_admin and 'exhibition' in self.fields:
+	# 	self.fields['exhibition'].widget.attrs.update({
+	# 		'data-filter-url': '/api/get-exhibitions-by-owner/',
+	# 		'data-filter-by': 'owner',
+	# 		'data-empty-label': 'Сначала выберите участника'
+	# 	})
 
 	@property
 	def helper(self):
@@ -358,7 +388,7 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 				Field('nominations', wrapper_class='field-nominations'),
 				FloatingField('title'),
 				'description',
-				'cover',
+				Field('cover', template='crispy_forms/cover_field.html'),
 				'files',
 				FloatingField('status'),
 				Field('attributes', wrapper_class='field-attributes d-none'),
@@ -411,22 +441,31 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 
 		if self.exhibitor is not None:
 			# Очищаем categories всегда, так как они привязаны к nominations
-			self.cleaned_data['categories'] = []
+			cleaned_data['categories'] = []
 
-			if not self.cleaned_data.get('exhibition'):
-				self.cleaned_data['nominations'] = []
-				self.cleaned_data['attributes'] = []
+			if not cleaned_data.get('exhibition'):
+				cleaned_data['nominations'] = []
+				cleaned_data['attributes'] = []
 
 		return cleaned_data
 
 	def clean_files(self):
-		data = self.cleaned_data['files']
-		content_length = int(self.request.META['CONTENT_LENGTH'])
-		if content_length > settings.MAX_UPLOAD_FILES_SIZE:
-			raise ValidationError(
-				'[%s Мб] Превышен общий размер загружаемых файлов!' % int(content_length / 1024 / 1024))
-		return data
+		"""Валидация множественных файлов"""
+		# self.files не существует! Используем cleaned_data
+		files = self.cleaned_data.get('files')
 
+		if not files:
+			return None
+
+		# Проверка размера каждого файла
+		if isinstance(files, list):  # Multiple files
+			for file in files:
+				if file.size > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
+					raise ValidationError(
+						f'Файл "{file.name}" превышает лимит {settings.FILE_UPLOAD_MAX_MEMORY_SIZE / (1024 * 1024)} Мб'
+					)
+
+		return files
 
 # def save(self, *args, **kwargs):
 # 	instance = super().save(*args, **kwargs)
@@ -459,8 +498,6 @@ class ImageFormHelper(FormHelper):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-
-		# self.form_method = 'post'
 		self.form_tag = False
 		self.include_media = False
 		self.disable_csrf = True
@@ -468,19 +505,18 @@ class ImageFormHelper(FormHelper):
 			Div(
 				HTML('<div class="card-header">Фото {{forloop.counter}}</div>'),
 				Row(
-					Field(
-						'file',
-						template='crispy_forms/image.html'
+					Div(
+						Field('file', template='crispy_forms/image.html'),
+						css_class="image-container col-md-4"
 					),
 					Div(
-						Field('file', wrapper_class='upload-link'),
 						FloatingField('title'),
 						FloatingField('description'),
 						FloatingField('sort'),
 						Field('DELETE', wrapper_class='form-check form-check-inline'),
-						css_class="meta"
+						css_class="meta col-md-8"
 					),
-					css_class="card-body flex-column flex-md-row",
+					css_class="card-body"
 				),
 				css_class="portfolio-image card mb-4"
 			)

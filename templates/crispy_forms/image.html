@@ -1,16 +1,25 @@
 {% load crispy_forms_field %}
-{% load custom_tags %}
+{% load static %}
 
-{% if field|is_file %}
-<div class="image mb-3">
-    {% if field.value|file_exists %}
-    <a href="{{field.value}}">
-        {% with field.value as thumb %}{% include "exhibition/thumb.html" %}{% endwith %}
-        <div><b>{{field.label}}</b>: {{field.value.name|filename}}</div>
-        <button type="button" class="btn btn-outline-dark mt-2">ссылка на файл</button>
-    </a>
-    {% else %}
-        <div class="alert-danger">Файл поврежден!</div>
-    {% endif %}
+<div class="image-upload-field mb-3">
+    <!-- Скрытое Django поле -->
+    <div style="display: none;">
+        {% crispy_field field %}
+    </div>
+
+    <!-- Превью текущего изображения -->
+    <div class="image-preview mb-2">
+        {% if field.value and field.value.url %}
+            <a href="{{ field.value.url }}" target="_blank" class="current-image">
+                {% with field.value as thumb %}{% include "exhibition/thumb.html" %}{% endwith %}
+            </a>
+
+        {% else %}
+            <div class="no-image text-center border rounded bg-light">
+                <i class="fas fa-image text-muted"></i>
+            </div>
+        {% endif %}
+    </div>
+
 </div>
-{% endif %}
+

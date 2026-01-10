@@ -916,8 +916,8 @@ def portfolio_upload(request, **kwargs):
 		form = PortfolioForm(request.POST, request.FILES, owner=owner, request=request, instance=portfolio)
 
 		if form.is_valid():
-			formset = inline_form_set(request.POST, request.FILES, instance=portfolio)
 			portfolio = form.save(commit=False)
+			formset = inline_form_set(request.POST, request.FILES, instance=portfolio)
 
 			if formset.is_valid():
 				images = request.FILES.getlist('files')
@@ -968,6 +968,7 @@ def portfolio_upload(request, **kwargs):
 					}, status=400)
 		else:
 			# Если форма невалидна
+
 			if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
 				return JsonResponse({
 					'status': 'error',

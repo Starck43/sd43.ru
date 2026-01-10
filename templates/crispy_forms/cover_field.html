@@ -1,0 +1,74 @@
+{% load crispy_forms_field %}
+{% load static %}
+{% load thumbnail %}
+{% load custom_tags %}
+
+<div class="cover-upload-field mb-4">
+    <!-- Скрытый Django ClearableFileInput с полным функционалом -->
+    <div style="display: none;">
+        {% crispy_field field %}
+    </div>
+
+    <!-- кастомная оболочка -->
+    <label class="form-label d-block">
+        {{ field.label }}
+        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+
+    <!-- Превью текущей обложки -->
+    <div class="cover-preview mb-3" id="cover-preview">
+        {% if field.value and field.value.url %}
+            <a href="{{ field.value.url }}" target="_blank" class="current-cover">
+                {% with field.value as thumb %}{% include "exhibition/thumb.html" %}{% endwith %}
+            </a>
+
+        {% else %}
+            <div class="no-cover text-center py-3 border rounded bg-light">
+                <i class="fas fa-image fa-lg text-muted"></i>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Контейнер для выбранного файла -->
+    <div class="selected-cover" id="selected-cover" style="display: none;"></div>
+
+    <button type="button"
+            class="btn btn-outline-primary btn-sm choose-cover-btn"
+            onclick="document.getElementById('{{ field.id_for_label }}').click()">
+        <i class="fas fa-upload me-1"></i> Выбрать обложку
+    </button>
+
+    {% if field.value %}
+        <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-cover">
+            <i class="fas fa-trash"></i> Удалить
+        </button>
+    {% endif %}
+
+    {% if field.help_text %}
+        <small class="form-text text-muted d-block mt-1">{{ field.help_text|safe }}</small>
+    {% endif %}
+
+    {% for error in field.errors %}
+        <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const removeButton = document.querySelector('.remove-cover');
+        const djangoClearCheckbox = document.querySelector('input[name="cover-clear"]');
+
+        if (removeButton && djangoClearCheckbox) {
+            removeButton.addEventListener('click', function (e) {
+                e.preventDefault();
+                djangoClearCheckbox.checked = true;
+
+                // Просто показываем, что файл будет удален
+                this.innerHTML = '<i class="fas fa-check me-1"></i> Будет удалено после сохранения';
+                this.classList.remove('btn-outline-danger');
+                this.classList.add('btn-outline-success');
+                this.disabled = true;
+            });
+        }
+    });
+</script>

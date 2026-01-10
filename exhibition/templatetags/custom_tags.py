@@ -33,6 +33,14 @@ def filename(obj):
 
 
 @register.filter
+def basename(value):
+	"""Возвращает только имя файла из пути"""
+	if not value:
+		return ''
+	return path.basename(str(value))
+
+
+@register.filter
 def to_string(obj):
 	return " ".join(obj)
 

@@ -32,7 +32,7 @@
             </div>
         </form>
     {% else %}
-        <p>Для выгрузки портфолио на сайт Вы должны быть зарегистрированы как участник выставки и пройти модерацию.</p>
+        <p>Для выгрузки портфолио на сайт Вы должны быть зарегистрированы и пройти модерацию.</p>
         <a href="{{ signup_url }}">Зарегистрироваться</a>
     {% endif %}
 
@@ -74,6 +74,16 @@
 
     {% block script %}
         <script src="{% md5url 'js/project-upload.min.js' %}"></script>
+        <script>
+            // Принудительная синхронизация перед отправкой
+            document.getElementById('uploadProjectForm').addEventListener('submit', function () {
+                if (typeof CKEDITOR !== 'undefined') {
+                    for (const instance in CKEDITOR.instances) {
+                        CKEDITOR.instances[instance].updateElement();
+                    }
+                }
+            });
+        </script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 // Зависимость nominations от exhibition
@@ -132,6 +142,141 @@
                     }
                 }
             });
+
+            // Вместо сложного делегирования используем прямую обработку
+            function setupImageHandlers() {
+                // Удаление обложки
+                document.addEventListener('click', function (e) {
+                    if (e.target.closest('.remove-cover')) {
+                        e.preventDefault();
+                        const coverInput = document.querySelector('input[name="cover"]');
+                        const coverPreview = document.getElementById('cover-preview');
+
+                        if (coverInput && coverPreview) {
+                            coverInput.value = '';
+                            coverPreview.innerHTML = `
+                    <div class="no-cover text-center py-5 border rounded bg-light">
+                        <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Обложка не загружена</p>
+                        <p class="text-muted small">Рекомендуемый размер: 1500×900 пикселей</p>
+                    </div>
+                `;
+                        }
+                    }
+
+                    // Удаление обычных изображений
+                    if (e.target.closest('.remove-image')) {
+                        e.preventDefault();
+                        const button = e.target.closest('.remove-image');
+                        const fieldId = button.dataset.target;
+                        const input = document.getElementById(fieldId);
+                        const preview = document.getElementById('preview-' + fieldId);
+                        const selected = document.getElementById('selected-' + fieldId);
+
+                        if (input) {
+                            input.value = '';
+                            const clearBtn = input.nextElementSibling?.querySelector('.clear-btn');
+                            if (clearBtn) clearBtn.style.display = 'none';
+                        }
+
+                        if (selected) {
+                            selected.innerHTML = '';
+                            selected.style.display = 'none';
+                        }
+
+                        if (preview) {
+                            preview.innerHTML = `
+                    <div class="no-image text-center py-4 border rounded bg-light">
+                        <i class="fas fa-image fa-2x text-muted mb-2"></i>
+                        <p class="text-muted small mb-0">Изображение не загружено</p>
+                    </div>
+                `;
+                        }
+                    }
+                });
+            }
+
+            // Функция для компактного отображения выбранных файлов
+            function showSelectedFiles(input, isCover = false) {
+                const files = Array.from(input.files);
+                const containerId = isCover ? 'selected-cover' : 'selected-' + input.id;
+                const container = document.getElementById(containerId);
+
+                if (!container) return;
+
+                if (files.length === 0) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                    return;
+                }
+
+                let html = '';
+
+                if (isCover) {
+                    // Для обложки показываем только первый файл
+                    const file = files[0];
+                    html = `
+                        <div class="file-item">
+                            <span class="file-name" title="${file.name}">
+                                <i class="fas fa-file-image text-primary me-2"></i>
+                                ${file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name}
+                            </span>
+                            <span class="file-size">
+                                ${(file.size / 1024 / 1024).toFixed(1)} MB
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    // Для множественных файлов показываем список
+                    files.forEach((file, index) => {
+                        html += `
+                            <div class="file-item">
+                                <span class="file-name" title="${file.name}">
+                                    <i class="fas fa-file-image text-primary me-2"></i>
+                                    ${index + 1}. ${file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
+                                </span>
+                                <span class="file-size">
+                                    ${(file.size / 1024 / 1024).toFixed(1)} MB
+                                </span>
+                            </div>
+                        `;
+                    });
+
+                    if (files.length > 1) {
+                        html += `<div class="text-muted small mt-1">Всего: ${files.length} файлов</div>`;
+                    }
+                }
+
+                container.innerHTML = html;
+                container.style.display = 'block';
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                setupImageHandlers()
+                // Обработка поля cover
+                const coverInput = document.querySelector('input[name="cover"]');
+                if (coverInput) {
+                    coverInput.addEventListener('change', function () {
+                        showSelectedFiles(this, true);
+
+                        // Показываем превью первой выбранной обложки
+                        if (this.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = function (e) {
+                                const preview = document.getElementById('cover-preview');
+                                preview.innerHTML = `
+                                    <div class="current-cover">
+                                        <img src="${e.target.result}" alt="Новая обложка" class="img-thumbnail cover-image">
+                                    </div>
+                                `;
+                            };
+                            reader.readAsDataURL(this.files[0]);
+                        }
+                    });
+                }
+
+            });
+
         </script>
     {% endblock script %}
 

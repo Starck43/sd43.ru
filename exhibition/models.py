@@ -438,6 +438,9 @@ class PortfolioAttributes(models.Model):
 
 
 class PortfolioManager(models.Manager):
+	def get_queryset(self):
+		return super().get_queryset().filter(status=True)
+
 	def get_visible_projects(self, user=None):
 		"""Возвращает видимые проекты в зависимости от прав пользователя"""
 

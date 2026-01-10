@@ -78,7 +78,7 @@
         {% if exh_portfolio %}
             <section class="exh-portfolio bg-light p-4 mt-4">
                 <h2>Выставленные проекты</h2>
-                <a href="/portfolio/new" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
+                <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
                 {% regroup exh_portfolio by exh_year as years %}
                 {% for year in years %}
                     <div class="card bg-light mb-3">
@@ -130,7 +130,7 @@
         {% if designer %}
             <section class="add-portfolio bg-light p-4 mt-4">
                 <h2>Вневыставочные проекты</h2>
-                <a href="/portfolio/new" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
+                <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
 
                 <div class="card bg-light mb-3">
                     <div class="card-body">
@@ -267,7 +267,7 @@
         </section>
     {% else %}
         <div class="my-3">
-            <a href="/portfolio/new" class="btn btn-outline mb-3" type="button">Добавить портфолио</a>
+            <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">Добавить портфолио</a>
         </div>
     {% endif %}
 
