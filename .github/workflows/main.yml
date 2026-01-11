@@ -136,8 +136,50 @@ jobs:
           
           # Проверяем наличие секрета
           if [ -n "${{ secrets.PROD_ENV_FILE }}" ]; then
-            echo "✅ PROD_ENV_FILE secret found, deploying .env..."
-            echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env' && chmod 600 '$REMOTE_DIR/.env'"
+            echo "✅ PROD_ENV_FILE secret found"
+          
+            # Проверяем существует ли .env на сервере
+            if ssh "$REMOTE_USER@$REMOTE_HOST" "[ -f '$REMOTE_DIR/.env' ]"; then
+              echo "⚠️  .env already exists on server"
+          
+              # Получаем дату модификации существующего файла на сервере
+              SERVER_TIMESTAMP=$(ssh "$REMOTE_USER@$REMOTE_HOST" "stat -c %Y '$REMOTE_DIR/.env' 2>/dev/null || echo '0'")
+              echo "   Server .env timestamp: $(date -d @$SERVER_TIMESTAMP 2>/dev/null || echo 'unknown')"
+          
+              # Создаем временный файл с новым содержимым
+              echo "${{ secrets.PROD_ENV_FILE }}" > /tmp/prod_env_tmp
+          
+              # Получаем дату секрета (текущее время как proxy для версии секрета)
+              SECRET_TIMESTAMP=$(date +%s)
+              echo "   Secret timestamp: $(date -d @$SECRET_TIMESTAMP)"
+          
+              # Определяем что обновлять
+              if [ $SECRET_TIMESTAMP -gt $SERVER_TIMESTAMP ]; then
+                echo "📝 Secret is newer, updating .env..."
+          
+                # Показываем diff для понимания изменений
+                echo "--- Changes preview ---"
+                echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "diff -u '$REMOTE_DIR/.env' -" || true
+                echo "--- End preview ---"
+          
+                # Обновляем файл
+                ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env'" < /tmp/prod_env_tmp
+          
+                # Обновляем timestamp до текущего времени
+                ssh "$REMOTE_USER@$REMOTE_HOST" "touch -m '$REMOTE_DIR/.env'"
+          
+                echo "✅ .env updated with newer version"
+              else
+                echo "✅ Server .env is newer or same age, preserving it"
+                echo "   To force update, modify the secret in GitHub"
+              fi
+          
+              rm -f /tmp/prod_env_tmp
+            else
+              echo "📝 Creating new .env file on server (first deploy)..."
+              echo "${{ secrets.PROD_ENV_FILE }}" | ssh "$REMOTE_USER@$REMOTE_HOST" "cat > '$REMOTE_DIR/.env' && chmod 600 '$REMOTE_DIR/.env'"
+              echo "✅ New .env created"
+            fi
           else
             echo "⚠️  WARNING: PROD_ENV_FILE secret is not set!"
             echo "Assuming .env already exists on server"

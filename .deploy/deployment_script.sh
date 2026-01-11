@@ -56,13 +56,21 @@ print_error() {
 }
 
 # Проверка и копирование файла если изменился
+# Проверка и копирование файла если изменился (с безопасной проверкой)
 copy_if_changed() {
     local src="$1"
     local dst="$2"
     local description="${3:-$(basename "$dst")}"
+    local skip_if_exists="${4:-false}"  # пропускать если файл уже существует
 
     if [ ! -f "$src" ]; then
         print_warning "Source file not found: $src"
+        return 1
+    fi
+
+    # Если файл назначения уже существует и мы должны пропустить его
+    if [ "$skip_if_exists" = "true" ] && [ -f "$dst" ]; then
+        echo "   ⚠️  Skipping $description (already exists)"
         return 1
     fi
 
@@ -81,10 +89,22 @@ copy_if_changed() {
 check_env_file() {
     if [ ! -f "$PROJECT_DIR/.env" ]; then
         print_error "File .env does not exist in $PROJECT_DIR!"
-        echo "Please create it before running the script."
+        echo "Please create it manually or set up CI/CD secrets properly."
+        echo "Required minimum variables:"
+        echo "  - ALLOWED_HOSTS"
+        echo "  - DJANGO_SECRET_KEY"
         exit 1
     fi
-    print_success ".env file found"
+
+    # Проверяем что есть обязательные переменные
+    local required_vars=("ALLOWED_HOSTS" "DJANGO_SECRET_KEY")
+    for var in "${required_vars[@]}"; do
+        if ! grep -q "^$var=" "$PROJECT_DIR/.env"; then
+            print_warning "Missing $var in .env file"
+        fi
+    done
+
+    print_success ".env file found and checked"
 }
 
 # Создание необходимых директорий с правами
@@ -120,20 +140,31 @@ setup_system_services() {
 
     print_header "SYSTEM SERVICES SETUP"
 
-    # 1. Gunicorn service
+    # 1. Gunicorn service (всегда обновляем)
     if copy_if_changed "$GUNICORN_SERVICE" "/etc/systemd/system/$PROJECT_NAME.service" "systemd service"; then
         config_changed=true
     fi
 
-    # 2. Gunicorn socket
+    # 2. Gunicorn socket (всегда обновляем)
     if copy_if_changed "$GUNICORN_SOCKET" "/etc/systemd/system/$PROJECT_NAME.socket" "systemd socket"; then
         config_changed=true
     fi
 
-    # 3. Nginx config
-    if copy_if_changed "$NGINX_CONF" "/etc/nginx/sites-available/$DOMAIN_NAME" "nginx config"; then
-        config_changed=true
-        sudo ln -sf "/etc/nginx/sites-available/$DOMAIN_NAME" "/etc/nginx/sites-enabled/"
+    # 3. Nginx config - НЕ ПЕРЕЗАПИСЫВАЕМ если уже существует
+    nginx_conf_target="/etc/nginx/sites-available/$DOMAIN_NAME"
+
+    if [ ! -f "$nginx_conf_target" ]; then
+        print_step "Creating nginx config (new)..."
+        copy_if_changed "$NGINX_CONF" "$nginx_conf_target" "nginx config"
+
+        # Создаем симлинк только если создали новый конфиг
+        if [ -f "$nginx_conf_target" ]; then
+            sudo ln -sf "$nginx_conf_target" "/etc/nginx/sites-enabled/"
+            config_changed=true
+        fi
+    else
+        print_success "Nginx config already exists, skipping..."
+        echo "   (to update manually, check: $NGINX_CONF)"
     fi
 
     # Если конфиги менялись или сервисы не включены - перезагружаем
