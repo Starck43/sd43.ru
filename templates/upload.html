@@ -85,64 +85,6 @@
             });
         </script>
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                // Зависимость nominations от exhibition
-                const exhibitionSelect = document.querySelector('select[name="exhibition"]');
-                const nominationsSelect = document.querySelector('select[name="nominations"]');
-
-                if (exhibitionSelect && nominationsSelect) {
-                    // Сохраняем изначально выбранные номинации (для режима редактирования)
-                    const initialNominations = Array.from(nominationsSelect.selectedOptions).map(opt => opt.value);
-
-                    exhibitionSelect.addEventListener('change', function () {
-                        const exhibitionId = this.value;
-
-                        if (!exhibitionId) {
-                            // Очищаем список номинаций если выставка не выбрана
-                            nominationsSelect.innerHTML = '';
-                            return;
-                        }
-
-                        // Загружаем номинации для выбранной выставки
-                        fetch('/api/get-nominations/?exhibition_id=' + exhibitionId)
-                            .then(response => response.json())
-                            .then(data => {
-                                nominationsSelect.innerHTML = '';
-
-                                if (data.nominations && data.nominations.length > 0) {
-                                    data.nominations.forEach(nom => {
-                                        const option = document.createElement('option');
-                                        option.value = nom.id;
-                                        option.textContent = nom.title;
-
-                                        // Восстанавливаем выбранные опции при редактировании
-                                        if (initialNominations.includes(String(nom.id))) {
-                                            option.selected = true;
-                                        }
-
-                                        nominationsSelect.appendChild(option);
-                                    });
-                                } else {
-                                    const option = document.createElement('option');
-                                    option.value = '';
-                                    option.textContent = 'Нет доступных номинаций';
-                                    option.disabled = true;
-                                    nominationsSelect.appendChild(option);
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Ошибка загрузки номинаций:', error);
-                                nominationsSelect.innerHTML = '<option value="" disabled>Ошибка загрузки</option>';
-                            });
-                    });
-
-                    // Загружаем номинации при загрузке страницы, если выставка уже выбрана
-                    if (exhibitionSelect.value) {
-                        exhibitionSelect.dispatchEvent(new Event('change'));
-                    }
-                }
-            });
-
             // Вместо сложного делегирования используем прямую обработку
             function setupImageHandlers() {
                 // Удаление обложки

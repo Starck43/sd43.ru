@@ -488,6 +488,12 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	view_on_site = True
 	inlines = [ImagesInline, RatingInline, ReviewInline]
 
+	class Media:
+		js = (
+			'admin/js/vendor/jquery/jquery.js',
+			# 'admin/js/portfolio_admin.js',
+		)
+
 	def nominations_list(self, obj):
 		"""Отображение списка номинаций в админке"""
 		if obj.nominations.exists():
@@ -501,10 +507,10 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		if db_field.name == "owner":
 			kwargs["queryset"] = Exhibitors.objects.all().order_by('name')
 
-		# if db_field.name == "exhibition":
-		# 	# В админке показываем все выставки изначально,
-		# 	# JavaScript будет их фильтровать динамически
-		# 	kwargs["queryset"] = Exhibitions.objects.all().order_by('-date_start')
+		if db_field.name == "exhibition":
+			# В админке показываем все выставки изначально,
+			# JavaScript будет их фильтровать динамически
+			kwargs["queryset"] = Exhibitions.objects.all().order_by('-date_start')
 
 		return super().formfield_for_foreignkey(db_field, request, **kwargs)
 

@@ -1,5 +1,4 @@
 import math
-import traceback
 from collections import defaultdict
 from datetime import timedelta
 from os import SEEK_END
@@ -13,7 +12,6 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.files.uploadhandler import FileUploadHandler
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection, OperationalError
 from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count
 from django.dispatch import receiver
@@ -22,11 +20,10 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
-from django.utils.timezone import now
 # from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic.detail import DetailView
 from django.views.generic import View
+from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
 from sorl.thumbnail import get_thumbnail
 from watson.views import SearchMixin
@@ -466,7 +463,6 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		from django.utils.timezone import now
-		from datetime import timedelta
 
 		today = now().date()
 		exhibition = self.object
@@ -500,7 +496,6 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		# Загружаем проекты для показа если нужно
 		if context['show_projects']:
 			# Используем прямой запрос чтобы избежать рекурсии с related_name
-			from django.db.models import Prefetch
 
 			# Получаем портфолио связанные с этой выставкой и номинациями
 			portfolios = Portfolio.objects.filter(
@@ -794,21 +789,31 @@ def get_nominations_categories_mapping(request):
 	return JsonResponse(mapping)
 
 
+# views.py
 @login_required
 def get_nominations_for_exhibition(request):
 	""" AJAX view для получения номинаций по выбранной выставке """
 	exhibition_id = request.GET.get('exhibition_id')
+	selected_ids = request.GET.get('selected', '').split(',')
 
 	if exhibition_id:
 		try:
 			exhibition = Exhibitions.objects.get(id=exhibition_id)
-			nominations = exhibition.nominations.all().values('id', 'title')
-			return JsonResponse({'nominations': list(nominations)})
+			nominations = exhibition.nominations.all()
+
+			nominations_data = []
+			for nom in nominations:
+				nominations_data.append({
+					'id': nom.id,
+					'title': nom.title,
+					'selected': str(nom.id) in selected_ids
+				})
+
+			return JsonResponse({'nominations': nominations_data})
 		except Exhibitions.DoesNotExist:
 			return JsonResponse({'nominations': []})
 
 	return JsonResponse({'nominations': []})
-
 
 @login_required
 def get_exhibitions_by_owner(request):
@@ -879,6 +884,11 @@ def portfolio_upload(request, **kwargs):
 			from django.http import HttpResponseForbidden
 			return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
 
+	is_ajax = (
+			request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+			request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest'
+	)
+
 	# Проверяем общий размер всех файлов
 	if request.method == 'POST' and request.FILES:
 		total_size = 0
@@ -896,7 +906,7 @@ def portfolio_upload(request, **kwargs):
 			else 100 * 1024 * 1024
 
 		if total_size > max_total_size:
-			if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
+			if is_ajax:
 				return JsonResponse({
 					'status': 'error',
 					'message': (
@@ -944,11 +954,12 @@ def portfolio_upload(request, **kwargs):
 				# send_email_async('%s портфолио на сайте sd43.ru!' % ('Внесены изменения в' if pk else 'Добавлено новое'), template)
 
 				# Если это AJAX запрос, возвращаем JSON с URL для перенаправления
-				if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
+				if is_ajax:
 					redirect_url = '/account'
 
 					return JsonResponse({
 						'status': 'success',
+						'portfolio_id': portfolio.id,
 						'location': redirect_url,
 						'message': 'Портфолио успешно сохранено'
 					})
@@ -960,18 +971,20 @@ def portfolio_upload(request, **kwargs):
 			else:
 				# Если formset невалиден, возвращаем ошибки
 				print(formset.errors)
-				if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
+				if is_ajax:
 					return JsonResponse({
 						'status': 'error',
+						'portfolio_id': portfolio.id,
 						'errors': formset.errors,
 						'message': 'Ошибка при загрузке изображений'
 					}, status=400)
 		else:
 			# Если форма невалидна
 
-			if request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest':
+			if is_ajax:
 				return JsonResponse({
 					'status': 'error',
+					'portfolio_id': portfolio.id,
 					'errors': form.errors,
 					'message': 'Ошибка валидации формы'
 				}, status=400)

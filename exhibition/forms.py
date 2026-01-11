@@ -292,9 +292,6 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 			settings.MAX_UPLOAD_FILES_SIZE / 1024 / 1024)
 	)
 
-	class Media:
-		js = ('admin/js/vendor/jquery/jquery.js', 'admin/js/portfolio_admin.js',)
-
 	class Meta:
 		model = Portfolio
 		fields = (
@@ -403,7 +400,7 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 				'files',
 				FloatingField('title'),
 				'description',
-				'cover',
+				Field('cover', template='crispy_forms/cover_field.html'),
 				'status',  # Hidden field
 			]
 

@@ -178,6 +178,8 @@ article a {
 img {
   width: 100%;
   height: auto;
+  -o-object-fit: contain;
+  object-fit: contain;
   text-indent: -9999px;
   text-indent: 100%;
   white-space: nowrap;
@@ -1653,6 +1655,7 @@ form:not(.nav-search) > * {
   color: #160D32;
   background: transparent;
   border: none;
+  aspect-ratio: 1/1;
   opacity: 0.7;
   -webkit-transition: 150ms all ease;
   transition: 150ms all ease;
