@@ -56,6 +56,7 @@ MIDDLEWARE = [
 	'django.middleware.cache.FetchFromCacheMiddleware',
 	'watson.middleware.SearchContextMiddleware',
 	'crm.middleware.AjaxMiddleware',
+	'crm.middleware.FixPermissionMiddleware',
 	# 'designers.middleware.SubdomainMiddleware',
 	'allauth.account.middleware.AccountMiddleware',
 ]

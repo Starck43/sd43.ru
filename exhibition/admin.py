@@ -1,18 +1,17 @@
-from django.conf import settings
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ImageField
 from django.utils.html import format_html
-from django.utils.translation import gettext_lazy as _
 from sorl.thumbnail.admin import AdminImageMixin
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
-from .forms import ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, MultipleFileField, MultipleFileInput, \
-	CustomClearableFileInput, PortfolioAdminForm
+from .forms import (
+	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm
+)
 from .logic import delete_cached_fragment
 from .models import (
 	Person, Profile, Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
@@ -70,7 +69,7 @@ class UserAdmin(BaseUserAdmin):
 	fieldsets = (
 		(None, {'fields': ('username', 'password')}),
 		('Персональные данные', {'fields': ('first_name', 'last_name', 'email')}),
-		('Разрешения', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+		('Права доступа', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups',)}),
 		('Даты', {'fields': ('last_login', 'date_joined')}),
 	)
 
@@ -92,27 +91,6 @@ class UserAdmin(BaseUserAdmin):
 			defaults['form'] = UserCreationForm
 		defaults.update(kwargs)
 		return super().get_form(request, obj, **defaults)
-
-
-admin.site.unregister(Group)  # Unregister the existing registration
-
-
-@admin.register(Group)
-class GroupAdmin(BaseGroupAdmin):
-
-	def get_fieldsets(self, request, obj=None):
-		return (
-			(
-				_("Personal info"), {
-					'fields': ('name',),
-				}
-			),
-			(
-				_("Permissions"), {
-					'fields': ('permissions',),
-				}
-			),
-		)
 
 
 class MetaSeoFieldsAdmin:

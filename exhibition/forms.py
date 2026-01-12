@@ -1,7 +1,6 @@
 from allauth.account.forms import SignupForm
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
-from crispy_bootstrap5.bootstrap5 import FloatingField
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Div, Row, HTML
 from django import forms
@@ -347,21 +346,20 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 
 		return files
 
-	# def save(self, commit=True):
-	# 	# Здесь обрабатываешь загруженные files
-	# 	portfolio = super().save(commit=False)
-	# 	if commit:
-	# 		portfolio.save()
-	# 		files = self.cleaned_data.get('files')
-	# 		if files:
-	# 			# Сохраняешь в связанную модель Image
-	# 			for file in files:
-	# 				Image.objects.create(portfolio=portfolio, file=file)
-	# 	return portfolio
+# def save(self, commit=True):
+# 	# Здесь обрабатываешь загруженные files
+# 	portfolio = super().save(commit=False)
+# 	if commit:
+# 		portfolio.save()
+# 		files = self.cleaned_data.get('files')
+# 		if files:
+# 			# Сохраняешь в связанную модель Image
+# 			for file in files:
+# 				Image.objects.create(portfolio=portfolio, file=file)
+# 	return portfolio
 
 
 class PortfolioForm(PortfolioAdminForm):
-
 	class Meta(PortfolioAdminForm.Meta):
 
 		widgets = {
@@ -398,14 +396,7 @@ class PortfolioForm(PortfolioAdminForm):
 		if 'exhibition' in self.fields:
 			if self.is_editor:
 				# В админке - динамическая фильтрация через JavaScript.
-
-				# Если объект уже существует, показываем связанную выставку
-				if self.instance.pk and self.instance.owner_id and self.instance.exhibition_id:
-					self.fields['exhibition'].queryset = Exhibitions.objects.filter(
-						id=self.instance.exhibition_id
-					)
-				else:
-					self.fields['exhibition'].queryset = Exhibitions.objects.all()
+				self.fields['exhibition'].queryset = Exhibitions.objects.all()
 
 			elif self.exhibitor:
 				from django.utils.timezone import now
@@ -420,6 +411,7 @@ class PortfolioForm(PortfolioAdminForm):
 					exhibitors=self.exhibitor,
 					date_end__gte=now().date()
 				).order_by('-date_start')
+				self.fields['exhibition'].widget.attrs['disabled'] = True
 
 	@property
 	def helper(self):
@@ -578,12 +570,12 @@ class PortfolioForm(PortfolioAdminForm):
 		helper.layout = Layout(*layout_fields)
 		return helper
 
-	# def save(self, *args, **kwargs):
-	# 	instance = super().save(*args, **kwargs)
-	# 	if self.exhibitor:
-	# 		instance.categories.set(None)
+# def save(self, *args, **kwargs):
+# 	instance = super().save(*args, **kwargs)
+# 	if self.exhibitor:
+# 		instance.categories.set(None)
 
-	# 	return instance
+# 	return instance
 
 
 class ImageForm(forms.ModelForm):
