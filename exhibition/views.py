@@ -778,7 +778,7 @@ class ProgressBarUploadHandler(FileUploadHandler):
 		...
 
 
-def get_nominations_categories_mapping(request):
+def get_nominations_categories(request):
 	""" API endpoint для получения маппинга номинаций к категориям """
 	nominations = Nominations.objects.select_related('category').all()
 	mapping = {}
@@ -911,10 +911,7 @@ def portfolio_upload(request, **kwargs):
 			from django.http import HttpResponseForbidden
 			return HttpResponseForbidden('Профиль участника не найден.')
 
-	is_ajax = (
-		request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
-		request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest'
-	)
+	is_ajax = request.is_ajax
 
 	# Проверяем общий размер всех файлов
 	if request.method == 'POST' and request.FILES:
@@ -1033,10 +1030,30 @@ def portfolio_upload(request, **kwargs):
 	)
 
 
-# @receiver(pre_save, sender=Portfolio)
-# def on_change(sender, instance, **kwargs):
-# 	if instance.pk:
-# 		pass
+@login_required
+def search_exhibitors(request):
+	query = request.GET.get('q', '')
+
+	if not query:
+		return JsonResponse({'exhibitors': []})
+
+	# Ищем по имени, фамилии, username
+	exhibitors = Exhibitors.objects.filter(
+		Q(name__icontains=query) |
+		Q(user__first_name__icontains=query) |
+		Q(user__last_name__icontains=query) |
+		Q(user__username__icontains=query)
+	).select_related('user')[:10]
+
+	results = []
+	for exh in exhibitors:
+		results.append({
+			'id': exh.id,
+			'name': exh.name or f"{exh.user.first_name} {exh.user.last_name}".strip(),
+			'email': exh.user.email
+		})
+
+	return JsonResponse({'exhibitors': results})
 
 
 @login_required

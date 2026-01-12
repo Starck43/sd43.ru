@@ -47,8 +47,9 @@ urlpatterns = [
 
 	path('api/get-exhibitions-by-owner/', views.get_exhibitions_by_owner, name='get_exhibitions_by_owner'),
 	path('api/get-exhibitors-by-exhibition/', views.get_exhibitors_by_exhibition, name='get_exhibitors_by_exhibition'),
-	path('api/nominations-categories-mapping/', views.get_nominations_categories_mapping, name='nominations-mapping-url'),
+	path('api/nominations-categories-mapping/', views.get_nominations_categories, name='nominations-mapping-url'),
 	path('api/get-nominations/', views.get_nominations_for_exhibition, name='get-nominations-for-exhibition-url'),
+	path('api/search-exhibitors/', views.search_exhibitors, name='search-exhibitors'),
 
 	path('portfolio/add/', views.portfolio_upload, kwargs={'pk': None}, name='portfolio-upload-url'),
 	path('portfolio/edit/<pk>', views.portfolio_upload, name='portfolio-upload-url'),

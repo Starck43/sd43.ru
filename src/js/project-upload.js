@@ -241,10 +241,105 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
+    // Функция для AJAX поиска участников
+    function setupOwnerAutocomplete() {
+        if (!owner || isEditMode) return;
+
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'form-control';
+        searchInput.placeholder = 'Введите имя или фамилию...';
+        searchInput.autocomplete = 'off';
+
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = owner.name;
+        hiddenInput.id = owner.id;
+
+        // Заменяем select
+        const container = owner.parentNode;
+        owner.style.display = 'none';
+        container.appendChild(searchInput);
+        container.appendChild(hiddenInput);
+
+        let timeoutId;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(timeoutId);
+            const query = e.target.value.trim();
+
+            if (query.length  === 0) {
+                let dropdown = document.getElementById('owner-autocomplete-dropdown');
+                dropdown.style.display = 'none';
+            }
+
+            if (query.length < 2) return;
+
+            timeoutId = setTimeout(() => {
+                fetch(`/api/search-exhibitors/?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        showAutocompleteResults(data.exhibitors, searchInput, hiddenInput);
+                    })
+                    .catch(console.error);
+            }, 500);
+        });
+    }
+
+    function showAutocompleteResults(exhibitors, searchInput, hiddenInput) {
+        // Создаем dropdown с результатами
+        let dropdown = document.getElementById('owner-autocomplete-dropdown');
+        if (!dropdown) {
+            dropdown = document.createElement('div');
+            dropdown.id = 'owner-autocomplete-dropdown';
+            dropdown.className = 'autocomplete-dropdown';
+            Object.assign(dropdown.style, {
+                position: 'absolute',
+                background: 'lightslategray',
+                border: '1px solid #ced4da',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: '1000',
+                width: searchInput.offsetWidth + 'px'
+            });
+            searchInput.parentNode.appendChild(dropdown);
+        }
+
+        dropdown.innerHTML = '';
+        dropdown.style.display = 'block'
+
+        if (exhibitors.length === 0) {
+            dropdown.innerHTML = '<div class="dropdown-item text-muted">Ничего не найдено</div>';
+            return;
+        }
+
+        exhibitors.forEach(exh => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.textContent = exh.name;
+            item.style.cssText = 'padding: 5px 8px; cursor: pointer;';
+
+            item.addEventListener('click', () => {
+                searchInput.value = exh.name;
+                hiddenInput.value = exh.id;
+                dropdown.style.display = 'none';
+            });
+
+            dropdown.appendChild(item);
+        });
+
+        dropdown.style.display = 'block';
+    }
+
+
     // Инициализация всех обработчиков
     function initAllHandlers() {
         // Инициализация видимости
         initFieldVisibility();
+
+        if (owner && !isEditMode) {
+            setupOwnerAutocomplete();
+        }
 
         // Если участник уже выбран при загрузке, но выставка не выбрана
         if (owner && owner.value && !exhibition.value) {
