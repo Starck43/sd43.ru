@@ -1033,25 +1033,41 @@ def portfolio_upload(request, **kwargs):
 @login_required
 def search_exhibitors(request):
 	query = request.GET.get('q', '')
+	exhibition_id = request.GET.get('exhibition_id')
+	limit = int(request.GET.get('limit', 50))
 
-	if not query:
-		return JsonResponse({'exhibitors': []})
+	# Базовый queryset
+	if exhibition_id:
+		exhibitors = Exhibitors.objects.filter(
+			exhibitors_for_exh__id=exhibition_id
+		).select_related('user')
+	else:
+		exhibitors = Exhibitors.objects.all().select_related('user')
 
-	# Ищем по имени, фамилии, username
-	exhibitors = Exhibitors.objects.filter(
-		Q(name__icontains=query) |
-		Q(user__first_name__icontains=query) |
-		Q(user__last_name__icontains=query) |
-		Q(user__username__icontains=query)
-	).select_related('user')[:10]
+	# Применяем поиск если есть запрос
+	if query:
+		if len(query) < 3:
+			# Для коротких запросов возвращаем пустой результат
+			exhibitors = exhibitors.none()
+		else:
+			# Поиск при 3+ символах
+			exhibitors = exhibitors.filter(
+				Q(name__icontains=query) |
+				Q(user__first_name__icontains=query) |
+				Q(user__last_name__icontains=query)
+			)
 
-	results = []
-	for exh in exhibitors:
-		results.append({
+	# Применяем limit
+	exhibitors = exhibitors[:limit]
+
+	# Преобразуем в JSON
+	results = [
+		{
 			'id': exh.id,
 			'name': exh.name or f"{exh.user.first_name} {exh.user.last_name}".strip(),
-			'email': exh.user.email
-		})
+		}
+		for exh in exhibitors
+	]
 
 	return JsonResponse({'exhibitors': results})
 

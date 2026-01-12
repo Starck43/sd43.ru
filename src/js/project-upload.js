@@ -241,105 +241,209 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
-    // Функция для AJAX поиска участников
+// Функция для AJAX поиска участников
     function setupOwnerAutocomplete() {
-        if (!owner || isEditMode) return;
+        if (!owner) return;
 
         const searchInput = document.createElement('input');
         searchInput.type = 'text';
         searchInput.className = 'form-control';
-        searchInput.placeholder = 'Введите имя или фамилию...';
+        searchInput.placeholder = 'Введите название участника ...';
         searchInput.autocomplete = 'off';
 
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = owner.name;
-        hiddenInput.id = owner.id;
+        // Создаем новый select
+        const newSelect = document.createElement('select');
+        newSelect.name = owner.name;
+        newSelect.id = owner.id;
+        newSelect.className = owner.className;
+        newSelect.required = owner.required;
 
-        // Заменяем select
+        // Позиционирование
+        newSelect.style.cssText = `
+            position: absolute;
+            display: none;
+            width: 100%;
+            max-height: 200px;
+            margin-top: 0;
+            background-color: #f3f3f9;
+            overflow-y: auto;
+            z-index: 1000;
+        `;
+
+        // Заменяем старый select
         const container = owner.parentNode;
-        owner.style.display = 'none';
-        container.appendChild(searchInput);
-        container.appendChild(hiddenInput);
+        container.replaceChild(newSelect, owner);
+        container.insertBefore(searchInput, newSelect);
 
         let timeoutId;
+        let currentExhibitionId = '';
+        let lastLoadedExhibitors = [];
 
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(timeoutId);
-            const query = e.target.value.trim();
-
-            if (query.length  === 0) {
-                let dropdown = document.getElementById('owner-autocomplete-dropdown');
-                dropdown.style.display = 'none';
-            }
-
-            if (query.length < 2) return;
-
-            timeoutId = setTimeout(() => {
-                fetch(`/api/search-exhibitors/?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        showAutocompleteResults(data.exhibitors, searchInput, hiddenInput);
-                    })
-                    .catch(console.error);
-            }, 500);
-        });
-    }
-
-    function showAutocompleteResults(exhibitors, searchInput, hiddenInput) {
-        // Создаем dropdown с результатами
-        let dropdown = document.getElementById('owner-autocomplete-dropdown');
-        if (!dropdown) {
-            dropdown = document.createElement('div');
-            dropdown.id = 'owner-autocomplete-dropdown';
-            dropdown.className = 'autocomplete-dropdown';
-            Object.assign(dropdown.style, {
-                position: 'absolute',
-                background: 'lightslategray',
-                border: '1px solid #ced4da',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: '1000',
-                width: searchInput.offsetWidth + 'px'
+        // Получаем ID выставки если выбрана
+        const exhibitionSelect = form.querySelector('select[name="exhibition"]');
+        if (exhibitionSelect) {
+            currentExhibitionId = exhibitionSelect.value;
+            exhibitionSelect.addEventListener('change', function () {
+                currentExhibitionId = this.value;
+                // При смене выставки очищаем кэш
+                lastLoadedExhibitors = [];
             });
-            searchInput.parentNode.appendChild(dropdown);
         }
 
-        dropdown.innerHTML = '';
-        dropdown.style.display = 'block'
+        // Функция показа/скрытия select
+        function showSelect(size = 8) {
+            newSelect.style.display = 'block';
+            newSelect.size = size;
+        }
+
+        function hideSelect() {
+            newSelect.style.display = 'none';
+            newSelect.size = 0;
+        }
+
+        // Функция для загрузки участников
+        function loadExhibitors(query = '') {
+            clearTimeout(timeoutId);
+
+            // Показываем select при любом вводе (кроме когда уже выбрано значение)
+            if (!newSelect.value) {
+                showSelect(8);
+            }
+
+            // AJAX запрос только для пустого запроса или 3+ символов
+            if (query === '' || query.length >= 3) {
+                timeoutId = setTimeout(() => {
+                    let url = `/api/search-exhibitors/?limit=50`;
+                    if (query.length >= 3) {
+                        url += `&q=${encodeURIComponent(query)}`;
+                    }
+                    if (currentExhibitionId) {
+                        url += `&exhibition_id=${currentExhibitionId}`;
+                    }
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Сохраняем для локальной фильтрации
+                            if (query === '' || query.length < 3) {
+                                lastLoadedExhibitors = data.exhibitors || [];
+                            }
+                            updateSelectOptions(newSelect, data.exhibitors, query);
+                        })
+                        .catch(console.error);
+                }, query.length >= 3 ? 500 : 100);
+            }
+            // Локальная фильтрация для 1-2 символов
+            else if (query.length > 0 && query.length < 3) {
+                if (lastLoadedExhibitors.length > 0) {
+                    const filtered = lastLoadedExhibitors.filter(exh =>
+                        exh.name.toLowerCase().includes(query.toLowerCase())
+                    );
+                    updateSelectOptions(newSelect, filtered, query);
+                } else {
+                    // Если нет кэша - загружаем всех сначала
+                    loadExhibitors('');
+                }
+            }
+        }
+
+        // Показ select при фокусе
+        searchInput.addEventListener('focus', () => {
+            showSelect(8);
+            if (!searchInput.value.trim()) {
+                loadExhibitors('');
+            }
+        });
+
+        // Обработка ввода текста
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+
+            // Если стираем выбранное значение - сбрасываем select
+            if (newSelect.value && query === '') {
+                newSelect.value = '';
+            }
+
+            // Если поле не пустое или select не имеет значения - показываем
+            if (query || !newSelect.value) {
+                showSelect(8);
+            }
+
+            loadExhibitors(query);
+        });
+
+        // Обработка выбора из списка
+        newSelect.addEventListener('change', () => {
+            if (newSelect.value) {
+                const selectedOption = newSelect.options[newSelect.selectedIndex];
+                searchInput.value = selectedOption.textContent;
+                // Скрываем список после выбора
+                setTimeout(() => hideSelect(), 100);
+            } else {
+                searchInput.value = '';
+                showSelect(8);
+            }
+        });
+
+        // Скрытие select при клике вне
+        document.addEventListener('click', (e) => {
+            if (!container.contains(e.target)) {
+                hideSelect();
+            }
+        });
+
+        if (isEditMode && owner && owner.value) {
+            // Находим имя текущего участника
+            const currentOwnerOption = owner.querySelector(`option[value="${owner.value}"]`);
+            if (currentOwnerOption) {
+                searchInput.value = currentOwnerOption.textContent;
+
+                // Устанавливаем значение в новый select
+                if (newSelect) {
+                    newSelect.value = owner.value;
+                }
+
+                // Устанавливаем в hidden input если используется
+                const hiddenInput = container.querySelector('input[type="hidden"][name="owner"]');
+                if (hiddenInput) {
+                    hiddenInput.value = owner.value;
+                }
+            }
+        }
+    }
+
+    // Функция обновления options в select
+    function updateSelectOptions(selectElement, exhibitors, query = '') {
+        const currentValue = selectElement.value;
+        selectElement.innerHTML = '';
 
         if (exhibitors.length === 0) {
-            dropdown.innerHTML = '<div class="dropdown-item text-muted">Ничего не найдено</div>';
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = query ? 'Ничего не найдено' : 'Нет доступных участников';
+            option.disabled = true;
+            selectElement.appendChild(option);
             return;
         }
 
+        // Добавляем участников
         exhibitors.forEach(exh => {
-            const item = document.createElement('div');
-            item.className = 'dropdown-item';
-            item.textContent = exh.name;
-            item.style.cssText = 'padding: 5px 8px; cursor: pointer;';
-
-            item.addEventListener('click', () => {
-                searchInput.value = exh.name;
-                hiddenInput.value = exh.id;
-                dropdown.style.display = 'none';
-            });
-
-            dropdown.appendChild(item);
+            const option = document.createElement('option');
+            option.value = exh.id;
+            option.textContent = exh.name;
+            if (String(exh.id) === currentValue) {
+                option.selected = true;
+            }
+            selectElement.appendChild(option);
         });
-
-        dropdown.style.display = 'block';
     }
-
 
     // Инициализация всех обработчиков
     function initAllHandlers() {
         // Инициализация видимости
         initFieldVisibility();
 
-        if (owner && !isEditMode) {
-            setupOwnerAutocomplete();
-        }
+        setupOwnerAutocomplete();
 
         // Если участник уже выбран при загрузке, но выставка не выбрана
         if (owner && owner.value && !exhibition.value) {

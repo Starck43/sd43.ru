@@ -8,12 +8,18 @@ class AjaxMiddleware:
 		self.get_response = get_response
 
 	def __call__(self, request):
-		request.is_ajax = (
-				request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
-				request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
-		)
+		# Добавляем метод is_ajax к request
+		def is_ajax(req):
+			return (
+					req.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest' or
+					req.META.get('X-Requested-With') == 'XMLHttpRequest'
+			)
 
-		return self.get_response(request)
+		# Привязываем метод к request
+		request.is_ajax = is_ajax.__get__(request, type(request))
+
+		response = self.get_response(request)
+		return response
 
 
 class FixPermissionMiddleware(MiddlewareMixin):

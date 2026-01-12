@@ -6,17 +6,18 @@
 
 // ============ BUTTONS ============
 .btn
-	display: inline-block
-	color: $main-color
-	background-color: #fff
-	border: 1px solid $main-color
+	display: inline-flex
+	align-items: center
+	justify-content: center
 	padding: 0.5rem 0.75rem
-	border-radius: $border-radius
+	color: var(--main-color)
+	background-color: #fff
+	border: 1px solid var(--main-color)
 	transition: all 200ms ease-in-out
 
 	&:hover
 		opacity: 1
-		box-shadow: 0 0 1px 1px white inset, 0 0 8px 2px color.adjust($main-color, $alpha: -0.7)
+		box-shadow: 0 0 1px 1px white inset, 0 0 8px 2px color-mix(in srgb, var(--main-color), transparent 70%)
 
 	&:disabled,
 	&.disabled
@@ -26,50 +27,58 @@
 // Button variants
 .btn-primary
 	color: white
-	background-color: $main-color
+	background-color: var(--main-color)
 
 	&:disabled,
 	&.disabled
 		color: color.adjust(white, $alpha: -0.65)
-		background-color: $main-color
+		background-color: var(--main-color)
 
 .btn-secondary
-	color: $main-color
+	color: var(--main-color)
 	background-color: white
 
 
 	&:hover
-		background-color: $main-color
+		background-color: var(--main-color)
 		color: white !important
 
 .btn-outline
-	color: $main-color
-	border-color: $main-color
+	color: var(--main-color)
+	border-color: var(--main-color)
 	background-color: transparent
 
 	&:hover
 		color: #fff !important
-		background-color: $main-color
+		background-color: var(--main-color)
 
 .btn-outline-primary
-	color: $main-color
-	border-color: $main-color
+	color: var(--main-color)
+	border-color: var(--main-color)
 	background-color: transparent
 
 	&:hover
 		color: #fff !important
-		background-color: $main-color
-		border-color: $main-color
+		background-color: var(--main-color)
+		border-color: var(--main-color)
+
+.btn-outline-danger
+	color: #664d03
+	border-color: #664d03
+	background-color: transparent
+	&:hover
+		color: #fff3cd !important
+		background-color: #664d03
 
 .btn-link
 	font-weight: 400
-	color: $link-color
+	color: var(--link-color)
 	text-decoration: underline
 	background-color: transparent
 	border: none
 
 	&:hover
-		color: color.adjust($link-color, $lightness: -15%)
+		color: color-mix(in srgb, var(--link-color), black 15%)
 
 .btn-cancel
 	color: #6c757d
@@ -94,7 +103,7 @@
 	justify-content: center
 	width: 2rem
 	height: 2rem
-	color: $main-color
+	color: var(--main-color)
 	background: transparent
 	border: none
 	aspect-ratio: 1 / 1
