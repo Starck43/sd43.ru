@@ -40,17 +40,18 @@ urlpatterns = [
 	path('policy/', views.registration_policy, name='policy-url'),
 
 	re_path(r'^search/', views.SearchSite.as_view(), name='search-results'),
+	re_path(r'^success/$', views.success_message, name='success-message-url'),
 	path('account/', views.account, name='account-url'),
 	path('account/deactivate/', views.deactivate_user, name="deactivate-user"),
 	path('reset_password/', views.send_reset_password_email),
-	path('api/get-nominations/', views.get_nominations_for_exhibition, name='get-nominations-url'),
+
+	path('api/get-exhibitions-by-owner/', views.get_exhibitions_by_owner, name='get_exhibitions_by_owner'),
+	path('api/get-exhibitors-by-exhibition/', views.get_exhibitors_by_exhibition, name='get_exhibitors_by_exhibition'),
 	path('api/nominations-categories-mapping/', views.get_nominations_categories_mapping, name='nominations-mapping-url'),
 	path('api/get-nominations/', views.get_nominations_for_exhibition, name='get-nominations-for-exhibition-url'),
-	path('api/get-exhibitions-by-owner/', views.get_exhibitions_by_owner, name='get_exhibitions_by_owner'),
 
 	path('portfolio/add/', views.portfolio_upload, kwargs={'pk': None}, name='portfolio-upload-url'),
 	path('portfolio/edit/<pk>', views.portfolio_upload, name='portfolio-upload-url'),
-	re_path(r'^success/$', views.success_message, name='success-message-url'),
 	path('health/', views.HealthCheckView.as_view(), name='health-check'),
 
 	# path('<str:section>/about/', views.about_us, name='about-us-url'),

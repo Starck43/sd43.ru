@@ -5,7 +5,7 @@ import unicodedata
 from threading import Thread
 from PIL import ImageFile, Image as Im
 from io import BytesIO
-from os import path, remove, SEEK_END
+from os import path, SEEK_END
 from sys import getsizeof
 
 import PIL
@@ -20,7 +20,6 @@ from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
 from django.template.loader import render_to_string
 from django.utils.html import format_html
-from django.forms.widgets import ClearableFileInput
 from django.contrib.auth.models import Group  # ,User
 
 from sorl.thumbnail import get_thumbnail
@@ -237,10 +236,6 @@ def limit_file_size(file):
 		logging.warning(f"Could not determine file size: {e}")
 		# Можно пропустить или поднять ошибку в зависимости от требований
 		pass
-
-
-class CustomClearableFileInput(ClearableFileInput):
-	template_name = 'admin/exhibition/widgets/file_input.html'
 
 
 def send_email(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):

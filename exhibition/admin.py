@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.forms import UserCreationForm
@@ -5,14 +6,14 @@ from django.contrib.auth.models import Group, User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ImageField
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from sorl.thumbnail.admin import AdminImageMixin
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
-from .forms import ExhibitionsForm, PortfolioForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CategoriesAdminForm
-from .logic import delete_cached_fragment, CustomClearableFileInput
+from .forms import ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, MultipleFileField, MultipleFileInput, \
+	CustomClearableFileInput, PortfolioAdminForm
+from .logic import delete_cached_fragment
 from .models import (
 	Person, Profile, Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
@@ -400,11 +401,11 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		delete_cached_fragment('participant_detail', obj.portfolio.id)
 
 
-class ImagesInline(admin.StackedInline):
+class ImagesInline(admin.TabularInline):
 	# form = ImageForm
 	model = Image
 	extra = 1
-	template = 'admin/exhibition/edit_inline/stacked.html'
+	# template = 'admin/exhibition/edit_inline/stacked.html'
 	show_change_link = True
 	fields = ('file_thumb', 'file', 'title', 'sort', 'filename',)
 	list_display = ('file_thumb', 'title',)
@@ -459,14 +460,14 @@ class PortfolioAttributesAdmin(admin.ModelAdmin):
 
 @admin.register(Portfolio)
 class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	form = PortfolioForm
+	form = PortfolioAdminForm
 
 	fieldsets = (
 		(None, {
 			'classes': ('portfolio-block',),
 			'fields': (
 				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover',
-				'files', 'attributes', 'status', 'order'
+				'attributes', 'status', 'order'
 			),
 		}),
 	)
@@ -480,7 +481,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		'nominations__title'
 	)
 	date_hierarchy = 'exhibition__date_start'
-	autocomplete_fields = ('owner', 'exhibition')
+	# autocomplete_fields = ('owner', 'exhibition')
 
 	list_per_page = 50
 	save_on_top = True
@@ -488,11 +489,11 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	view_on_site = True
 	inlines = [ImagesInline, RatingInline, ReviewInline]
 
-	class Media:
-		js = (
-			'admin/js/vendor/jquery/jquery.js',
-			# 'admin/js/portfolio_admin.js',
-		)
+	# class Media:
+	# 	js = (
+	# 		'admin/js/vendor/jquery/jquery.js',
+	# 		'admin/js/portfolio_admin.js',
+	# 	)
 
 	def nominations_list(self, obj):
 		"""Отображение списка номинаций в админке"""
@@ -505,26 +506,12 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	def formfield_for_foreignkey(self, db_field, request, **kwargs):
 		if db_field.name == "owner":
-			kwargs["queryset"] = Exhibitors.objects.all().order_by('name')
+			kwargs["queryset"] = Exhibitors.objects.order_by('name')
 
 		if db_field.name == "exhibition":
-			# В админке показываем все выставки изначально,
-			# JavaScript будет их фильтровать динамически
-			kwargs["queryset"] = Exhibitions.objects.all().order_by('-date_start')
+			kwargs["queryset"] = Exhibitions.objects.order_by('-date_start')
 
 		return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-	# Метод для фильтрации выставок в админке
-	def get_form(self, request, obj=None, **kwargs):
-		form_class = super().get_form(request, obj, **kwargs)
-
-		class AdminForm(form_class):
-			def __init__(self, *args, **inner_kwargs):
-				inner_kwargs['request'] = request
-				inner_kwargs['is_admin'] = True
-				super().__init__(*args, **inner_kwargs)
-
-		return AdminForm
 
 	def save_model(self, request, obj, form, change):
 		images = request.FILES.getlist('files')

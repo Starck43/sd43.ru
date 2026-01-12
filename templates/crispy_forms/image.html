@@ -1,25 +1,23 @@
 {% load crispy_forms_field %}
 {% load static %}
 
-<div class="image-upload-field mb-3">
+<div class="image-upload-field">
     <!-- Скрытое Django поле -->
     <div style="display: none;">
         {% crispy_field field %}
     </div>
 
     <!-- Превью текущего изображения -->
-    <div class="image-preview mb-2">
-        {% if field.value and field.value.url %}
-            <a href="{{ field.value.url }}" target="_blank" class="current-image">
-                {% with field.value as thumb %}{% include "exhibition/thumb.html" %}{% endwith %}
-            </a>
+    {% if field.value and field.value.url %}
+        <a href="{{ field.value.url }}" target="_blank" class="current-image">
+            {% with field.value as thumb %}{% include "exhibition/thumb.html" %}{% endwith %}
+        </a>
 
-        {% else %}
-            <div class="no-image text-center border rounded bg-light">
-                <i class="fas fa-image text-muted"></i>
-            </div>
-        {% endif %}
-    </div>
+    {% else %}
+        <div class="no-image text-center border rounded bg-light">
+            <i class="fas fa-image text-muted"></i>
+        </div>
+    {% endif %}
 
 </div>
 

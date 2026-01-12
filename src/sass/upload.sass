@@ -4,17 +4,21 @@
 @use "main/alert"
 
 /* Общие стили для загрузки изображений */
-.image-upload-field,
+.image-container
+	+mixins.media-min(lg)
+		max-width: 200px
+
 .cover-upload-field
 	display: inline-block
 	vertical-align: top
 	margin-right: 15px
 	margin-bottom: 15px
 
+.image-upload-field
+	.current-image
+		position: relative
+		display: flex
 
-.current-image
-	text-align: center
-	width: 150px
 
 .preview-image
 	width: 150px !important
@@ -152,8 +156,6 @@
 	width: auto
 	margin: 0
 
-.portfolio-image .current-image
-	width: 120px
 
 .portfolio-image .preview-image
 	width: 120px !important
@@ -171,14 +173,10 @@
 
 /* Адаптивность */
 @media (max-width: 768px)
-	.image-upload-field,
 	.cover-upload-field
 		padding: 1rem
 		width: 100%
 		margin-right: 0
-
-	.current-image
-		width: 120px
 
 	.preview-image
 		width: 120px !important

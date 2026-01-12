@@ -815,6 +815,7 @@ def get_nominations_for_exhibition(request):
 
 	return JsonResponse({'nominations': []})
 
+
 @login_required
 def get_exhibitions_by_owner(request):
 	"""AJAX view для получения выставок по выбранному участнику"""
@@ -847,17 +848,34 @@ def get_exhibitions_by_owner(request):
 		return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required
+def get_exhibitors_by_exhibition(request):
+	"""AJAX view для получения участников по выбранной выставке"""
+	exhibition_id = request.GET.get('exhibition_id')
+
+	if exhibition_id:
+		try:
+			exhibition = Exhibitions.objects.get(id=exhibition_id)
+			exhibitors = exhibition.exhibitors.all().values('id', 'name', 'user__first_name', 'user__last_name')
+
+			exhibitors_data = []
+			for exh in exhibitors:
+				exhibitors_data.append({
+					'id': exh['id'],
+					'name': exh['name'] or f"{exh['user__first_name']} {exh['user__last_name']}".strip()
+				})
+
+			return JsonResponse({'exhibitors': exhibitors_data})
+		except Exhibitions.DoesNotExist:
+			return JsonResponse({'exhibitors': []})
+
+	return JsonResponse({'exhibitors': []})
+
+
 @csrf_exempt
 @login_required
 def portfolio_upload(request, **kwargs):
 	""" Загрузка нового портфолио или редактирование существующего """
-	request.upload_handlers.insert(0, ProgressBarUploadHandler(request))
-
-	pk = kwargs.pop('pk', None)
-	if pk:
-		portfolio = Portfolio.objects.get(id=pk)
-	else:
-		portfolio = None
 
 	# Проверка прав доступа
 	# Разрешено: администраторам, редакторам (is_staff) и дизайнерам (группа Exhibitors)
@@ -868,25 +886,34 @@ def portfolio_upload(request, **kwargs):
 		from django.http import HttpResponseForbidden
 		return HttpResponseForbidden('У вас нет прав для доступа к этой странице.')
 
-	# Определяем владельца портфолио
-	if is_staff:
-		owner = 'staff'
+	request.upload_handlers.insert(0, ProgressBarUploadHandler(request))
+
+	pk = kwargs.pop('pk', None)
+	if pk:
+		portfolio = Portfolio.objects.filter(id=pk).first()
+		owner = portfolio.owner
 	else:
+		portfolio = None
+		owner = None
+
+	# Определяем владельца портфолио
+	if is_exhibitor and not is_staff:
 		try:
 			owner = Exhibitors.objects.get(user=request.user)
+
+			# Проверка прав на редактирование существующего портфолио
+			if portfolio:
+				if portfolio.owner != owner:
+					from django.http import HttpResponseForbidden
+					return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
+
 		except Exhibitors.DoesNotExist:
 			from django.http import HttpResponseForbidden
 			return HttpResponseForbidden('Профиль участника не найден.')
 
-	# Проверка прав на редактирование существующего портфолио
-	if pk and not is_staff:
-		if portfolio.owner != owner:
-			from django.http import HttpResponseForbidden
-			return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
-
 	is_ajax = (
-			request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
-			request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest'
+		request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+		request.headers.get('X-REQUESTED-WITH') == 'XMLHttpRequest'
 	)
 
 	# Проверяем общий размер всех файлов
@@ -917,13 +944,13 @@ def portfolio_upload(request, **kwargs):
 			else:
 				messages.error(request, f'Общий размер файлов слишком большой!')
 
-	form = PortfolioForm(owner=owner, instance=portfolio)
+	form = PortfolioForm(owner=owner, is_staff=is_staff, instance=portfolio)
 	inline_form_set = inlineformset_factory(Portfolio, Image, form=ImageForm, extra=0, can_delete=True)
 	formset = inline_form_set(instance=portfolio)
 	formset_helper = ImageFormHelper()
 
 	if request.method == 'POST':
-		form = PortfolioForm(request.POST, request.FILES, owner=owner, request=request, instance=portfolio)
+		form = PortfolioForm(request.POST, request.FILES, owner=owner, is_staff=is_staff, instance=portfolio)
 
 		if form.is_valid():
 			portfolio = form.save(commit=False)
@@ -937,6 +964,16 @@ def portfolio_upload(request, **kwargs):
 				portfolio.save(images=images)
 				form.save_m2m()
 				formset.save()
+
+				nomination_ids = portfolio.nominations.values_list('id', flat=True)
+				category_ids = Nominations.objects.filter(
+					id__in=nomination_ids
+				).exclude(category__isnull=True).values_list(
+					'category_id', flat=True
+				).distinct()
+
+				# Обновить категории портфолио
+				portfolio.categories.set(category_ids)
 
 				context = {
 					'user': '%s %s' % (request.user.first_name, request.user.last_name),

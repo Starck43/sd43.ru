@@ -113,6 +113,10 @@ class MultipleFileField(forms.FileField):
 		return super().clean(data, initial)
 
 
+class CustomClearableFileInput(MultipleFileInput):
+	template_name = 'admin/exhibition/widgets/file_input.html'
+
+
 class CategoriesAdminForm(forms.ModelForm):
 	class Meta:
 		widgets = {
@@ -280,7 +284,8 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 		self.fields['files'].widget.attrs['multiple'] = True
 
 
-class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
+class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
+	# Это поле не сохраняется в модель, только для загрузки
 	files = MultipleFileField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
@@ -305,144 +310,22 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 		)
 
 		widgets = {
-			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
-			# 'categories': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
-			# 'nominations': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
-			# 'attributes': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
 			'status': forms.Select(choices=STATUS_CHOICES),
 		}
-
-	def __init__(self, *args, **kwargs):
-		self.exhibitor = kwargs.pop('owner', None)
-		request = kwargs.pop('request', None)
-		self.is_admin = kwargs.pop('is_admin', False)
-
-		if request:
-			self.request = request
-
-		super().__init__(*args, **kwargs)
-
-		if 'cover' in self.fields:
-			self.fields['cover'].widget.attrs.update({
-				'class': 'form-control cover-upload',
-				'data-preview': 'cover-preview'
-			})
-
-		if 'nominations' in self.fields and hasattr(self.fields['nominations'], 'queryset'):
-			# Фильтруем номинации вручную через JavaScript
-			self.fields['nominations'].queryset = Nominations.objects.all()
-
-		# Настройка поля выставки
-		if 'exhibition' in self.fields:
-			if self.is_admin:
-				# В админке - динамическая фильтрация через JavaScript.
-
-				# Если объект уже существует, показываем связанную выставку
-				if self.instance.pk and self.instance.owner_id and self.instance.exhibition_id:
-					self.fields['exhibition'].queryset = Exhibitions.objects.filter(
-						id=self.instance.exhibition_id
-					)
-				else:
-					# Устанавливаем пустой queryset, который будет заполняться через AJAX
-					self.fields['exhibition'].queryset = Exhibitions.objects.none()
-
-			elif self.exhibitor and self.exhibitor != 'staff':
-				# Для дизайнеров скрываем owner и status
-				self.fields['owner'].initial = self.exhibitor
-				self.fields['owner'].widget = forms.HiddenInput()
-				self.fields['status'].widget = forms.HiddenInput()
-
-				# Для дизайнеров фильтруем только активные и будущие выставки
-				from django.utils.timezone import now
-
-				self.fields['exhibition'].queryset = Exhibitions.objects.filter(
-					exhibitors=self.exhibitor,
-					date_end__gte=now().date()
-				).order_by('-date_start')
-
-			else:
-				# Для администратора на фронтенде - все выставки
-				self.fields['exhibition'].queryset = Exhibitions.objects.all().order_by('-date_start')
-
-	# Добавляем data-атрибуты для JavaScript
-	# if self.is_admin and 'exhibition' in self.fields:
-	# 	self.fields['exhibition'].widget.attrs.update({
-	# 		'data-filter-url': '/api/get-exhibitions-by-owner/',
-	# 		'data-filter-by': 'owner',
-	# 		'data-empty-label': 'Сначала выберите участника'
-	# 	})
-
-	@property
-	def helper(self):
-		helper = FormHelper()
-		helper.form_tag = False
-
-		# Для администратора показываем owner, для дизайнера скрываем
-		if self.exhibitor == 'staff':
-			layout_fields = [
-				FloatingField('owner'),
-				FloatingField('exhibition'),
-				Field('nominations', wrapper_class='field-nominations'),
-				FloatingField('title'),
-				'description',
-				Field('cover', template='crispy_forms/cover_field.html'),
-				'files',
-				FloatingField('status'),
-				Field('attributes', wrapper_class='field-attributes d-none'),
-			]
-		else:
-			layout_fields = [
-				HTML('<div class="mb-3"><h5>Участник: ' + (
-					self.exhibitor.name if hasattr(self.exhibitor, 'name') else '') + '</h5></div>'),
-				'owner',  # Hidden field
-				FloatingField('exhibition'),
-				Field('nominations', wrapper_class='field-nominations'),
-				'files',
-				FloatingField('title'),
-				'description',
-				Field('cover', template='crispy_forms/cover_field.html'),
-				'status',  # Hidden field
-			]
-
-		# Добавляем SEO поля только для администратора
-		if self.exhibitor == 'staff':
-			layout_fields.append(
-				Div(
-					HTML('<div class="card-header">СЕО описание для поисковых систем</div>'),
-					Div(
-						FloatingField('meta_title'),
-						FloatingField('meta_description'),
-						FloatingField('meta_keywords'),
-						css_class='card-body'
-					),
-					css_class="card mt-2 mb-4",
-				)
-			)
-
-		helper.layout = Layout(*layout_fields)
-		return helper
 
 	def clean(self):
 		cleaned_data = super().clean()
 		owner = cleaned_data.get('owner')
 		exhibition = cleaned_data.get('exhibition')
 
-		# Для админки проверяем, что выставка доступна участнику
-		if self.is_admin and owner and exhibition:
+		# Проверяем, что выставка доступна участнику
+		if owner and exhibition:
 			if not owner.exhibitors_for_exh.filter(id=exhibition.id).exists():
 				self.add_error(
 					'exhibition',
 					f'Участник "{owner.name}" не зарегистрирован на выставку "{exhibition.title}". '
 					f'Сначала добавьте участника на выставку.'
 				)
-
-		if self.exhibitor is not None:
-			# Очищаем categories всегда, так как они привязаны к nominations
-			cleaned_data['categories'] = []
-
-			if not cleaned_data.get('exhibition'):
-				cleaned_data['nominations'] = []
-				cleaned_data['attributes'] = []
 
 		return cleaned_data
 
@@ -464,12 +347,243 @@ class PortfolioForm(MetaSeoFieldsForm, forms.ModelForm):
 
 		return files
 
-# def save(self, *args, **kwargs):
-# 	instance = super().save(*args, **kwargs)
-# 	if self.exhibitor:
-# 		instance.categories.set(None)
+	# def save(self, commit=True):
+	# 	# Здесь обрабатываешь загруженные files
+	# 	portfolio = super().save(commit=False)
+	# 	if commit:
+	# 		portfolio.save()
+	# 		files = self.cleaned_data.get('files')
+	# 		if files:
+	# 			# Сохраняешь в связанную модель Image
+	# 			for file in files:
+	# 				Image.objects.create(portfolio=portfolio, file=file)
+	# 	return portfolio
 
-# 	return instance
+
+class PortfolioForm(PortfolioAdminForm):
+
+	class Meta(PortfolioAdminForm.Meta):
+
+		widgets = {
+			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
+			'categories': forms.CheckboxSelectMultiple(attrs={
+				'class': 'form-check-input',
+				'disabled': 'disabled'
+			}),
+			# 'attributes': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
+		}
+
+	def __init__(self, *args, **kwargs):
+		self.exhibitor = kwargs.pop('owner', None)
+		self.is_editor = kwargs.pop('is_staff', False)
+
+		super().__init__(*args, **kwargs)
+
+		if 'cover' in self.fields:
+			self.fields['cover'].widget.attrs.update({
+				'class': 'form-control cover-upload',
+				'data-preview': 'cover-preview'
+			})
+
+		if 'nominations' in self.fields and hasattr(self.fields['nominations'], 'queryset'):
+			# Фильтруем номинации вручную через JavaScript
+			self.fields['nominations'].queryset = Nominations.objects.all()
+
+		if 'categories' in self.fields:
+			# Настройка поля категорий
+			self.fields['categories'].help_text = 'Категории автоматически определяются по выбранным номинациям'
+			self.fields['categories'].label = 'Категории номинаций (автовыбор)'
+
+		# Настройка поля выставки
+		if 'exhibition' in self.fields:
+			if self.is_editor:
+				# В админке - динамическая фильтрация через JavaScript.
+
+				# Если объект уже существует, показываем связанную выставку
+				if self.instance.pk and self.instance.owner_id and self.instance.exhibition_id:
+					self.fields['exhibition'].queryset = Exhibitions.objects.filter(
+						id=self.instance.exhibition_id
+					)
+				else:
+					self.fields['exhibition'].queryset = Exhibitions.objects.all()
+
+			elif self.exhibitor:
+				from django.utils.timezone import now
+
+				# Для дизайнеров скрываем owner и status
+				self.fields['owner'].initial = self.exhibitor
+				self.fields['owner'].widget = forms.HiddenInput()
+				self.fields['status'].widget = forms.HiddenInput()
+
+				# Для дизайнеров фильтруем только активные и будущие выставки
+				self.fields['exhibition'].queryset = Exhibitions.objects.filter(
+					exhibitors=self.exhibitor,
+					date_end__gte=now().date()
+				).order_by('-date_start')
+
+	@property
+	def helper(self):
+		helper = FormHelper()
+		helper.form_tag = False
+
+		# Для редакторов показываем владельцев проектов, для дизайнера - скрываем
+		if self.is_editor:
+			layout_fields = [
+				Field(
+					'owner',
+					css_class="form-control",
+					placeholder="Выберите участника",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'exhibition',
+					css_class="form-control",
+					placeholder="Выберите выставку",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'nominations',
+					wrapper_class='field-nominations mb-2 hidden',
+					css_class="form-control"
+				),
+				Field(
+					'categories',
+					wrapper_class='field-categories mb-2 hidden',
+					template='crispy_forms/multiple_checkboxes.html',
+					field_class='categories-checkboxes'
+				),
+				Field(
+					'title',
+					css_class="form-control",
+					placeholder="Название проекта",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'description',
+					css_class="form-control",
+					placeholder="Описание проекта",
+					rows=4,
+					wrapper_class="mb-2"
+				),
+				Field(
+					'cover',
+					template='crispy_forms/cover_field.html',
+					wrapper_class="mb-2"
+				),
+				Field(
+					'files',
+					css_class="form-control",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'status',
+					css_class="form-control",
+					placeholder="Статус",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'attributes',
+					wrapper_class='field-attributes d-none mb-2',
+					css_class="form-control"
+				),
+			]
+		else:
+			layout_fields = [
+				HTML(
+					'<div class="mb-3"><h5>Участник: ' + (
+						self.exhibitor.name if hasattr(self.exhibitor, 'name') else ''
+					) + '</h5></div>'
+				),
+				Field(
+					'owner',
+					type="hidden"
+				),  # Hidden field
+				Field(
+					'exhibition',
+					css_class="form-control",
+					placeholder="Выберите выставку",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'nominations',
+					wrapper_class='field-nominations mb-2 hidden',
+					css_class="form-control"
+				),
+				Field(
+					'categories',
+					wrapper_class='field-categories mb-2 hidden',
+					template='crispy_forms/multiple_checkboxes.html',
+					field_class='categories-checkboxes'
+				),
+				Field(
+					'files',
+					css_class="form-control",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'title',
+					css_class="form-control",
+					placeholder="Название проекта",
+					wrapper_class="mb-2"
+				),
+				Field(
+					'description',
+					css_class="form-control",
+					placeholder="Описание проекта",
+					rows=4,
+					wrapper_class="mb-2"
+				),
+				Field(
+					'cover',
+					template='crispy_forms/cover_field.html',
+					wrapper_class="mb-2"
+				),
+				Field(
+					'status',
+					type="hidden"
+				),  # Hidden field
+			]
+
+		# Добавляем SEO поля только для администратора
+		if self.is_editor:
+			layout_fields.append(
+				Div(
+					HTML('<div class="card-header">СЕО описание для поисковых систем</div>'),
+					Div(
+						Field(
+							'meta_title',
+							css_class="form-control",
+							placeholder="Заголовок",
+							wrapper_class="mb-2"
+						),
+						Field(
+							'meta_description',
+							css_class="form-control",
+							placeholder="Описание",
+							rows=2,
+							wrapper_class="mb-2"
+						),
+						Field(
+							'meta_keywords',
+							css_class="form-control",
+							placeholder="ключевые слова",
+							wrapper_class="mb-2"
+						),
+						css_class='card-body'
+					),
+					css_class="card mt-2 mb-4",
+				)
+			)
+
+		helper.layout = Layout(*layout_fields)
+		return helper
+
+	# def save(self, *args, **kwargs):
+	# 	instance = super().save(*args, **kwargs)
+	# 	if self.exhibitor:
+	# 		instance.categories.set(None)
+
+	# 	return instance
 
 
 class ImageForm(forms.ModelForm):
@@ -504,18 +618,18 @@ class ImageFormHelper(FormHelper):
 				Row(
 					Div(
 						Field('file', template='crispy_forms/image.html'),
-						css_class="image-container col-md-4"
+						css_class="image-container"
 					),
 					Div(
-						FloatingField('title'),
-						FloatingField('description'),
-						FloatingField('sort'),
+						Field('title', css_class="form-control", placeholder="Название фото"),
+						Field('description', css_class="form-control", placeholder="Описание фото", rows=3),
+						Field('sort', css_class="form-control", placeholder="Порядок"),
 						Field('DELETE', wrapper_class='form-check form-check-inline'),
-						css_class="meta col-md-8"
+						css_class="meta"
 					),
 					css_class="card-body"
 				),
-				css_class="portfolio-image card mb-4"
+				css_class="portfolio-image card d-flex-column mb-2"
 			)
 		)
 

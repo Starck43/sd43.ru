@@ -21,6 +21,15 @@
 
     {% if user.is_authenticated %}
         <p>Вы вошли как: <i><b>{{ user.username }}</b> ({{ user.first_name }} {{ user.last_name }})</i></p>
+
+        {% if portfolio_id and user.is_staff %}
+            <div class="mb-3">
+                <a href="{% url 'admin:exhibition_portfolio_change' portfolio_id %}"
+                    <i class="fas fa-edit"></i> Редактировать в панели администрирования
+                </a>
+            </div>
+        {% endif %}
+
         <form id="uploadProjectForm" class="upload-form" autocomplete="off" enctype="multipart/form-data" method="post">
             {% csrf_token %}
             {% crispy form %}
@@ -85,7 +94,6 @@
             });
         </script>
         <script>
-            // Вместо сложного делегирования используем прямую обработку
             function setupImageHandlers() {
                 // Удаление обложки
                 document.addEventListener('click', function (e) {

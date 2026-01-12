@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const exhibition = form.querySelector('select[name=exhibition]');
     const owner = form.querySelector('select[name=owner]');
     const nominations = form.querySelector('select[name=nominations]');
-    const categories = form.querySelector('select[name=categories]');
     const nominationsField = form.querySelector('.field-nominations');
     const categoriesField = form.querySelector('.field-categories');
     const attributes = form.querySelector('.field-attributes');
@@ -24,25 +23,22 @@ document.addEventListener("DOMContentLoaded", () => {
         owner: owner?.value || '',
         nominations: nominations?.selectedOptions ?
             Array.from(nominations.selectedOptions).map(opt => opt.value) : [],
-        categories: categories?.selectedOptions ?
-            Array.from(categories.selectedOptions).map(opt => opt.value) : []
     };
 
-    // 1. Инициализация видимости полей
+    // Инициализация видимости полей
     function initFieldVisibility() {
         if (!exhibition) return;
 
         if (exhibition.value === "") {
-            nominationsField?.classList.add('hidden');
             attributes?.classList.add('hidden');
             if (owner) owner.closest('.form-group')?.classList.remove('hidden');
         } else {
-            categoriesField?.classList.add('hidden');
+            nominationsField?.classList.remove('hidden');
             if (owner) owner.closest('.form-group')?.classList.add('hidden');
         }
     }
 
-    // 2. Загрузка маппинга номинаций → категории
+    // Загрузка маппинга номинаций → категории
     let nominationsToCategories = {};
 
     function loadNominationsCategoriesMapping() {
@@ -50,16 +46,15 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(response => response.json())
             .then(data => {
                 nominationsToCategories = data || {};
-                console.log('Nominations mapping loaded:', nominationsToCategories);
             })
             .catch(error => {
                 console.error('Error loading nominations mapping:', error);
             });
     }
 
-    // 3. Автоматический выбор категорий по номинациям
+    // Автоматический выбор категорий по номинациям
     function updateCategoriesFromNominations() {
-        if (!categories) return;
+        if (!categoriesField) return;
 
         const selectedNominations = Array.from(nominations?.selectedOptions || []).map(opt => opt.value);
         const selectedCategories = new Set();
@@ -71,20 +66,34 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Устанавливаем выбранные категории
-        Array.from(categories.options).forEach(option => {
-            option.selected = selectedCategories.has(option.value);
+        // Находим все чекбоксы и их контейнеры
+        const checkboxes = categoriesField.querySelectorAll('input[type="checkbox"]');
+
+        checkboxes.forEach(checkbox => {
+            const checkboxContainer = checkbox.closest('.form-check');
+            const shouldBeVisible = selectedCategories.has(checkbox.value);
+
+            if (checkboxContainer) {
+                // Показываем/скрываем чекбокс
+                checkboxContainer.style.display = shouldBeVisible ? 'block' : 'none';
+                checkbox.checked = shouldBeVisible;
+                checkbox.disabled = true; // Делаем read-only
+            }
         });
 
-        // Для Select2
-        if (typeof jQuery !== 'undefined' && categories.classList.contains('select2-hidden-accessible')) {
-            $(categories).trigger('change.select2');
+        // ПОКАЗЫВАЕМ/СКРЫВАЕМ поле категорий
+        if (selectedCategories.size > 0) {
+            categoriesField.classList.remove('hidden');
+        } else {
+            categoriesField.classList.add('hidden');
         }
     }
 
-    // 4. Загрузка выставок по участнику (для админки/редактирования)
+    // Загрузка выставок по участнику
     function loadExhibitionsByOwner(ownerId) {
         if (!exhibition || !ownerId) return;
+        // Если выставка уже выбрана - не перезагружаем
+        if (exhibition.value) return;
 
         exhibition.disabled = true;
         exhibition.innerHTML = '<option value="">Загрузка выставок...</option>';
@@ -128,7 +137,58 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
-    // 5. Загрузка номинаций по выставке
+
+    // Загрузка участников выставки
+    function loadExhibitionExhibitors(exhibitionId) {
+        if (!owner) return;
+
+        // Сохраняем текущее значение
+        const currentOwner = owner.value;
+
+        fetch(`/api/get-exhibitors-by-exhibition/?exhibition_id=${exhibitionId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Сохраняем все options
+                const allOptions = Array.from(owner.options);
+
+                // Очищаем select
+                owner.innerHTML = '';
+
+                // Добавляем пустой option
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '-- Выберите участника --';
+                owner.appendChild(emptyOption);
+
+                // Добавляем участников этой выставки
+                if (data.exhibitors && data.exhibitors.length > 0) {
+                    data.exhibitors.forEach(exh => {
+                        const option = document.createElement('option');
+                        option.value = exh.id;
+                        option.textContent = exh.name;
+
+                        // Восстанавливаем выбранного участника
+                        if (currentOwner === String(exh.id)) {
+                            option.selected = true;
+                        }
+
+                        owner.appendChild(option);
+                    });
+                }
+
+                // Показываем поле участника
+                owner.closest('.form-group')?.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error loading exhibitors:', error);
+                // Показываем всех участников при ошибке
+                Array.from(owner.options).forEach(option => {
+                    option.hidden = false;
+                });
+            });
+    }
+
+    // Загрузка номинаций по выставке
     function loadNominationsForExhibition(exhibitionId) {
         if (!nominations || !exhibitionId) return;
 
@@ -181,10 +241,15 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
-    // 6. Инициализация всех обработчиков
+    // Инициализация всех обработчиков
     function initAllHandlers() {
         // Инициализация видимости
         initFieldVisibility();
+
+        // Если участник уже выбран при загрузке, но выставка не выбрана
+        if (owner && owner.value && !exhibition.value) {
+            loadExhibitionsByOwner(owner.value);
+        }
 
         // Загружаем маппинг номинаций-категорий
         loadNominationsCategoriesMapping().then(() => {
@@ -205,16 +270,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (value) {
                 nominationsField?.classList.remove('hidden');
+                //categoriesField?.classList.add('hidden');
                 attributes?.classList.remove('hidden');
-                categoriesField?.classList.add('hidden');
                 if (owner) owner.closest('.form-group')?.classList.add('hidden');
 
                 loadNominationsForExhibition(value);
+                loadExhibitionExhibitors(value);
+
             } else {
-                categoriesField?.classList.remove('hidden');
-                attributes?.classList.add('hidden');
                 nominationsField?.classList.add('hidden');
-                if (owner) owner.closest('.form-group')?.classList.remove('hidden');
+                categoriesField?.classList.add('hidden');
+                attributes?.classList.add('hidden');
+
+                if (owner) {
+                    owner.closest('.form-group')?.classList.remove('hidden');
+                    // Показываем всех участников
+                    Array.from(owner.options).forEach(option => {
+                        option.hidden = false;
+                    });
+                }
 
                 if (nominations) {
                     nominations.innerHTML = '<option value="">-- Сначала выберите выставку --</option>';
@@ -222,12 +296,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Обработчик изменения владельца (для админки)
+        // Обработчик изменения владельца портфолио
         owner?.addEventListener('change', (e) => {
             if (e.target.value) {
                 loadExhibitionsByOwner(e.target.value);
             } else {
-                exhibition.innerHTML = '<option value="">-- Сначала выберите участника --</option>';
+                if (!exhibition.value) {
+                    exhibition.innerHTML = '<option value="">-- Выберите автора проекта --</option>';
+                }
             }
         });
 

@@ -1,0 +1,28 @@
+{% load crispy_forms_field %}
+
+<div class="mb-2{% if wrapper_class %} {{ wrapper_class }}{% endif %}">
+    {% if field.label %}
+        <label class="form-label">{{ field.label }}</label>
+    {% endif %}
+
+    <div class="{% if field_class %} {{ field_class }}{% endif %}"{% if flat_attrs %} {{ flat_attrs|safe }}{% endif %}>
+        {% for checkbox in field %}
+            <div class="form-check">
+                {{ checkbox.tag }}
+                <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                    {{ checkbox.choice_label }}
+                </label>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if field.errors %}
+        {% for error in field.errors %}
+            <p class="invalid-feedback d-block">{{ error }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if field.help_text %}
+        <small class="form-text text-muted">{{ field.help_text }}</small>
+    {% endif %}
+</div>
