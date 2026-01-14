@@ -241,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
-// Функция для AJAX поиска участников
+    // Функция для AJAX поиска участников
     function setupOwnerAutocomplete() {
         if (!owner) return;
 
@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         newSelect.name = owner.name;
         newSelect.id = owner.id;
         newSelect.className = owner.className;
-        newSelect.required = owner.required;
+        newSelect.required = false;
 
         // Позиционирование
         newSelect.style.cssText = `
@@ -393,21 +393,20 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (isEditMode && owner && owner.value) {
-            // Находим имя текущего участника
             const currentOwnerOption = owner.querySelector(`option[value="${owner.value}"]`);
             if (currentOwnerOption) {
                 searchInput.value = currentOwnerOption.textContent;
+                newSelect.value = owner.value;
 
-                // Устанавливаем значение в новый select
-                if (newSelect) {
-                    newSelect.value = owner.value;
+                // Создаем hidden input если его нет
+                let hiddenInput = container.querySelector('input[type="hidden"][name="owner"]');
+                if (!hiddenInput) {
+                    hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'owner';
+                    container.appendChild(hiddenInput);
                 }
-
-                // Устанавливаем в hidden input если используется
-                const hiddenInput = container.querySelector('input[type="hidden"][name="owner"]');
-                if (hiddenInput) {
-                    hiddenInput.value = owner.value;
-                }
+                hiddenInput.value = owner.value;
             }
         }
     }

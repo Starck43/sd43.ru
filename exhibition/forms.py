@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import OuterRef, Subquery
 from django.db.models.expressions import F
-from django.forms import FileInput
+from django.forms import FileInput, ClearableFileInput
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
@@ -112,8 +112,11 @@ class MultipleFileField(forms.FileField):
 		return super().clean(data, initial)
 
 
-class CustomClearableFileInput(MultipleFileInput):
-	template_name = 'admin/exhibition/widgets/file_input.html'
+class CustomClearableFileInput(ClearableFileInput):
+	def __init__(self, attrs=None):
+		attrs = attrs or {}
+		attrs['accept'] = 'image/*'
+		super().__init__(attrs)
 
 
 class CategoriesAdminForm(forms.ModelForm):
@@ -285,7 +288,7 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 
 class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	# Это поле не сохраняется в модель, только для загрузки
-	files = MultipleFileField(
+	files = forms.ImageField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
 			'class': 'form-control',
@@ -299,7 +302,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	class Meta:
 		model = Portfolio
 		fields = (
-			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'cover', 'files',
+			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'cover',
 			'status',
 		)
 
@@ -309,8 +312,10 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 		)
 
 		widgets = {
+			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
 			'status': forms.Select(choices=STATUS_CHOICES),
 		}
+
 
 	def clean(self):
 		cleaned_data = super().clean()
@@ -330,7 +335,6 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 
 	def clean_files(self):
 		"""Валидация множественных файлов"""
-		# self.files не существует! Используем cleaned_data
 		files = self.cleaned_data.get('files')
 
 		if not files:
@@ -345,6 +349,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 					)
 
 		return files
+
 
 # def save(self, commit=True):
 # 	# Здесь обрабатываешь загруженные files
@@ -569,6 +574,7 @@ class PortfolioForm(PortfolioAdminForm):
 
 		helper.layout = Layout(*layout_fields)
 		return helper
+
 
 # def save(self, *args, **kwargs):
 # 	instance = super().save(*args, **kwargs)

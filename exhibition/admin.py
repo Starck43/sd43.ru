@@ -54,6 +54,55 @@ admin.AdminSite.get_app_list = get_app_list
 admin.site.unregister(User)  # чтобы снять с регистрации модель User
 
 
+class ImagesInline(admin.StackedInline):
+	model = Image
+	extra = 1
+	template = 'admin/exhibition/edit_inline/stacked_images.html'
+	show_change_link = True
+	fields = ('file_thumb', 'file', 'title', 'sort', 'filename',)
+	list_display = ('file_thumb', 'title',)
+	readonly_fields = ('file_thumb', 'filename',)
+	list_editable = ['title', 'sort']
+
+	class Media:
+		css = {
+			'all': (
+				'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+				'admin/css/portfolio-images.min.css',
+			)
+		}
+		js = (
+			# 'admin/js/vendor/jquery/jquery.js',
+			'admin/js/portfolio-images.min.js',
+		)
+
+
+class GalleryInlineAdmin(admin.StackedInline):
+	model = Gallery
+	template = 'admin/exhibition/edit_inline/stacked.html'
+	extra = 1  # new blank record count
+	show_change_link = True
+	fields = ('file_thumb', 'file', 'title', 'filename',)
+	list_display = ('file_thumb', 'title',)
+	readonly_fields = ('file_thumb', 'filename',)
+	list_editable = ['title']
+	classes = ['gallery-inline-tab', ]
+	verbose_name_plural = "Загруженные фотографии"
+	list_per_page = 30
+
+	formfield_overrides = {
+		ImageField: {'widget': CustomClearableFileInput()},
+	}
+
+
+class EventsInlineAdmin(admin.StackedInline):
+	model = Events
+	extra = 1  # new blank record count
+	fields = ('title', 'date_event', 'time_start', 'time_end', 'lector',)
+	classes = ['events-inline-tab', ]
+	verbose_name_plural = "Мероприятия"
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
 	prepopulated_fields = {"username": ('email',)}
@@ -251,306 +300,6 @@ class PartnersAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.ModelAd
 			delete_cached_fragment('exhibition_content', exh.slug)
 
 
-@admin.register(Categories)
-class CategoriesAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	list_display = ('logo_thumb', 'title', 'nominations_list', 'description')
-	list_display_links = ('logo_thumb', 'title')
-	readonly_fields = ['logo_preview']
-
-	fieldsets = (
-		(None, {
-			'fields': ('title', 'slug', 'description', 'logo', 'sort')
-		}),
-		('Превью логотипа', {
-			'classes': ('collapse',),
-			'fields': ('logo_preview',)
-		}),
-	)
-
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	def nominations_list(self, obj):
-		return ', '.join(obj.nominations_set.all().values_list('title', flat=True))
-
-	nominations_list.short_description = 'Номинации'
-
-	def save_model(self, request, obj, form, change):
-		delete_cached_fragment('categories_list')
-		super().save_model(request, obj, form, change)
-
-
-@admin.register(Nominations)
-class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = (
-		(None, {
-			'classes': ('user-block',),
-			'fields': ('category', 'title', 'slug', 'description', 'sort',),
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('category', 'title', 'description_html',)
-	list_display_links = ('title',)
-	list_per_page = 20
-	empty_value_display = '<пусто>'
-
-	def description_html(self, obj):
-		return format_html(obj.description)
-
-	description_html.short_description = 'Описание'
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-		portfolio = Portfolio.objects.filter(nominations=obj)
-		for item in portfolio:
-			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, True)
-			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, False)
-
-
-class EventsInlineAdmin(admin.StackedInline):
-	model = Events
-	extra = 1  # new blank record count
-	fields = ('title', 'date_event', 'time_start', 'time_end', 'lector',)
-	classes = ['events-inline-tab', ]
-	verbose_name_plural = "Мероприятия"
-
-
-class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = (
-		(None, {
-			'classes': ('user-block',),
-			'fields': (
-				'exhibition', 'title', 'date_event', 'time_start', 'time_end', 'location', 'hoster',
-				'lector', 'description',
-			),
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('title', 'date_event', 'time_event', 'hoster', 'exhibition',)
-	search_fields = ('title', 'description', 'hoster', 'lector',)
-	list_filter = ('exhibition__date_start', 'date_event',)
-	date_hierarchy = 'exhibition__date_start'
-	list_per_page = 20
-	save_as = True
-	ordering = ('-exhibition__slug', 'date_event', 'time_start',)
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-
-		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
-
-
-class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = (
-		(None, {
-			'classes': ('user-block',),
-			'fields': ('exhibition', 'nomination', 'exhibitor', 'portfolio',),
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('exh_year', 'nomination', 'exhibitor', 'portfolio')
-	list_display_links = list_display
-	# search_fields = ('nomination__title', 'exhibitor__name',)
-	list_filter = ('exhibition__date_start', 'nomination', 'exhibitor')
-	date_hierarchy = 'exhibition__date_start'
-	ordering = ('-exhibition__date_start',)
-
-	list_per_page = 30
-	save_as = True
-	save_on_top = True  # adding the Save button on top bar
-
-	def formfield_for_foreignkey(self, db_field, request, **kwargs):
-		if db_field.name == "exhibitor":
-			kwargs["queryset"] = Exhibitors.objects.order_by('name')
-
-		return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-
-		delete_cached_fragment('persons', 'winners', None)
-		exhibitions = Exhibitions.objects.all()
-		for exh in exhibitions:
-			delete_cached_fragment('persons', 'winners', exh.slug)
-
-		delete_cached_fragment('exhibition_content', obj.exhibition.slug)
-		delete_cached_fragment('participant_detail', obj.portfolio.id)
-
-
-class ImagesInline(admin.TabularInline):
-	# form = ImageForm
-	model = Image
-	extra = 1
-	# template = 'admin/exhibition/edit_inline/stacked.html'
-	show_change_link = True
-	fields = ('file_thumb', 'file', 'title', 'sort', 'filename',)
-	list_display = ('file_thumb', 'title',)
-	readonly_fields = ('file_thumb', 'filename',)
-	list_editable = ['title', 'sort']
-
-	formfield_overrides = {
-		ImageField: {'widget': CustomClearableFileInput()},
-	}
-
-
-@admin.register(Image)
-class ImageAdmin(AdminImageMixin, admin.ModelAdmin):
-	form = ImageForm
-	fields = ('portfolio', 'title', 'description', 'file', 'sort')
-	readonly_fields = ('file_thumb',)
-	list_display = ('file_thumb', 'portfolio', 'title', 'author', 'sort',)
-	list_display_links = ('file_thumb', 'portfolio', 'title',)
-	list_filter = ('portfolio__owner', 'portfolio',)
-	search_fields = (
-		'title', 'file', 'portfolio__title', 'portfolio__owner__slug', 'portfolio__owner__name',
-		'portfolio__owner__user__first_name', 'portfolio__owner__user__last_name',
-	)
-
-	list_per_page = 30
-
-	# def save_model(self, request, obj, form, change):
-	# 	obj.save()
-	# 	for image in request.FILES.getlist('images'):
-	# 		obj.create(image=image)
-
-	def author(self, obj):
-		author = None
-		if obj.portfolio:
-			author = obj.portfolio.owner
-		return author
-
-	author.short_description = 'Автор'
-
-
-@admin.register(PortfolioAttributes)
-class PortfolioAttributesAdmin(admin.ModelAdmin):
-	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
-	search_fields = ('name',)
-	list_per_page = 30
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-		for category in Categories.objects.all():
-			delete_cached_fragment('sidebar', category.slug)
-
-
-@admin.register(Portfolio)
-class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	form = PortfolioAdminForm
-
-	fieldsets = (
-		(None, {
-			'classes': ('portfolio-block',),
-			'fields': (
-				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover',
-				'attributes', 'status', 'order'
-			),
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('owner', '__str__', 'exhibition', 'nominations_list', 'status')
-	list_display_links = ('owner', '__str__')
-	list_filter = ('nominations__category', 'nominations', 'owner', 'status')
-	search_fields = (
-		'title', 'owner__name', 'owner__user__first_name', 'owner__user__last_name', 'exhibition__title',
-		'nominations__title'
-	)
-	date_hierarchy = 'exhibition__date_start'
-	# autocomplete_fields = ('owner', 'exhibition')
-
-	list_per_page = 50
-	save_on_top = True
-	save_as = True
-	view_on_site = True
-	inlines = [ImagesInline, RatingInline, ReviewInline]
-
-	# class Media:
-	# 	js = (
-	# 		'admin/js/vendor/jquery/jquery.js',
-	# 		'admin/js/portfolio_admin.js',
-	# 	)
-
-	def nominations_list(self, obj):
-		"""Отображение списка номинаций в админке"""
-		if obj.nominations.exists():
-			return ', '.join(obj.nominations.values_list('title', flat=True))
-		return 'Нет номинаций'
-
-	nominations_list.short_description = 'Номинации'
-	nominations_list.admin_order_field = 'nominations__title'
-
-	def formfield_for_foreignkey(self, db_field, request, **kwargs):
-		if db_field.name == "owner":
-			kwargs["queryset"] = Exhibitors.objects.order_by('name')
-
-		if db_field.name == "exhibition":
-			kwargs["queryset"] = Exhibitions.objects.order_by('-date_start')
-
-		return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-	def save_model(self, request, obj, form, change):
-		images = request.FILES.getlist('files')
-		obj.save(images=images)  # сохраним портфолио и связанные фотографии
-
-		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, True)
-		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, False)
-		delete_cached_fragment('portfolio_slider', obj.owner.slug, obj.project_id)
-		delete_cached_fragment('participant_detail', obj.owner.id)
-		# delete_cached_fragment('exhibition_header', obj.exhibition.slug)
-
-		for nomination in obj.nominations.all():
-			if nomination.category:
-				delete_cached_fragment('projects_list', nomination.category.slug)
-				delete_cached_fragment('sidebar', nomination.category.slug)
-
-		victories = Winners.objects.filter(portfolio=obj)
-		for victory in victories:
-			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, True)
-			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, False)
-			delete_cached_fragment('portfolio_slider', victory.exhibition.slug, victory.nomination.slug)
-
-
-class GalleryInlineAdmin(admin.StackedInline):
-	model = Gallery
-	template = 'admin/exhibition/edit_inline/stacked.html'
-	extra = 1  # new blank record count
-	show_change_link = True
-	fields = ('file_thumb', 'file', 'title', 'filename',)
-	list_display = ('file_thumb', 'title',)
-	readonly_fields = ('file_thumb', 'filename',)
-	list_editable = ['title']
-	classes = ['gallery-inline-tab', ]
-	verbose_name_plural = "Загруженные фотографии"
-	list_per_page = 30
-
-	formfield_overrides = {
-		ImageField: {'widget': CustomClearableFileInput()},
-	}
-
-
-@admin.register(Gallery)
-class GalleryAdmin(AdminImageMixin, admin.ModelAdmin):
-	fields = ('exhibition', 'title', 'file',)
-	list_display = ('file_thumb', 'exhibition', 'title',)
-	list_display_links = list_display
-	search_fields = ('title', 'exhibition__title', 'exhibition__slug',)
-	list_filter = ('exhibition__date_start',)
-	date_hierarchy = 'exhibition__date_start'
-	list_per_page = 30
-
-	readonly_fields = ('file_thumb',)
-	save_on_top = True
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-
-		delete_cached_fragment('exhibition_overlay', obj.exhibition.slug)
-		delete_cached_fragment('exhibition_gallery', obj.exhibition.slug)
-
-
 @admin.register(Exhibitions)
 class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	form = ExhibitionsForm
@@ -627,6 +376,264 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		delete_cached_fragment('exhibition_overlay', obj.slug)
 		if not change:
 			delete_cached_fragment('exhibitions_list')
+
+
+@admin.register(Categories)
+class CategoriesAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	list_display = ('logo_thumb', 'title', 'nominations_list', 'description')
+	list_display_links = ('logo_thumb', 'title')
+	readonly_fields = ['logo_preview']
+
+	fieldsets = (
+		(None, {
+			'fields': ('title', 'slug', 'description', 'logo', 'sort')
+		}),
+		('Превью логотипа', {
+			'classes': ('collapse',),
+			'fields': ('logo_preview',)
+		}),
+	)
+
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	def nominations_list(self, obj):
+		return ', '.join(obj.nominations_set.all().values_list('title', flat=True))
+
+	nominations_list.short_description = 'Номинации'
+
+	def save_model(self, request, obj, form, change):
+		delete_cached_fragment('categories_list')
+		super().save_model(request, obj, form, change)
+
+
+@admin.register(Nominations)
+class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	fieldsets = (
+		(None, {
+			'classes': ('user-block',),
+			'fields': ('category', 'title', 'slug', 'description', 'sort',),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	list_display = ('category', 'title', 'description_html',)
+	list_display_links = ('title',)
+	list_per_page = 20
+	empty_value_display = '<пусто>'
+
+	def description_html(self, obj):
+		return format_html(obj.description)
+
+	description_html.short_description = 'Описание'
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+		portfolio = Portfolio.objects.filter(nominations=obj)
+		for item in portfolio:
+			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, True)
+			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, False)
+
+
+class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	fieldsets = (
+		(None, {
+			'classes': ('user-block',),
+			'fields': (
+				'exhibition', 'title', 'date_event', 'time_start', 'time_end', 'location', 'hoster',
+				'lector', 'description',
+			),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	list_display = ('title', 'date_event', 'time_event', 'hoster', 'exhibition',)
+	search_fields = ('title', 'description', 'hoster', 'lector',)
+	list_filter = ('exhibition__date_start', 'date_event',)
+	date_hierarchy = 'exhibition__date_start'
+	list_per_page = 20
+	save_as = True
+	ordering = ('-exhibition__slug', 'date_event', 'time_start',)
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+
+		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
+
+
+class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	fieldsets = (
+		(None, {
+			'classes': ('user-block',),
+			'fields': ('exhibition', 'nomination', 'exhibitor', 'portfolio',),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	list_display = ('exh_year', 'nomination', 'exhibitor', 'portfolio')
+	list_display_links = list_display
+	# search_fields = ('nomination__title', 'exhibitor__name',)
+	list_filter = ('exhibition__date_start', 'nomination', 'exhibitor')
+	date_hierarchy = 'exhibition__date_start'
+	ordering = ('-exhibition__date_start',)
+
+	list_per_page = 30
+	save_as = True
+	save_on_top = True  # adding the Save button on top bar
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if db_field.name == "exhibitor":
+			kwargs["queryset"] = Exhibitors.objects.order_by('name')
+
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+
+		delete_cached_fragment('persons', 'winners', None)
+		exhibitions = Exhibitions.objects.all()
+		for exh in exhibitions:
+			delete_cached_fragment('persons', 'winners', exh.slug)
+
+		delete_cached_fragment('exhibition_content', obj.exhibition.slug)
+		delete_cached_fragment('participant_detail', obj.portfolio.id)
+
+
+@admin.register(Image)
+class ImageAdmin(AdminImageMixin, admin.ModelAdmin):
+	form = ImageForm
+	fields = ('portfolio', 'title', 'description', 'file', 'sort')
+	readonly_fields = ('file_thumb',)
+	list_display = ('file_thumb', 'portfolio', 'title', 'author', 'sort',)
+	list_display_links = ('file_thumb', 'portfolio', 'title',)
+	list_filter = ('portfolio__owner', 'portfolio',)
+	search_fields = (
+		'title', 'file', 'portfolio__title', 'portfolio__owner__slug', 'portfolio__owner__name',
+		'portfolio__owner__user__first_name', 'portfolio__owner__user__last_name',
+	)
+
+	list_per_page = 30
+
+	# def save_model(self, request, obj, form, change):
+	# 	obj.save()
+	# 	for image in request.FILES.getlist('images'):
+	# 		obj.create(image=image)
+
+	def author(self, obj):
+		author = None
+		if obj.portfolio:
+			author = obj.portfolio.owner
+		return author
+
+	author.short_description = 'Автор'
+
+
+@admin.register(PortfolioAttributes)
+class PortfolioAttributesAdmin(admin.ModelAdmin):
+	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
+	search_fields = ('name',)
+	list_per_page = 30
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+		for category in Categories.objects.all():
+			delete_cached_fragment('sidebar', category.slug)
+
+
+@admin.register(Portfolio)
+class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	form = PortfolioAdminForm
+
+	fieldsets = (
+		(None, {
+			'classes': ('portfolio-block',),
+			'fields': (
+				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover',
+				'attributes', 'status', 'order'
+			),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	list_display = ('id', 'owner', '__str__', 'exhibition', 'nominations_list', 'status')
+	list_display_links = ('owner', '__str__')
+	list_filter = ('nominations__category', 'nominations', 'owner', 'status')
+	search_fields = (
+		'title', 'owner__name', 'owner__user__first_name', 'owner__user__last_name', 'exhibition__title',
+		'nominations__title'
+	)
+	date_hierarchy = 'exhibition__date_start'
+	# autocomplete_fields = ('owner', 'exhibition')
+
+	list_per_page = 50
+	save_on_top = True
+	save_as = True
+	view_on_site = True
+	inlines = [ImagesInline, RatingInline, ReviewInline]
+
+	class Media:
+		js = (
+			# 'admin/js/vendor/jquery/jquery.js',
+			# 'admin/js/portfolio_admin.js',
+		)
+
+	def nominations_list(self, obj):
+		"""Отображение списка номинаций в админке"""
+		if obj.nominations.exists():
+			return ', '.join(obj.nominations.values_list('title', flat=True))
+		return 'Нет номинаций'
+
+	nominations_list.short_description = 'Номинации'
+	nominations_list.admin_order_field = 'nominations__title'
+
+	def formfield_for_foreignkey(self, db_field, request, **kwargs):
+		if db_field.name == "owner":
+			kwargs["queryset"] = Exhibitors.objects.order_by('name')
+
+		if db_field.name == "exhibition":
+			kwargs["queryset"] = Exhibitions.objects.order_by('-date_start')
+
+		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_model(self, request, obj, form, change):
+		images = request.FILES.getlist('files')
+		obj.save(images=images)  # сохраним портфолио и связанные фотографии
+
+		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, True)
+		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, False)
+		delete_cached_fragment('portfolio_slider', obj.owner.slug, obj.project_id)
+		delete_cached_fragment('participant_detail', obj.owner.id)
+		# delete_cached_fragment('exhibition_header', obj.exhibition.slug)
+
+		for nomination in obj.nominations.all():
+			if nomination.category:
+				delete_cached_fragment('projects_list', nomination.category.slug)
+				delete_cached_fragment('sidebar', nomination.category.slug)
+
+		victories = Winners.objects.filter(portfolio=obj)
+		for victory in victories:
+			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, True)
+			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, False)
+			delete_cached_fragment('portfolio_slider', victory.exhibition.slug, victory.nomination.slug)
+
+
+@admin.register(Gallery)
+class GalleryAdmin(AdminImageMixin, admin.ModelAdmin):
+	fields = ('exhibition', 'title', 'file',)
+	list_display = ('file_thumb', 'exhibition', 'title',)
+	list_display_links = list_display
+	search_fields = ('title', 'exhibition__title', 'exhibition__slug',)
+	list_filter = ('exhibition__date_start',)
+	date_hierarchy = 'exhibition__date_start'
+	list_per_page = 30
+
+	readonly_fields = ('file_thumb',)
+	save_on_top = True
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+
+		delete_cached_fragment('exhibition_overlay', obj.exhibition.slug)
+		delete_cached_fragment('exhibition_gallery', obj.exhibition.slug)
 
 
 @admin.register(MetaSEO)

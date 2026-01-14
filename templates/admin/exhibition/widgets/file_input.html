@@ -1,14 +1,20 @@
 {% if widget.is_initial %}
-<p class="file-upload">
-	{% if not widget.required %}
-		<span class="clearable-file-input">
-		<input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.disabled %} disabled{% endif %}>
-		<label for="{{ widget.checkbox_id }}">{{ widget.clear_checkbox_label }}</label></span>
-	{% endif %}
-	<br>
+    <div class="file-upload">
+        {% if widget.value %}
+            Сейчас: <a href="{{ widget.value.url }}">{{ widget.value }}</a><br>
+        {% endif %}
+        {% if not widget.required %}
+            <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"
+                   {% if widget.attrs.disabled %} disabled{% endif %}>
+            <label for="{{ widget.checkbox_id }}">{{ widget.clear_checkbox_label }}</label><br>
+        {% endif %}
+        Изменить:
+    </div>
 {% endif %}
-<input type="{{ widget.type }}" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
 
-{% if widget.is_initial %}
-	</p>
-{% endif %}
+<label>
+    <input type="{{ widget.type }}"
+           name="{{ widget.name }}"
+           {% include "django/forms/widgets/attrs.html" %}
+           accept="image/*">
+</label>
