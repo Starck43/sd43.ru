@@ -67,22 +67,24 @@ class AccountSignupForm(SignupForm):
 		return user
 
 
-class MultipleFileInput(FileInput):
+class MultipleFileInput(forms.ClearableFileInput):
 	"""Кастомный виджет для множественной загрузки файлов"""
-	allow_multiple_selected = True
-
-	def __init__(self, attrs=None):
-		attrs = attrs or {}
-		attrs['multiple'] = True
-		super().__init__(attrs)
+    allow_multiple_selected = True
 
 
 class MultipleFileField(forms.FileField):
 	"""Кастомное поле для множественной загрузки файлов"""
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
 
-	def __init__(self, *args, **kwargs):
-		kwargs.setdefault("widget", MultipleFileInput())
-		super().__init__(*args, **kwargs)
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = [single_file_clean(data, initial)]
+        return result
 
 
 class CustomClearableFileInput(ClearableFileInput):
@@ -261,12 +263,11 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 
 class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	# Это поле не сохраняется в модель, только для загрузки
-	files = forms.FileField(
+	files = MultipleFileField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
 			'class': 'form-control',
 			'accept': 'image/*',
-			'allow_multiple_selected': True
 		}),
 		required=False,
 		help_text='Общий размер загружаемых фото не должен превышать %s Мб' % round(
@@ -306,23 +307,6 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 				)
 
 		return cleaned_data
-
-	def clean_files(self):
-		"""Валидация множественных файлов"""
-		files = self.cleaned_data.get('files')
-
-		if not files:
-			return None
-
-		# Проверка размера каждого файла
-		if isinstance(files, list):  # Multiple files
-			for file in files:
-				if file.size > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
-					raise ValidationError(
-						f'Файл "{file.name}" превышает лимит {settings.FILE_UPLOAD_MAX_MEMORY_SIZE / (1024 * 1024)} Мб'
-					)
-
-		return files
 
 
 # def save(self, commit=True):
