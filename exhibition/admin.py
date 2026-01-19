@@ -547,7 +547,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		(None, {
 			'classes': ('portfolio-block',),
 			'fields': (
-				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover',
+				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover', 'files',
 				'attributes', 'status', 'order'
 			),
 		}),

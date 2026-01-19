@@ -76,28 +76,12 @@ class MultipleFileInput(FileInput):
 		attrs['multiple'] = True
 		super().__init__(attrs)
 
-	def value_from_datadict(self, data, files, name):
-		"""
-		Возвращает список файлов, вместо одного файла
-		"""
-		if hasattr(files, 'getlist'):
-			file_list = files.getlist(name)
-			return file_list if file_list else None
-
-		# Для совместимости
-		value = files.get(name)
-		if value is None:
-			return None
-		if isinstance(value, list):
-			return value if value else None
-		return [value]
-
 
 class MultipleFileField(forms.FileField):
 	"""Кастомное поле для множественной загрузки файлов"""
 
 	def __init__(self, *args, **kwargs):
-		#kwargs.setdefault("widget", MultipleFileInput())
+		kwargs.setdefault("widget", MultipleFileInput())
 		super().__init__(*args, **kwargs)
 
 	def clean(self, data, initial=None):
@@ -290,7 +274,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	# Это поле не сохраняется в модель, только для загрузки
 	files = forms.FileField(
 		label='Фото',
-		widget=ClearableFileInput(attrs={
+		widget=MultipleFileInput(attrs={
 			'class': 'form-control',
 			'accept': 'image/*',
 			'allow_multiple_selected': True
@@ -313,7 +297,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 		)
 
 		widgets = {
-			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
+			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
 			'status': forms.Select(choices=STATUS_CHOICES),
 		}
 
@@ -369,7 +353,7 @@ class PortfolioForm(PortfolioAdminForm):
 	class Meta(PortfolioAdminForm.Meta):
 
 		widgets = {
-			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'multiple': False}),
+			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
 			'categories': forms.CheckboxSelectMultiple(attrs={
 				'class': 'form-check-input',
 				'disabled': 'disabled'
