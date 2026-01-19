@@ -97,7 +97,7 @@ class MultipleFileField(forms.FileField):
 	"""Кастомное поле для множественной загрузки файлов"""
 
 	def __init__(self, *args, **kwargs):
-		kwargs.setdefault("widget", MultipleFileInput())
+		#kwargs.setdefault("widget", MultipleFileInput())
 		super().__init__(*args, **kwargs)
 
 	def clean(self, data, initial=None):
@@ -288,11 +288,12 @@ class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
 
 class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	# Это поле не сохраняется в модель, только для загрузки
-	files = forms.ImageField(
+	files = forms.FileField(
 		label='Фото',
-		widget=MultipleFileInput(attrs={
+		widget=ClearableFileInput(attrs={
 			'class': 'form-control',
-			'accept': 'image/*'
+			'accept': 'image/*',
+			'multiple': True
 		}),
 		required=False,
 		help_text='Общий размер загружаемых фото не должен превышать %s Мб' % round(
@@ -302,7 +303,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	class Meta:
 		model = Portfolio
 		fields = (
-			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'cover',
+			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'cover', 'files',
 			'status',
 		)
 
