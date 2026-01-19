@@ -293,7 +293,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 		widget=ClearableFileInput(attrs={
 			'class': 'form-control',
 			'accept': 'image/*',
-			'multiple': True
+			'allow_multiple_selected': True
 		}),
 		required=False,
 		help_text='Общий размер загружаемых фото не должен превышать %s Мб' % round(
