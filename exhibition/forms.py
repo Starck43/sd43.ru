@@ -84,17 +84,6 @@ class MultipleFileField(forms.FileField):
 		kwargs.setdefault("widget", MultipleFileInput())
 		super().__init__(*args, **kwargs)
 
-	def clean(self, data, initial=None):
-		# Если данные - список файлов
-		if isinstance(data, list):
-			result = []
-			for file in data:
-				# Валидируем каждый файл отдельно
-				result.append(super().clean(file, initial))
-			return result
-		# Если один файл
-		return super().clean(data, initial)
-
 
 class CustomClearableFileInput(ClearableFileInput):
 	def __init__(self, attrs=None):
