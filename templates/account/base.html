@@ -85,7 +85,10 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped">
                             {% for obj in year.list %}
-                                <li class="account-list-item">
+                                <a id="exh-{{ obj.slug }}"
+                   class="account-list-item"
+                   href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
+                >
                                     <div class="cover account-cover">
                                         {% thumbnail obj.project_cover "100x100" crop="center" quality=75 as cover %}
                                             <img src="{{ cover.url }}">
@@ -119,7 +122,7 @@
                                             </a>
                                         </div>
                                     {% endif %}
-                                </li>
+                                </a>
                             {% endfor %}
                         </div>
                     </div>
