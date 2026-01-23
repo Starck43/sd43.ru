@@ -11,6 +11,9 @@
             <small class="text-muted">
                 {% if not user.is_authenticated %}
                     Войдите в систему, чтобы участвовать в оценке работ
+                    
+                {% elif is_owner %}
+                    Вы не можете голосовать за себя
                 {% elif is_jury %}
                     Срок оценки истек
                 {% else %}

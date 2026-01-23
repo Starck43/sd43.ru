@@ -738,6 +738,7 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 		context['html_classes'] = ['project']
 		context['owner'] = self.kwargs['owner']
+		context['is_owner'] = self.request.user.is_authenticated and self.object.owner.user == self.request.user
 		context['project_id'] = self.kwargs['project_id']
 		context['cache_timeout'] = 86400
 		context['today'] = now().date()

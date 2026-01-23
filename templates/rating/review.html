@@ -22,7 +22,7 @@
             Всего: <span class="sub-title">{{ portfolio.comments_portfolio.count }}</span>
         </div>
 
-        {% if user.is_authenticated %}
+        {% if user.is_authenticated and not is_owner %}
             <div class="cloned-instance-links" style="display:none">
                 <a
                         class="edit-instance-link"
