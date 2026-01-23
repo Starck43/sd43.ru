@@ -506,6 +506,10 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 			portfolios = Portfolio.objects.filter(
 				exhibition=exhibition
 			).select_related('owner').prefetch_related('nominations')
+			
+			if context['exhibition_status'] != 'active' and is_exhibitor:
+				portfolios = portfolios.objects.filter(owner__user=user)	
+					
 
 			# Группируем проекты по номинациям вручную
 			projects_by_nomination = {}
@@ -513,16 +517,14 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 				for nomination in portfolio.nominations.all():
 					if nomination.id not in projects_by_nomination:
 						projects_by_nomination[nomination.id] = []
-					if context['exhibition_status'] != 'active' and (
-						not is_exhibitor or user == portfolio.owner
-					):
-						projects_by_nomination[nomination.id].append({
-							'id': portfolio.id,
-							'title': portfolio.title,
-							'project_id': portfolio.project_id,
-							'owner_slug': portfolio.owner.slug,
-							'owner_name': portfolio.owner.name
-						})
+					
+					projects_by_nomination[nomination.id].append({
+						'id': portfolio.id,
+						'title': portfolio.title,
+						'project_id': portfolio.project_id,
+						'owner_slug': portfolio.owner.slug,
+						'owner_name': portfolio.owner.name
+					})
 
 			context['projects_by_nomination'] = projects_by_nomination
 
