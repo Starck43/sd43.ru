@@ -37,7 +37,7 @@
             <div class="account-grid">
                 {% if exhibitor.logo %}
                     <div class="logo exhibitors-logo account-logo">
-                        {% thumbnail exhibitor.logo "300x300" as logo %}
+                        {% thumbnail exhibitor.logo "300x" as logo %}
                             <img src="{{ logo.url }}">
                         {% empty %}
                             <img src="{% get_media_prefix %}site/no-image.png">
@@ -55,7 +55,7 @@
                             {% endif %}
 
                             {% if not label %}
-                                <div class="person-details-icon social-link">
+                                <div class="person-details-icon social-link btn-md">
                                     <svg class="icon {{ name }}">
                                         <use xlink:href="#logo-{{ name }}"></use>
                                     </svg>
