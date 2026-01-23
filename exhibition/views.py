@@ -34,6 +34,8 @@ from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from rating.utils import is_jury_member
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
+
+from .utils import is_exhibitors_member
 from .logic import send_email, send_email_async, set_user_group
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
@@ -466,6 +468,9 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		today = now().date()
 		exhibition = self.object
+		user = self.request.user
+		is_jury = is_jury_member(user)
+		is_exhibitor = is_exhibitors_member(user)
 
 		# Определяем статус выставки
 		context['exhibition_status'] = 'upcoming' if today < exhibition.date_start else \
@@ -477,7 +482,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		# - Всех пользователей во время активной выставки
 		context['show_projects'] = (
 				self.request.user.is_staff or
-				is_jury_member(self.request.user) or
+				is_jury or is_exhibitor or
 				context['exhibition_status'] == 'active'
 		)
 
@@ -493,7 +498,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		else:
 			context['win_nominations'] = None
 
-		# Загружаем проекты для показа если нужно
+		# Загружаем проекты для показа
 		if context['show_projects']:
 			# Используем прямой запрос чтобы избежать рекурсии с related_name
 
@@ -508,13 +513,16 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 				for nomination in portfolio.nominations.all():
 					if nomination.id not in projects_by_nomination:
 						projects_by_nomination[nomination.id] = []
-					projects_by_nomination[nomination.id].append({
-						'id': portfolio.id,
-						'title': portfolio.title,
-						'project_id': portfolio.project_id,
-						'owner_slug': portfolio.owner.slug,
-						'owner_name': portfolio.owner.name
-					})
+					if context['exhibition_status'] != 'active' and (
+						not is_exhibitor or user == portfolio.owner
+					):
+						projects_by_nomination[nomination.id].append({
+							'id': portfolio.id,
+							'title': portfolio.title,
+							'project_id': portfolio.project_id,
+							'owner_slug': portfolio.owner.slug,
+							'owner_name': portfolio.owner.name
+						})
 
 			context['projects_by_nomination'] = projects_by_nomination
 

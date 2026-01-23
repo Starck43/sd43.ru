@@ -507,7 +507,7 @@ class Portfolio(models.Model):
 
 	# Metadata
 	class Meta:
-		ordering = ['-exhibition__slug', 'order', 'title']  # '-' for DESC ordering
+		ordering = ['-exhibition__slug', 'order', 'title']
 		verbose_name = 'Портфолио'
 		verbose_name_plural = 'Портфолио работ'
 		db_table = 'portfolio'

@@ -434,6 +434,7 @@ class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, False)
 
 
+@admin.register(Events)
 class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	fieldsets = (
 		(None, {
@@ -460,6 +461,7 @@ class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
 
 
+@admin.register(Winners)
 class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	fieldsets = (
 		(None, {
@@ -556,7 +558,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	list_display = ('id', 'owner', '__str__', 'exhibition', 'nominations_list', 'status')
 	list_display_links = ('owner', '__str__')
-	list_filter = ('nominations__category', 'nominations', 'owner', 'status')
+	list_filter = ('nominations', 'owner', 'status')
 	search_fields = (
 		'title', 'owner__name', 'owner__user__first_name', 'owner__user__last_name', 'exhibition__title',
 		'nominations__title'
@@ -662,6 +664,3 @@ class MetaAdmin(admin.ModelAdmin):
 
 	root.short_description = 'Запись'
 
-
-admin.site.register(Events, EventsAdmin)
-admin.site.register(Winners, WinnersAdmin)
