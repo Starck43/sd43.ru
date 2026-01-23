@@ -16,7 +16,7 @@ from django.db import connection, OperationalError
 from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count
 from django.dispatch import receiver
 from django.forms import inlineformset_factory
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
@@ -35,7 +35,7 @@ from rating.models import Rating, Reviews
 from rating.utils import is_jury_member
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
 
-from .utils import is_exhibitors_member
+from .utils import is_exhibitor_of_exhibition
 from .logic import send_email, send_email_async, set_user_group
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
@@ -459,7 +459,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		try:
 			q = self.model.objects.prefetch_related('events', 'gallery').get(slug=slug)
 		except self.model.DoesNotExist:
-			q = None
+			raise Http404
 		return q
 
 	def get_context_data(self, **kwargs):
@@ -470,7 +470,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		exhibition = self.object
 		user = self.request.user
 		is_jury = is_jury_member(user)
-		is_exhibitor = is_exhibitors_member(user)
+		is_exhibitor = is_exhibitor_of_exhibition(user, exhibition)
 
 		# Определяем статус выставки
 		context['exhibition_status'] = 'upcoming' if today < exhibition.date_start else \
@@ -507,9 +507,13 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 				exhibition=exhibition
 			).select_related('owner').prefetch_related('nominations')
 			
-			if context['exhibition_status'] != 'active' and is_exhibitor:
-				portfolios = portfolios.objects.filter(owner__user=user)	
-					
+			if (
+				context['exhibition_status'] != 'active'
+				and is_exhibitor
+				and not is_jury
+				and not user.is_staff
+			):
+				portfolios = portfolios.filter(owner__user=user)	
 
 			# Группируем проекты по номинациям вручную
 			projects_by_nomination = {}
