@@ -176,7 +176,7 @@ class PersonAdmin(admin.ModelAdmin):
 	fieldsets = (
 		(None, {
 			'classes': ('person-block',),
-			'fields': ('user', ('logo',), 'name', 'slug', 'description', 'sort',)
+			'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
 		}),
 	)
 	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
