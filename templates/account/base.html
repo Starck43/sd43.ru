@@ -37,7 +37,7 @@
             <div class="account-grid">
                 {% if exhibitor.logo %}
                     <div class="logo exhibitors-logo account-logo">
-                        {% thumbnail exhibitor.logo "300x" as logo %}
+                        {% thumbnail exhibitor.logo "300" as logo %}
                             <img src="{{ logo.url }}">
                         {% empty %}
                             <img src="{% get_media_prefix %}site/no-image.png">
@@ -55,7 +55,7 @@
                             {% endif %}
 
                             {% if not label %}
-                                <div class="person-details-icon social-link btn-md">
+                                <div class="person-details-icon social-link btn-sm mt-2 mr-2">
                                     <svg class="icon {{ name }}">
                                         <use xlink:href="#logo-{{ name }}"></use>
                                     </svg>
@@ -85,33 +85,36 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped">
                             {% for obj in year.list %}
-                                <a id="exh-{{ obj.slug }}"
-                   class="account-list-item"
-                   href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
-                >
-                                    <div class="cover account-cover">
-                                        {% thumbnail obj.project_cover "100x100" crop="center" quality=75 as cover %}
-                                            <img src="{{ cover.url }}">
-                                        {% empty %}
-                                            <img src="{% get_media_prefix %}site/no-image.png">
-                                        {% endthumbnail %}
-                                    </div>
-                                    <div class="account-meta">
-                                        <h4 class="">{{ obj.title }}</h4>
-                                        <small class="form-text text-muted">
-                                            номинация:
-                                            {% for nom in obj.nominations.all %}
-                                                <i>{{ nom.title }}{% if not forloop.last %}, {% endif %}</i>
-                                            {% endfor %}
-                                            <br>
-                                            статус:
-                                            {% if obj.status %}
-                                                <span class="text-success">Опубликован</span>
-                                            {% else %}
-                                                <span class="text-danger">Скрыт</span>
-                                            {% endif %}
-                                        </small>
-                                    </div>
+                                <div class="account-list-item">
+                                    <a 
+                                        id="exh-{{ obj.slug }}"
+                                        class="account-list-item"
+                                        href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
+                                    >
+                                        <div class="cover account-cover">
+                                            {% thumbnail obj.project_cover "100" as cover %}
+                                                <img src="{{ cover.url }}">
+                                            {% empty %}
+                                                <img src="{% get_media_prefix %}site/no-image.png">
+                                            {% endthumbnail %}
+                                        </div>
+                                        <div class="account-meta">
+                                            <h4 class="">{{ obj.title }}</h4>
+                                            <small class="form-text text-muted">
+                                                номинация:
+                                                {% for nom in obj.nominations.all %}
+                                                    <i>{{ nom.title }}{% if not forloop.last %}, {% endif %}</i>
+                                                {% endfor %}
+                                                <br>
+                                                статус:
+                                                {% if obj.status %}
+                                                    <span class="text-success">Опубликован</span>
+                                                {% else %}
+                                                    <span class="text-danger">Скрыт</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </a>
                                     {% if user %}
                                         <div class="account-actions">
                                             <a class="admin-edit-link"
@@ -122,7 +125,7 @@
                                             </a>
                                         </div>
                                     {% endif %}
-                                </a>
+                                </div>
                             {% endfor %}
                         </div>
                     </div>
