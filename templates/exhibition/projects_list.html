@@ -39,7 +39,7 @@
 {% block link %}
     <div class="controls">
         <a
-                class="back-link centered"
+                class="back-link"
                 href="{{ parent_link }}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >
@@ -51,7 +51,7 @@
         {% if filter_attributes %}
             <a
                     href="#sidebarPrimary"
-                    class="filter-toggler centered d-lg-none"
+                    class="filter-toggler d-flex d-lg-none"
                     data-toggle="offcanvas"
                     data-target="#sidebarPrimary"
                     aria-controls="sidebarPrimary"
@@ -191,7 +191,7 @@
 
     {% else %}
 
-        <a class="back-link centered" href="{{ parent_link }}">
+        <a class="back-link" href="{{ parent_link }}">
             <svg class="icon arrow-icon arrow-left">
                 <use xlink:href="#arrow-icon"></use>
             </svg>

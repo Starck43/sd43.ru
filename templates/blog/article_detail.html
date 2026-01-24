@@ -33,7 +33,7 @@
 {% block link %}
     <div class="controls">
         <a
-                class="back-link centered"
+                class="back-link"
                 href="{{ parent_link }}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >

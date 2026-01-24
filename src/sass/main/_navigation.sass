@@ -36,6 +36,8 @@
 		display: block
 		width: 1.6rem
 		height: 1.6rem
+		padding: 0
+		margin: 0 var(--gap)
 		line-height: 1
 		color: $menu-text-color
 		background-color: transparent
@@ -108,7 +110,7 @@
 
 	.nav-link
 		display: block
-		padding: 0.5rem 1rem
+		padding: 0.2rem 1.5rem
 		text-decoration: none
 		position: relative
 		font-weight: 200
@@ -117,7 +119,7 @@
 		text-transform: lowercase
 		white-space: nowrap
 		text-align: center
-		transition: opacity 0.15s ease-in-out
+		transition: opacity 200ms ease-in-out
 
 		&:hover
 			color: $menu-text-color !important
@@ -130,13 +132,12 @@
 	.btn-close
 		margin: $container-margin-xs $container-margin-xs 0 auto
 		color: $menu-text-color
-		+mixins.media-min(lg)
-			display: none
 
 // Dropdown menu
 .dropdown-menu
 	position: absolute
 	display: block
+	width: 100%
 	margin: auto
 	padding: 0
 	background-color: $submenu-bg

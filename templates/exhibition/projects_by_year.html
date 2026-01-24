@@ -27,7 +27,7 @@
 {% block link %}
     <div class="controls">
         <a
-                class="back-link centered"
+                class="back-link"
                 href="{% if request.META.HTTP_REFERER %}{{ request.META.HTTP_REFERER }}{% else %}/{% endif %}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >
@@ -80,14 +80,14 @@
                                 {% endif %}
                             {% endwith %}
 
-                            <figcaption class="img-title">
+                            <figcaption class="img-title d-flex-column">
                                 <h2 class="project-title">{{ project_title }}</h2>
 
                                 {% if e.owner__name %}
                                     <div class="subtitle">{{ e.owner__name }}</div>
                                 {% endif %}
 
-                                <div class="meta">
+                                <div class="extra d-flex justify-between">
                                 </div>
                             </figcaption>
                         </figure>
@@ -100,7 +100,7 @@
 
     {% else %}
 
-        <a class="back-link centered" href="/">
+        <a class="back-link" href="/">
             <svg class="icon arrow-icon arrow-left">
                 <use xlink:href="#arrow-icon"></use>
             </svg>&nbsp;Вернуться на главную</a>

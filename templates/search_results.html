@@ -11,7 +11,7 @@
 {% block site_title %}
     {{ block.super }}
     <a
-            class="back-link centered"
+            class="back-link"
             href="/"
             onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
     >

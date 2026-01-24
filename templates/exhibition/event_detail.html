@@ -14,7 +14,7 @@
 {% block link %}
     <div class="controls">
         <a
-                class="back-link centered"
+                class="back-link"
                 href="{% if request.META.HTTP_REFERER %}{{ request.META.HTTP_REFERER }}{% else %}/{{ model_name }}/{% endif %}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >

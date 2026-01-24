@@ -46,7 +46,7 @@
 {% block link %}
     <div class="controls">
         <a
-                class="back-link centered"
+                class="back-link"
                 href="{% if request.META.HTTP_REFERER %}{{ request.META.HTTP_REFERER }}{% else %}/{{ model_name }}/{% endif %}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >
@@ -159,7 +159,7 @@
                                                     <h3 class="project-title">{{ e.title }}</h3>
                                                     <div class="extra d-flex justify-between">
                                                         {% if e.win_year %}
-                                                            <div class="portfolio-award centered">
+                                                            <div class="portfolio-award d-flex">
                                                                 <svg class="award">
                                                                     <use xlink:href="#award-icon"></use>
                                                                 </svg>
