@@ -26,6 +26,27 @@
 	label:not(:last-child)
 		display: none
 
+// Grid для account layouts
+.account-grid
+	display: grid
+	grid-template-columns: 1fr
+	gap: 0
+	+mixins.media-min(md)
+		grid-template-columns: 1fr 2fr
+		> .account-logo
+			padding-right: 1rem
+
+.account-card
+	grid-column: 1 / -1
+
+
+.account-meta
+	min-width: 0
+
+.account-actions
+	flex-shrink: 0
+
+
 .user-ratings
 	margin-top: 1rem
 

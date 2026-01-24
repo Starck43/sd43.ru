@@ -85,10 +85,9 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped">
                             {% for obj in year.list %}
-                                <div class="account-list-item d-flex gap-1">
+                                <div class="d-flex">
                                     <a 
                                         id="exh-{{ obj.slug }}"
-                                        class="account-list-item"
                                         href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
                                     >
                                         <div class="cover account-cover">
