@@ -83,7 +83,7 @@
                             <h4>{{ attr.0.group_name }}</h4>
                             <ol class="{{ attr.0.group }}-filters-group filters-group">
                                 {% for item in attr %}
-                                    <li class="form-check form-switch">
+                                    <li class="form-check form-switch d-flex align-center">
                                         <input class="form-check-input" id="{{ item.group }}-{{ item.id }}_id"
                                                type="checkbox" name="filter-group" value="{{ item.id }}">
                                         <label class="filter-checkbox form-check-label"
