@@ -39,18 +39,21 @@
 .account-card
 	grid-column: 1 / -1
 
-
-.account-meta
-	min-width: 0
-
-.account-portfolio-list img
-	max-width: 100px
-	width: 100%
-	height: 100%
-	object-fit: cover
-	
-.account-actions
-	flex-shrink: 0
+.account-portfolio-list
+	.account-cover
+		max-width: 80px
+		ooverflow: hidden
+		
+	img
+		width: 100%
+		height: 100%
+		object-fit: cover
+		
+	.account-meta
+		min-width: 0	
+			
+	.account-actions
+		flex-shrink: 0
 
 
 .user-ratings
