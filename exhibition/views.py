@@ -479,6 +479,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		# Показывать проекты в номинациях для:
 		# - Жюри и staff ВСЕГДА
+		# - Участники видят только свои выставленные проекты
 		# - Всех пользователей во время активной выставки
 		context['show_projects'] = (
 				self.request.user.is_staff or
@@ -508,7 +509,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 			).select_related('owner').prefetch_related('nominations')
 			
 			if (
-				context['exhibition_status'] != 'active'
+				context['exhibition_status'] == 'upcoming'
 				and is_exhibitor
 				and not is_jury
 				and not user.is_staff
