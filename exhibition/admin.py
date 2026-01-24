@@ -176,11 +176,11 @@ class PersonAdmin(admin.ModelAdmin):
 	fieldsets = (
 		(None, {
 			'classes': ('person-block',),
-			'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
+			'fields': ('user', ('logo',), 'name', 'slug', 'description', 'sort',)
 		}),
 	)
 	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
-	list_display = ('logo_thumb', 'name', 'description',)
+	list_display = ('logo_thumb', 'name', 'slug',)
 	search_fields = ('name', 'slug', 'description',)
 	list_display_links = ('logo_thumb', 'name',)
 	list_per_page = 20
@@ -203,7 +203,7 @@ class ProfileAdmin(admin.ModelAdmin):
 			'fields': ('address', 'phone', 'email', 'site', 'vk',)
 		}),
 	)
-	list_display = ('phone',)
+	list_display = ('phone', 'email',)
 
 
 @admin.register(Exhibitors)
@@ -251,7 +251,12 @@ class ExhibitorsAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.Model
 
 @admin.register(Jury)
 class JuryAdmin(PersonAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = PersonAdmin.fieldsets + MetaSeoFieldsAdmin.fieldsets
+	fieldsets = (
+        (None, {
+            'classes': ('person-block',),
+            'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
+        }),
+    ) + MetaSeoFieldsAdmin.fieldsets
 
 	list_display = ('logo_thumb', 'name', 'excerpt',)
 	list_display_links = ('logo_thumb', 'name',)

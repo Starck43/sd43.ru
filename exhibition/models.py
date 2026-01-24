@@ -187,6 +187,7 @@ class Organizer(Person, Profile):
 
 class Jury(Person):
 	excerpt = models.CharField('Краткое описание', max_length=255, null=True, blank=True)
+	
 	objects = UserManager()
 
 	# Metadata
