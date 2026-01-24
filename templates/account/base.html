@@ -55,7 +55,7 @@
                             {% endif %}
 
                             {% if not label %}
-                                <div class="person-details-icon social-link btn-sm mt-2 mr-2">
+                                <div class="person-details-icon social-link btn-sm ratio ratio-1x1 mt-2 mr-2">
                                     <svg class="icon {{ name }}">
                                         <use xlink:href="#logo-{{ name }}"></use>
                                     </svg>
@@ -85,7 +85,7 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped">
                             {% for obj in year.list %}
-                                <div class="account-list-item">
+                                <div class="account-list-item d-flex gap-1">
                                     <a 
                                         id="exh-{{ obj.slug }}"
                                         class="account-list-item"
