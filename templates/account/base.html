@@ -15,68 +15,79 @@
 {% block content %}
 
     {% user_display user as user_display %}
-    <section class="bg-light p-4">
-        <h2>Управление аккаунтом</h2>
-        <div>
-            Вы вошли как <b>{{ user.first_name }} {{ user.last_name }}</b> ({{ user_display }})<br/>
-            E-mail: <b>{{ user.email }}</b>
-            <p>
-                [<a class="mx-1" href="{% url 'account_logout' %}">{% trans 'Sign Out' %}</a>]
-                [<a class="mx-1" href="{% url 'account_email' %}">Сменить e-mail</a>]
-                {% if not user.is_staff %}
-                    [<a class="mx-1" href="{% url 'exhibition:deactivate-user' %}">Удалить аккаунт</a>]
-                {% endif %}
-            </p>
-        </div>
+    <section class="p-2">
+        <p>
+            Вы вошли как <b>{{ user.first_name }} {{ user.last_name }} ({{ user_display }})</b><br/>
+            E-mail: <b>{{ user.email|default:'<не указан>' }}</b>
+        </p>
+        <p>
+            [<a class="mx-1" href="{% url 'account_logout' %}">{% trans 'Sign Out' %}</a>]
+            [<a class="mx-1" href="{% url 'account_email' %}">Сменить e-mail</a>]
+            {% if not user.is_staff %}
+                [<a class="mx-1" href="{% url 'exhibition:deactivate-user' %}">Удалить аккаунт</a>]
+            {% endif %}
+        </p>
     </section>
 
 
-    {% if exhibitor %}
-        <section class="person-details-container d-flex-column bg-light mt-4">
-            <h2>Информация об участнике</h2>
-            <div class="account-grid">
-                {% if exhibitor.logo %}
-                    <div class="logo exhibitors-logo account-logo">
-                        {% thumbnail exhibitor.logo "300" as logo %}
-                            <img src="{{ logo.url }}">
-                        {% empty %}
-                            <img src="{% get_media_prefix %}site/no-image.png">
-                        {% endthumbnail %}
-                    </div>
-                {% endif %}
-
-                <div class="card bg-light">
-                    <div class="card-body">
-                        {% for name, label, value, link in exhibitor %}
-                            {% if value and label %}
-                                <div class="person-details-item">
-                                    <span class="card-text">{{ value }}</span>
-                                </div>
-                            {% endif %}
-
-                            {% if not label %}
-                                <div class="person-details-icon social-link btn-sm ratio ratio-1x1 mt-2 mr-2">
-                                    <svg class="icon {{ name }}">
-                                        <use xlink:href="#logo-{{ name }}"></use>
-                                    </svg>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="card-text account-card">
-                    {% if obj.about %}
-                        {{ obj.about }}
-                    {% else %}
-                        {{ obj.owner.description }}
+    {% with person=jury|default:exhibitor %}
+        {% if person %}
+            <section class="person-details-container d-flex-column p-2 mt-4">
+                <h2>Персональные данные</h2>
+                <div class="account-grid gap-2">
+                    {% if person.logo %}
+                        <div class="logo exhibitors-logo account-logo">
+                            {% thumbnail person.logo "300" as logo %}
+                                <img src="{{ logo.url }}" alt="{{ person.name }}">
+                            {% empty %}
+                                <img src="{% get_media_prefix %}site/no-image.png" alt="">
+                            {% endthumbnail %}
+                        </div>
                     {% endif %}
+
+                    <div class="">
+                        <div class="person-details-item">
+                            <h3 class="card-text m-0">{{ person.name }}</h3>
+                        </div>
+                        <div class="person-details-item">
+                            <span class="card-text">{{ person.description|safe }}</span>
+                        </div>
+                        {% if exhibitor %}
+                            {% for name, label, value, link in person %}
+                                {% if value and label %}
+                                    <div class="person-details-item">
+                                        <span class="card-text">{{ value }}</span>
+                                    </div>
+                                {% endif %}
+
+                                {% if not label %}
+                                    <div class="person-details-icon social-link btn-sm ratio ratio-1x1 mt-2 mr-2">
+                                        <svg class="icon {{ name }}">
+                                            <use xlink:href="#logo-{{ name }}"></use>
+                                        </svg>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="card-text account-card">
+                        {% if obj.about %}
+                            {{ obj.about }}
+                        {% else %}
+                            {{ obj.owner.description }}
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+
+        {% endif %}
+    {% endwith %}
+
+    {% if exhibitor %}
 
         {% if exh_portfolio %}
-            <section class="exh-portfolio bg-light p-4 mt-4">
+            <section class="exh-portfolio p-2 mt-4">
                 <h2>Выставочные проекты</h2>
                 <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
                 {% regroup exh_portfolio by exh_year as years %}
@@ -124,7 +135,7 @@
         {% endif %}
 
         {% if designer %}
-            <section class="add-portfolio bg-light p-4 mt-4">
+            <section class="add-portfolio p-2 mt-4">
                 <h2>Вневыставочные проекты</h2>
                 <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
 
@@ -178,7 +189,7 @@
             </section>
 
 
-            <section class="achievements bg-light p-4 mt-4">
+            <section class="achievements p-2 mt-4">
                 <h2>Достижения</h2>
 
                 {% if victories %}
@@ -221,7 +232,7 @@
                 {% endfor %}
             </section>
 
-            <section class="customers bg-light p-4 mt-4">
+            <section class="customers p-2 mt-4">
                 <h2>Главные заказчики</h2>
                 <div class="card bg-light mb-3">
                     <div class="card-body">
@@ -247,7 +258,7 @@
                 </div>
             </section>
 
-            <section class="customers bg-light p-4 mt-4">
+            <section class="customers p-2 mt-4">
                 <h2>Партнеры</h2>
                 <div class="card bg-light mb-3">
                     <div class="card-body">
@@ -276,7 +287,7 @@
 
 
         {% if articles %}
-            <section class="articles bg-light p-4 mt-4">
+            <section class="articles p-2 mt-4">
                 <h2>Статьи</h2>
                 {% for article in articles %}
                     {% with article.id as article_id %}
@@ -311,51 +322,60 @@
 
 
 
-    {% if rates %}
+    {% if rates or reviews %}
 
-        <section class="bg-light p-4 mt-4">
+        <section class="p-2 mt-4">
             <h2>Ваша активность</h2>
 
             <div class="user-ratings">
                 <h3>Выставленные оценки</h3>
                 <ol class="user-ratings-list mt-2">
                     {% for rate in rates %}
-                        <li class="user-rating">
+                        <li class="user-rating d-flex">
                             <span class="rating-counter">{{ forloop.counter }}.</span>
-                            <a class="rated-owner"
-                               href="{{ rate.portfolio.owner.get_absolute_url }}">{{ rate.portfolio.owner }}</a>
+                            <b>{{ rate.portfolio.exhibition }}:</b>
+                            <a class="rated-project"
+                               href="{% url 'exhibition:project-detail-url' owner=rate.portfolio.owner.slug project_id=rate.portfolio.project_id %}"
+                            >
+                                {{ rate.portfolio }}
+                            </a>
+                            <a class="rated-owner mr-auto" href="{{ rate.portfolio.owner.get_absolute_url }}">
+                                ({{ rate.portfolio.owner }})
+                            </a>
                             <span class="stars-block" title="{{ rate.portfolio.owner }}">
-					{% for i in 5|count_range %}
-                        <svg class="star{% if i < rate.star %} filled{% endif %}"><use
-                                xlink:href="#star-icon"></use></svg>
-                    {% endfor %}
-				</span>
+                                {% for i in 5|count_range %}
+                                    <svg class="star{% if i < rate.star %} filled{% endif %}"><use
+                                            xlink:href="#star-icon"></use></svg>
+                                {% endfor %}
+                            </span>
                         </li>
                     {% empty %}
-                        <i>оценки пока не выставлены</i>
+                        <i>нет выставленных оценок</i>
                     {% endfor %}
                 </ol>
             </div>
 
-            <div class="user-reviews">
-                <h3>Оставленные отзывы</h3>
-                <ol class="user-reviews-list mt-2">
-                    {% for review in reviews %}
-                        <li>
-                            <div class="comment-block card bg-light">
-                                <div class="card-header">
-                                    <a href="{{ review.portfolio.get_absolute_url|slice:':-1' }}#{{ review.id }}">
-                                        <h3 class="user-comment-title">{{ review.portfolio.title }}</h3></a>
-                                    <i>{{ review.posted_date|date:"d b Y" }}</i>
+            {% if not jury %}
+                <div class="user-reviews">
+                    <h3>Оставленные отзывы</h3>
+                    <ol class="user-reviews-list mt-2">
+                        {% for review in reviews %}
+                            <li>
+                                <div class="comment-block card bg-light">
+                                    <div class="card-header">
+                                        <a href="{{ review.portfolio.get_absolute_url|slice:':-1' }}#{{ review.id }}">
+                                            <h3 class="user-comment-title">{{ review.portfolio.title }}</h3></a>
+                                        <i>{{ review.posted_date|date:"d b Y" }}</i>
+                                    </div>
+                                    <pre class="card-body"><p>{{ review.message|decode_emoji }}</p></pre>
                                 </div>
-                                <pre class="card-body"><p>{{ review.message|decode_emoji }}</p></pre>
-                            </div>
-                        </li>
-                    {% empty %}
-                        <i>список пуст</i>
-                    {% endfor %}
-                </ol>
-            </div>
+                            </li>
+                        {% empty %}
+                            <i>нет оставленных отзывов</i>
+                        {% endfor %}
+                    </ol>
+                </div>
+            {% endif %}
 
         </section>
     {% endif %}

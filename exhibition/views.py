@@ -608,8 +608,8 @@ class WinnerProjectDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		rate = 0
 		if portfolio:
-			score = Rating.calculate(portfolio)
-			rate = score.average
+			stats = portfolio.get_rating_stats()
+			rate = stats['average']
 
 		if self.request.user.is_authenticated:
 			context['user_score'] = Rating.objects.filter(
@@ -1091,11 +1091,8 @@ def search_exhibitors(request):
 @login_required
 def account(request):
 	""" Личный кабинет зарегистрированных пользователей """
-	try:
-		# exhibitor = Exhibitors.objects.get(user=4)
-		exhibitor = Exhibitors.objects.get(user=request.user)
-	except Exhibitors.DoesNotExist:
-		exhibitor = None
+	exhibitor = Exhibitors.objects.filter(user=request.user).first()
+	jury = Jury.objects.filter(user=request.user).first()
 
 	designer = None
 	exh_portfolio = None
@@ -1117,7 +1114,6 @@ def account(request):
 		).order_by('-exh_year')
 
 		try:
-			# designer = Designer.objects.get(owner__user=4)
 			designer = Designer.objects.get(owner=exhibitor)
 
 			add_portfolio = designer.add_portfolio.all().annotate(
@@ -1148,11 +1144,13 @@ def account(request):
 
 	return render(request, 'account/base.html', {
 		'exhibitor': exhibitor,
+		'jury': jury,
 		'designer': designer,
 		'exh_portfolio': exh_portfolio,
 		'add_portfolio': add_portfolio,
 		'achievements': achievements,
 		'victories': victories,
+		'customers': customers,
 		'articles': articles,
 		'rates': rates,
 		'reviews': reviews

@@ -85,17 +85,20 @@ class AddRating(View):
 		delete_cached_fragment('portfolio', portfolio.id)
 		delete_cached_fragment('project', portfolio.id)
 
-		# Пересчитываем статистику
-		stats = Rating.objects.filter(portfolio=portfolio).first().calculate()
+		rating = Rating.objects.filter(portfolio=portfolio).first()
+		if rating:
+			rating.calculate()  # Обновляет атрибуты rating
+
+		stats = portfolio.get_rating_stats()  # Получаем словарь
 
 		response_data = {
 			'score': score,
-			'score_avg': stats.average,
+			'score_avg': stats['average'],
 			'author': portfolio.owner.name,
 			'is_jury': is_jury,
 			'is_new': created,
-			'jury_count': stats.jury_count,
-			'jury_avg': stats.jury_average
+			'jury_count': stats['jury_count'],
+			'jury_avg': stats['jury_average']
 		}
 
 		return JsonResponse(response_data, safe=False)

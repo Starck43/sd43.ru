@@ -27,13 +27,13 @@
     <input type="hidden" value="{{ portfolio.id }}" name="portfolio">
 
     {% if is_jury %}
-        <div class="rating-header d-flex">
-            <div class="jury-badge btn-sm">
+        <div class="rating-header d-flex align-center">
+            <div class="jury-badge btn-sm ratio">
                 <svg class="icon jury-icon">
                     <use xlink:href="#award-icon"></use>
                 </svg>
             </div>
-            <h3>Вы оцениваете как член жюри</h3>
+            <h3 class="m-0">Вы оцениваете как член жюри</h3>
         </div>
         <div class="mb-4">
             {% if not jury_can_rate %}

@@ -187,7 +187,7 @@ class Organizer(Person, Profile):
 
 class Jury(Person):
 	excerpt = models.CharField('Краткое описание', max_length=255, null=True, blank=True)
-	
+
 	objects = UserManager()
 
 	# Metadata
@@ -581,6 +581,28 @@ class Portfolio(models.Model):
 	@property
 	def slug(self):
 		return 'project-%s' % self.project_id
+
+	def get_rating_stats(self):
+		"""Получение статистики рейтингов в виде словаря"""
+
+		aggregates = self.ratings.aggregate(
+			total=models.Sum('star'),
+			average=models.Avg('star'),
+			count=models.Count('star')
+		)
+
+		jury_aggregates = self.ratings.filter(is_jury_rating=True).aggregate(
+			jury_average=models.Avg('star'),
+			jury_count=models.Count('star')
+		)
+
+		return {
+			'total': aggregates.get('total') or 0,
+			'average': aggregates.get('average') or 0.0,
+			'count': aggregates.get('count') or 0,
+			'jury_average': jury_aggregates.get('jury_average') or 0.0,
+			'jury_count': jury_aggregates.get('jury_count') or 0
+		}
 
 	def root_comments(self):
 		return self.comments_portfolio.filter(parent__isnull=True)

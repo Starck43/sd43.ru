@@ -184,6 +184,7 @@ class PersonAdmin(admin.ModelAdmin):
 	search_fields = ('name', 'slug', 'description',)
 	list_display_links = ('logo_thumb', 'name',)
 	list_per_page = 20
+	#inlines = [RatingInline, ReviewInline]
 
 	def save_model(self, request, obj, form, change):
 		if change and obj.user:
@@ -252,11 +253,12 @@ class ExhibitorsAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.Model
 @admin.register(Jury)
 class JuryAdmin(PersonAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	fieldsets = (
-        (None, {
-            'classes': ('person-block',),
-            'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
-        }),
-    ) + MetaSeoFieldsAdmin.fieldsets
+		(None, {
+			'classes': ('person-block',),
+			'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
 	list_display = ('logo_thumb', 'name', 'excerpt',)
 	list_display_links = ('logo_thumb', 'name',)
@@ -668,4 +670,3 @@ class MetaAdmin(admin.ModelAdmin):
 		return post
 
 	root.short_description = 'Запись'
-

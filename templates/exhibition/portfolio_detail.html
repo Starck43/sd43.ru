@@ -133,7 +133,9 @@
     {% endcache %}
 
     {% include "rating/rating_form.html" %}
-    {% include "rating/review.html" %}
+    {% if not is_jury %}
+        {% include "rating/review.html" %}
+    {% endif %}
 
 {% endblock content %}
 

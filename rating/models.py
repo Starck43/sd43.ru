@@ -87,27 +87,13 @@ class Rating(models.Model):
 		return True, "Можно оценивать"
 
 	def calculate(self):
-		""" Пересчет итоговых значений - обновляем для работы с is_jury_rating """
-
-		# Используем новый related_name 'ratings'
-		aggregates = self.portfolio.ratings.aggregate(
-			total=models.Sum('star'),
-			average=models.Avg('star'),
-			count=models.Count('star')
-		)
-
-		# Статистика по жюри
-		jury_aggregates = self.portfolio.ratings.filter(is_jury_rating=True).aggregate(
-			jury_average=models.Avg('star'),
-			jury_count=models.Count('star')
-		)
-
-		self.count = aggregates.get('count') or 0
-		self.total = aggregates.get('total') or 0
-		self.average = aggregates.get('average') or 0.0
-		self.jury_average = jury_aggregates.get('jury_average') or 0.0
-		self.jury_count = jury_aggregates.get('jury_count') or 0
-
+		"""Обновление атрибутов экземпляра рейтинга"""
+		stats = self.portfolio.get_rating_stats()
+		self.count = stats['count']
+		self.total = stats['total']
+		self.average = stats['average']
+		self.jury_average = stats['jury_average']
+		self.jury_count = stats['jury_count']
 		return self
 
 

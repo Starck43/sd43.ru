@@ -30,11 +30,8 @@
 .account-grid
 	display: grid
 	grid-template-columns: 1fr
-	gap: 0
 	+mixins.media-min(md)
 		grid-template-columns: 1fr 2fr
-		> .account-logo
-			padding-right: 1rem
 
 .account-card
 	grid-column: 1 / -1
@@ -76,20 +73,20 @@
 	//border: 1px solid $highlight-border-color
 
 	.rating-counter
-		min-width: 26px
 		+mixins.media-max(sm)
 			display: none
 
-	.rated-owner
-		margin-right: 10px
-		flex: auto
+	.rated-project
 		font-weight: bold
+
+	.rated-owner
+		flex: auto
 
 	.stars-block
 		.star
 			position: relative
-			height: 18px
-			width: 18px
+			height: 22px
+			width: 22px
 			fill: $star-off-color
 
 			&.filled
