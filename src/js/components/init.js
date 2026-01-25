@@ -186,6 +186,10 @@ function initCollapsedBlocks() {
 
     collapsedBlocks.forEach((item) => {
         item.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A' || e.target.closest('a')) {
+                return;
+            }
+
             if (e.currentTarget.classList.contains('collapsed')) {
                 e.currentTarget.classList.remove('collapsed');
                 e.currentTarget.classList.add('expanded');
