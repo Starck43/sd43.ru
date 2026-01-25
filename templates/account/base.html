@@ -83,9 +83,9 @@
                 {% for year in years %}
                     <div class="card bg-light mb-3">
                         <h3 class="card-header">{{ year.grouper }}</h3>
-                        <div class="card-body portfolio-grouped">
+                        <div class="card-body portfolio-grouped d-flex-column gap-2">
                             {% for obj in year.list %}
-                                <div class="account-portfolio-list d-flex gap-1">
+                                <div class="account-portfolio-list d-flex w-100">
                                     <a 
                                         id="exh-{{ obj.slug }}"
                                         class="d-flex" 
@@ -93,24 +93,24 @@
                                     >
                                         <div class="account-cover ratio ratio-1x1">
                                             {% thumbnail obj.project_cover "100" as cover %}
-                                                <img src="{{ cover.url }}">
+                                                <img src="{{ cover.url }}" alt="{{ obj.title }}">
                                             {% empty %}
-                                                <img src="{% get_media_prefix %}site/no-image.png">
+                                                <img src="{% get_media_prefix %}site/no-image.png" alt="">
                                             {% endthumbnail %}
                                         </div>
                                         <div class="account-meta">
                                             <h4 class="">{{ obj.title }}</h4>
-                                            <small class="form-text text-muted">
-                                                номинация:
+                                            <small class="form-text">
+                                                Номинация:
                                                 {% for nom in obj.nominations.all %}
-                                                    <i>{{ nom.title }}{% if not forloop.last %}, {% endif %}</i>
+                                                    <b>{{ nom.title }}{% if not forloop.last %}, {% endif %}</b>
                                                 {% endfor %}
                                                 <br>
-                                                статус:
+                                                Статус:
                                                 {% if obj.status %}
-                                                    <span class="text-success">Опубликован</span>
+                                                    <b class="status-success">Опубликован</b>
                                                 {% else %}
-                                                    <span class="text-danger">Скрыт</span>
+                                                    <b class="status-warning">Скрыт</b>
                                                 {% endif %}
                                             </small>
                                         </div>

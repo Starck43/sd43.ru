@@ -38,8 +38,10 @@ body {
   -ms-flex-direction: column;
   flex-direction: column;
   min-height: 100vh;
+  width: 100vw;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 * {
   -webkit-box-sizing: border-box;
@@ -339,10 +341,10 @@ img[data-sizes=auto] {
   -ms-flex-pack: center;
   justify-content: center;
 }
-.me-auto {
+.mr-auto {
   margin-right: auto !important;
 }
-.ms-auto {
+.ml-auto {
   margin-left: auto !important;
 }
 .mt-1 {
@@ -543,7 +545,7 @@ form:not(.nav-search) > * {
 }
 .card-header {
   padding: 0.5rem 1rem;
-  margin-bottom: 0;
+  margin: 0;
   background-color: rgba(0, 0, 0, 0.03);
   border-bottom: 1px solid rgba(0, 0, 0, 0.125);
 }
@@ -720,53 +722,6 @@ form:not(.nav-search) > * {
   -ms-flex-direction: column;
   flex-direction: column;
 }
-.account-grid {
-  display: -ms-grid;
-  display: grid;
-  -ms-grid-columns: 1fr;
-  grid-template-columns: 1fr;
-  gap: 0;
-}
-@media (min-width: 768px) {
-  .account-grid {
-    -ms-grid-columns: 1fr 2fr;
-    grid-template-columns: 1fr 2fr;
-  }
-  .account-grid > .account-logo {
-    padding-right: 1rem;
-  }
-}
-.account-card {
-  grid-column: 1/-1;
-}
-.account-list-item {
-  display: -ms-grid;
-  display: grid;
-  -ms-grid-columns: auto 1fr auto;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.75rem;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-  margin: 0.75rem 0;
-}
-.account-logo,
-.account-cover {
-  width: 60px;
-}
-@media (min-width: 1200px) {
-  .account-logo,
-  .account-cover {
-    width: 80px;
-  }
-}
-.account-meta {
-  min-width: 0;
-}
-.account-actions {
-  -ms-flex-negative: 0;
-  flex-shrink: 0;
-}
 .navbar {
   position: relative;
   display: -webkit-box;
@@ -818,6 +773,8 @@ form:not(.nav-search) > * {
   display: block;
   width: 1.6rem;
   height: 1.6rem;
+  padding: 0;
+  margin: 0 var(--gap);
   line-height: 1;
   color: #fff;
   background-color: transparent;
@@ -940,7 +897,7 @@ form:not(.nav-search) > * {
 }
 .navbar .nav-link {
   display: block;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 1rem;
   text-decoration: none;
   position: relative;
   font-weight: 200;
@@ -949,8 +906,11 @@ form:not(.nav-search) > * {
   text-transform: lowercase;
   white-space: nowrap;
   text-align: center;
-  -webkit-transition: opacity 0.15s ease-in-out;
-  transition: opacity 0.15s ease-in-out;
+  -webkit-transition: opacity 200ms ease-in-out;
+  transition: opacity 200ms ease-in-out;
+}
+.navbar .nav-link.dropdown-toggle {
+  padding: 0.2rem 1.5rem;
 }
 .navbar .nav-link:hover {
   color: #fff !important;
@@ -959,19 +919,17 @@ form:not(.nav-search) > * {
 .navbar .account-link {
   color: #fff;
   font-weight: 300;
+  border: 1px solid #fff;
+  border-radius: 0.25rem;
 }
 .navbar .btn-close {
   margin: 0.75rem 0.75rem 0 auto;
   color: #fff;
 }
-@media (min-width: 992px) {
-  .navbar .btn-close {
-    display: none;
-  }
-}
 .dropdown-menu {
   position: absolute;
   display: block;
+  width: 100%;
   margin: auto;
   padding: 0;
   background-color: rgb(39.8095238095, 23.5238095238, 90.4761904762);
@@ -1029,7 +987,7 @@ form:not(.nav-search) > * {
 }
 .dropdown-toggle::after {
   position: absolute !important;
-  top: 5px;
+  top: 0;
 }
 .dropdown-item {
   display: block;
@@ -1943,6 +1901,10 @@ form:not(.nav-search) > * {
     grid-template-columns: repeat(auto-fill, minmax(48%, 1fr)) !important;
   }
 }
+.grid.partners-list img {
+  -o-object-fit: contain !important;
+  object-fit: contain !important;
+}
 .grid .grid-cell {
   position: relative;
   color: #160D32;
@@ -2521,13 +2483,13 @@ h4 {
   -ms-flex-align: center;
   align-items: center;
 }
-.filter-toggler {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
+.controls .filter-toggler {
+  position: absolute;
+  top: 0;
+  right: 0;
   gap: 4px;
 }
-.filter-toggler svg {
+.controls .filter-toggler svg {
   width: 1.5rem;
   height: 1.5rem;
 }
@@ -2747,6 +2709,7 @@ h4 {
   -webkit-box-flex: 1;
   -ms-flex: 1;
   flex: 1;
+  width: 100%;
 }
 @media (min-width: 1400px) {
   .container .content {
