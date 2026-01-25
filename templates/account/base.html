@@ -115,16 +115,6 @@
                                             </small>
                                         </div>
                                     </a>
-                                    {% if user %}
-                                        <div class="account-actions">
-                                            <a class="admin-edit-link"
-                                               href="{% url 'exhibition:portfolio-upload-url' obj.id %}">
-                                                <svg>
-                                                    <use xlink:href="#edit-icon"></use>
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
