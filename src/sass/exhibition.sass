@@ -68,7 +68,7 @@
 	.exhibition-details
 		.exhibition-description
 			margin: 0 auto 3vh
-			width: max-content
+			width: auto
 
 			p
 				padding: 0 0 0.5em
@@ -92,13 +92,10 @@
 	.event-datetime p
 		margin-bottom: 0
 
-	.nominations-block
-		.subtitle
-			text-transform: lowercase
-			font-weight: 400
 
-		a.exhibitor-link
-			color: $text-color
+	.subtitle
+		font-weight: 400
+
 
 	.exh-title
 		justify-content: start
@@ -108,7 +105,7 @@
 			padding: 0
 
 			> li
-				padding: 1em
+				padding: 0.5rem 1rem
 				background-color: $highlight-block-bg
 
 				&:not(.collapsed):not(.expanded):not(:last-child)

@@ -481,6 +481,11 @@ img[data-sizes=auto] {
 .text-muted {
   color: #6c757d !important;
 }
+.list-style-none {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
 .fixed-top {
   position: fixed;
   top: 0;
@@ -919,9 +924,10 @@ form:not(.nav-search) > * {
   -webkit-box-direction: normal;
   -ms-flex-direction: row;
   flex-direction: row;
-  list-style: none;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   padding: 0;
+  list-style: none;
 }
 @media (max-width: 991.99px) {
   .navbar .navbar-items {
@@ -2785,7 +2791,8 @@ h4 {
   }
 }
 .home .content {
-  max-width: 1200px;
+  max-width: 1000px;
+  margin: auto;
 }
 .home h1 {
   line-height: 1;

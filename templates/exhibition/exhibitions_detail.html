@@ -86,7 +86,7 @@
 
     {% endcache %}
 
-    <h1>
+    <h1 class="flex-content">
         {{ object.title }}
 
         {% if user.is_staff %}
@@ -104,7 +104,7 @@
 
 
 {% block content %}
-    <div class="exhibition-container">
+    <div class="exhibition-container mt-2">
         <div class="exhibition-details">
             <div class="exhibition-description description">{{ object.description|safe }}</div>
 
@@ -122,7 +122,7 @@
         {% endif %}
 
         <div id="nominations" class="nominations-block">
-            {% if exhibition_status == 'finished' and win_nominations %}
+            {% if win_nominations %}
                 <h2 class="nominations-title exh-title">
                     Победители в номинациях
                 </h2>
@@ -149,7 +149,7 @@
                 </h2>
                 <ol class="d-flex-column gap-1">
                     {% for nomination in object.nominations.all %}
-                        <li class="nomination-item {% if show_projects %}collapsed{% endif %}">
+                        <li class="nomination-item {% if show_projects %}collapsed{% else %}pb-1{% endif %}">
                             <h3 class="exh-title subtitle">{{ nomination.title }}</h3>
 
                             {% if show_projects %}
@@ -157,7 +157,7 @@
                                     {% with nomination_projects=projects_by_nomination|get_item:nomination.id %}
                                         {% if nomination_projects %}
                                             {% for project in nomination_projects %}
-                                                <li>
+                                                <li class="mb-0">
                                                     <a href="{% url 'exhibition:project-detail-url' project.owner_slug project.project_id %}"
                                                        class="project-link">
                                                         {{ project.title|default:"Без названия" }}
@@ -181,7 +181,7 @@
 
             <div id="exhibitors" class="exhibitors-block">
                 <h2 class="exhibitors-title exh-title">{{ object.exhibitors.first|verbose_name_plural }}</h2>
-                <ol>
+                <ol class="d-flex-column gap-1">
                     {% for item in object.exhibitors.all %}
                         <li>
                             <a href="{{ item.get_absolute_url }}">

@@ -8,17 +8,17 @@
 
 {% block content %}
 
-	{% cache cache_timeout persons absolute_url exh_year %}
-	<ol>
-		{% for person in object_list %}
-		<li>
-			<a href="{{ person.get_absolute_url }}"><h3>{{ person }}</h3></a>
-		</li>
-		{% empty %}
-			<h3>пока не определены!</h3>
-		{% endfor %}
-	</ol>
-	{% endcache %}
+    {% cache cache_timeout persons absolute_url exh_year %}
+        <ol class="list-style-none mt-2">
+            {% for person in object_list %}
+                <li>
+                    <a href="{{ person.get_absolute_url }}"><h3 class="mt-0">{{ person }}</h3></a>
+                </li>
+            {% empty %}
+                <h3>пока не определены!</h3>
+            {% endfor %}
+        </ol>
+    {% endcache %}
 
 {% endblock content %}
 
