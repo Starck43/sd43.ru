@@ -39,11 +39,14 @@
 .account-card
 	grid-column: 1 / -1
 
-.account-portfolio-list
+.account-portfolio-item
 	.account-cover
+		width: 80px
+		flex: 1 0 80px
 		overflow: hidden
-		+mixins.media-max(md)
-			max-width: 80px
+		+mixins.media-min(lg)
+			width: 100px
+			flex: 1 0 100px
 
 	img
 		width: 100%

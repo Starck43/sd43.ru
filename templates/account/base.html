@@ -85,13 +85,13 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped d-flex-column gap-2">
                             {% for obj in year.list %}
-                                <div class="account-portfolio-list d-flex">
-                                    <a 
-                                        id="exh-{{ obj.slug }}"
-                                        class="d-flex" 
-                                        href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
+                                <div class="account-portfolio-item d-flex">
+                                    <a
+                                            id="exh-{{ obj.slug }}"
+                                            class="d-flex"
+                                            href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
                                     >
-                                        <div class="account-cover ratio ratio-1x1">
+                                        <div class="account-cover">
                                             {% thumbnail obj.project_cover "100" as cover %}
                                                 <img src="{{ cover.url }}" alt="{{ obj.title }}">
                                             {% empty %}
@@ -110,7 +110,7 @@
                                                 {% if obj.status %}
                                                     <b class="status status-success">Опубликован</b>
                                                 {% else %}
-                                                    <b class="status status-warning">Скрыт</b>
+                                                    <b class="status status-warning">На модерации</b>
                                                 {% endif %}
                                             </small>
                                         </div>
@@ -141,24 +141,36 @@
                 <div class="card bg-light mb-3">
                     <div class="card-body">
                         {% for obj in add_portfolio %}
-                            <li class="account-list-item">
-                                <div class="cover account-cover">
-                                    {% thumbnail obj.project_cover "100x100" crop="center" quality=75 as cover %}
-                                        <img src="{{ cover.url }}">
-                                    {% empty %}
-                                        <img src="{% get_media_prefix %}site/no-image.png">
-                                    {% endthumbnail %}
-                                </div>
-                                <div class="meta account-meta">
-                                    <h4 class="">{{ obj.title }}</h4>
-                                    <small class="form-text">статус:
-                                        {% if obj.status %}
-                                            <span class="text-success">Опубликован</span>
-                                        {% else %}
-                                            <span class="text-danger">На модерации</span>
-                                        {% endif %}
-                                    </small>
-                                </div>
+                            <div class="account-portfolio-item d-flex">
+                                <a
+                                        id="exh-{{ obj.slug }}"
+                                        class="d-flex"
+                                        href="{{ obj.get_absolute_url }}" title="{{ obj.title }}"
+                                >
+                                    <div class="account-cover">
+                                        {% thumbnail obj.project_cover "100" as cover %}
+                                            <img src="{{ cover.url }}" alt="{{ obj.title }}">
+                                        {% empty %}
+                                            <img src="{% get_media_prefix %}site/no-image.png" alt="">
+                                        {% endthumbnail %}
+                                    </div>
+                                    <div class="account-meta">
+                                        <h4>{{ obj.title|default:'Заголовок отсутствует' }}</h4>
+                                        <small class="form-text">
+                                            Номинация:
+                                            {% for nom in obj.nominations.all %}
+                                                <b>{{ nom.title }}{% if not forloop.last %}, {% endif %}</b>
+                                            {% endfor %}
+                                            <br>
+                                            Статус:
+                                            {% if obj.status %}
+                                                <b class="status status-success">Опубликован</b>
+                                            {% else %}
+                                                <b class="status status-warning">На модерации</b>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </a>
                                 {% if user %}
                                     <div class="account-actions">
                                         <a class="admin-edit-link"
@@ -169,7 +181,7 @@
                                         </a>
                                     </div>
                                 {% endif %}
-                            </li>
+                            </div>
                         {% endfor %}
                     </div>
                 </div>
@@ -181,7 +193,7 @@
 
                 {% if victories %}
                     <div class="card bg-light mb-3">
-                        <h3 class="card-header">победы на Сфера-Дизайна</h3>
+                        <h3 class="card-header">Победы на выставке Сфера-Дизайна</h3>
                         <div class="card-body">
                             <ol>
                                 {% for obj in victories %}
@@ -218,143 +230,145 @@
                     <p>нет достижений</p>
                 {% endfor %}
             </section>
+
+            <section class="customers bg-light p-4 mt-4">
+                <h2>Главные заказчики</h2>
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        {% for obj in designer.customers.all %}
+                            <li class="account-list-item">
+                                <div class="logo account-logo">
+                                    {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
+                                        <img src="{{ logo.url }}">
+                                    {% empty %}
+                                        <img src="{% get_media_prefix %}site/no-image.png">
+                                    {% endthumbnail %}
+                                </div>
+                                <div class="meta account-meta">
+                                    <h4 class="card-title">{{ obj.name }}</h4>
+                                    {% if obj.link %}
+                                        <p class="card-text"><small class="text-muted">ссылка на сайт: <a
+                                                href="{{ obj.link }}">{{ obj.link }}</a></small></p>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="customers bg-light p-4 mt-4">
+                <h2>Партнеры</h2>
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        {% for obj in designer.partners.all %}
+                            <li class="account-list-item">
+                                <div class="logo account-logo">
+                                    {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
+                                        <img src="{{ logo.url }}">
+                                    {% empty %}
+                                        <img src="{% get_media_prefix %}site/no-image.png">
+                                    {% endthumbnail %}
+                                </div>
+                                <div class="meta account-meta">
+                                    <h4 class="card-title">{{ obj.name }}</h4>
+                                    {% if obj.link %}
+                                        <p class="card-text"><small class="text-muted">ссылка на сайт: <a
+                                                href="{{ obj.link }}">{{ obj.link }}</a></small></p>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
         {% endif %}
 
-        <section class="customers bg-light p-4 mt-4">
-            <h2>Главные заказчики</h2>
-            <div class="card bg-light mb-3">
-                <div class="card-body">
-                    {% for obj in designer.customers.all %}
-                        <li class="account-list-item">
-                            <div class="logo account-logo">
-                                {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
-                                    <img src="{{ logo.url }}">
-                                {% empty %}
-                                    <img src="{% get_media_prefix %}site/no-image.png">
-                                {% endthumbnail %}
-                            </div>
-                            <div class="meta account-meta">
-                                <h4 class="card-title">{{ obj.name }}</h4>
-                                {% if obj.link %}
-                                    <p class="card-text"><small class="text-muted">ссылка на сайт: <a
-                                            href="{{ obj.link }}">{{ obj.link }}</a></small></p>
-                                {% endif %}
-                            </div>
-                        </li>
-                    {% endfor %}
-                </div>
-            </div>
-        </section>
 
-        <section class="customers bg-light p-4 mt-4">
-            <h2>Партнеры</h2>
-            <div class="card bg-light mb-3">
-                <div class="card-body">
-                    {% for obj in designer.partners.all %}
-                        <li class="account-list-item">
-                            <div class="logo account-logo">
-                                {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
-                                    <img src="{{ logo.url }}">
-                                {% empty %}
-                                    <img src="{% get_media_prefix %}site/no-image.png">
-                                {% endthumbnail %}
-                            </div>
-                            <div class="meta account-meta">
-                                <h4 class="card-title">{{ obj.name }}</h4>
-                                {% if obj.link %}
-                                    <p class="card-text"><small class="text-muted">ссылка на сайт: <a
-                                            href="{{ obj.link }}">{{ obj.link }}</a></small></p>
+        {% if articles %}
+            <section class="articles bg-light p-4 mt-4">
+                <h2>Статьи</h2>
+                {% for article in articles %}
+                    {% with article.id as article_id %}
+
+                        <article id="article-{{ article_id }}" class="card bg-light mb-3">
+                            <h3 class="card-header">
+                                <a href="{% url 'blog:article-detail-url' article_id %}">{{ article.title }}</a>
+                                {% if user.is_staff %}
+                                    <a class="admin-edit-link"
+                                       href="{% url 'article'|admin_change_url:"blog" article.id %}">
+                                        <svg>
+                                            <use xlink:href="#edit-icon"></use>
+                                        </svg>
+                                    </a>
                                 {% endif %}
+                                <div class="modified-date">{{ article.modified_date|date:"d.m.Y" }}</div>
+                            </h3>
+
+                            <div class="card-body">
+                                {{ article.content|safe|truncatechars_html:350 }}
+                                <div><u><i><a href="{% url 'blog:article-detail-url' article_id %}" class="link-dark">Перейти
+                                    к статье</a></i></u></div>
                             </div>
-                        </li>
-                    {% endfor %}
-                </div>
-            </div>
-        </section>
-    {% else %}
-        <div class="my-3">
-            <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">Добавить портфолио</a>
-        </div>
+                        </article>
+
+                    {% endwith %}
+                {% endfor %}
+            </section>
+        {% endif %}
+
     {% endif %}
 
 
-    {% if articles %}
-        <section class="articles bg-light p-4 mt-4">
-            <h2>Статьи</h2>
-            {% for article in articles %}
-                {% with article.id as article_id %}
 
-                    <article id="article-{{ article_id }}" class="card bg-light mb-3">
-                        <h3 class="card-header">
-                            <a href="{% url 'blog:article-detail-url' article_id %}">{{ article.title }}</a>
-                            {% if user.is_staff %}
-                                <a class="admin-edit-link"
-                                   href="{% url 'article'|admin_change_url:"blog" article.id %}">
-                                    <svg>
-                                        <use xlink:href="#edit-icon"></use>
-                                    </svg>
-                                </a>
-                            {% endif %}
-                            <div class="modified-date">{{ article.modified_date|date:"d.m.Y" }}</div>
-                        </h3>
+    {% if rates %}
 
-                        <div class="card-body">
-                            {{ article.content|safe|truncatechars_html:350 }}
-                            <div><u><i><a href="{% url 'blog:article-detail-url' article_id %}" class="link-dark">Перейти
-                                к статье</a></i></u></div>
-                        </div>
-                    </article>
+        <section class="bg-light p-4 mt-4">
+            <h2>Ваша активность</h2>
 
-                {% endwith %}
-            {% endfor %}
-        </section>
-    {% endif %}
-
-
-    <section class="bg-light p-4 mt-4">
-        <h2>Ваша активность</h2>
-
-        <div class="user-ratings">
-            <h3>выставленные оценки</h3>
-            <ol class="user-ratings-list mt-2">
-                {% for rate in rates %}
-                    <li class="user-rating">
-                        <span class="rating-counter">{{ forloop.counter }}.</span>
-                        <a class="rated-owner"
-                           href="{{ rate.portfolio.owner.get_absolute_url }}">{{ rate.portfolio.owner }}</a>
-                        <span class="stars-block" title="{{ rate.portfolio.owner }}">
+            <div class="user-ratings">
+                <h3>Выставленные оценки</h3>
+                <ol class="user-ratings-list mt-2">
+                    {% for rate in rates %}
+                        <li class="user-rating">
+                            <span class="rating-counter">{{ forloop.counter }}.</span>
+                            <a class="rated-owner"
+                               href="{{ rate.portfolio.owner.get_absolute_url }}">{{ rate.portfolio.owner }}</a>
+                            <span class="stars-block" title="{{ rate.portfolio.owner }}">
 					{% for i in 5|count_range %}
                         <svg class="star{% if i < rate.star %} filled{% endif %}"><use
                                 xlink:href="#star-icon"></use></svg>
                     {% endfor %}
 				</span>
-                    </li>
-                {% empty %}
-                    <i>оценки пока не выставлены</i>
-                {% endfor %}
-            </ol>
-        </div>
+                        </li>
+                    {% empty %}
+                        <i>оценки пока не выставлены</i>
+                    {% endfor %}
+                </ol>
+            </div>
 
-        <div class="user-reviews">
-            <h3>оставленные отзывы</h3>
-            <ol class="user-reviews-list mt-2">
-                {% for review in reviews %}
-                    <li>
-                        <div class="comment-block card bg-light">
-                            <div class="card-header">
-                                <a href="{{ review.portfolio.get_absolute_url|slice:':-1' }}#{{ review.id }}">
-                                    <h3 class="user-comment-title">{{ review.portfolio.title }}</h3></a>
-                                <i>{{ review.posted_date|date:"d b Y" }}</i>
+            <div class="user-reviews">
+                <h3>Оставленные отзывы</h3>
+                <ol class="user-reviews-list mt-2">
+                    {% for review in reviews %}
+                        <li>
+                            <div class="comment-block card bg-light">
+                                <div class="card-header">
+                                    <a href="{{ review.portfolio.get_absolute_url|slice:':-1' }}#{{ review.id }}">
+                                        <h3 class="user-comment-title">{{ review.portfolio.title }}</h3></a>
+                                    <i>{{ review.posted_date|date:"d b Y" }}</i>
+                                </div>
+                                <pre class="card-body"><p>{{ review.message|decode_emoji }}</p></pre>
                             </div>
-                            <pre class="card-body"><p>{{ review.message|decode_emoji }}</p></pre>
-                        </div>
-                    </li>
-                {% empty %}
-                    <i>список пуст</i>
-                {% endfor %}
-            </ol>
-        </div>
+                        </li>
+                    {% empty %}
+                        <i>список пуст</i>
+                    {% endfor %}
+                </ol>
+            </div>
 
-    </section>
+        </section>
+    {% endif %}
+
 
 {% endblock content %}

@@ -90,7 +90,7 @@
 
             <li class="nav-item">
                 <a class="nav-link account-link" aria-current="page"
-                   href="{% if user.is_authenticated and user.is_staff %}/admin/{% elif user.is_authenticated %}/account/{% else %}/accounts/login/{% endif %}"
+                   href="{% if user.is_authenticated and user.is_staff %}/admin/{% elif user.is_authenticated %}/account/{% else %}/accounts/login/?next={{ request.get_full_path|urlencode }}{% endif %}"
                    rel="nofollow">
                     {% if user.is_authenticated %}{{ request.user.username }}{% else %}Войти{% endif %}
                 </a>
