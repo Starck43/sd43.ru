@@ -77,7 +77,7 @@
 
         {% if exh_portfolio %}
             <section class="exh-portfolio bg-light p-4 mt-4">
-                <h2>Выставленные проекты</h2>
+                <h2>Выставочные проекты</h2>
                 <a href="/portfolio/add" class="btn btn-outline mb-3" type="button">+ Добавить портфолио</a>
                 {% regroup exh_portfolio by exh_year as years %}
                 {% for year in years %}
@@ -85,7 +85,7 @@
                         <h3 class="card-header">{{ year.grouper }}</h3>
                         <div class="card-body portfolio-grouped d-flex-column gap-2">
                             {% for obj in year.list %}
-                                <div class="account-portfolio-list d-flex w-100">
+                                <div class="account-portfolio-list d-flex">
                                     <a 
                                         id="exh-{{ obj.slug }}"
                                         class="d-flex" 
@@ -99,7 +99,7 @@
                                             {% endthumbnail %}
                                         </div>
                                         <div class="account-meta">
-                                            <h4 class="">{{ obj.title }}</h4>
+                                            <h4>{{ obj.title|default:'Заголовок отсутствует' }}</h4>
                                             <small class="form-text">
                                                 Номинация:
                                                 {% for nom in obj.nominations.all %}
@@ -108,9 +108,9 @@
                                                 <br>
                                                 Статус:
                                                 {% if obj.status %}
-                                                    <b class="status-success">Опубликован</b>
+                                                    <b class="status status-success">Опубликован</b>
                                                 {% else %}
-                                                    <b class="status-warning">Скрыт</b>
+                                                    <b class="status status-warning">Скрыт</b>
                                                 {% endif %}
                                             </small>
                                         </div>
@@ -151,7 +151,7 @@
                                 </div>
                                 <div class="meta account-meta">
                                     <h4 class="">{{ obj.title }}</h4>
-                                    <small class="form-text text-muted">статус:
+                                    <small class="form-text">статус:
                                         {% if obj.status %}
                                             <span class="text-success">Опубликован</span>
                                         {% else %}

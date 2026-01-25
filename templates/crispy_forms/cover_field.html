@@ -45,7 +45,7 @@
     {% endif %}
 
     {% if field.help_text %}
-        <small class="form-text text-muted d-block mt-1">{{ field.help_text|safe }}</small>
+        <small class="form-text d-block mt-1">{{ field.help_text|safe }}</small>
     {% endif %}
 
     {% for error in field.errors %}

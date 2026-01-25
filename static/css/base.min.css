@@ -471,35 +471,29 @@ form:not(.nav-search) .form-group > label {
 form:not(.nav-search) > * {
   margin-bottom: 1rem;
 }
+.status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+}
 .status-success {
   color: #0f5132;
   background-color: #d1e7dd;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
 }
 .status-warning {
   color: #664d03;
   background-color: #fff3cd;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
 }
 .status-error {
   color: #721c24;
   background-color: #f8d7da;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
 }
 .status-info {
   color: #055160;
   background-color: #d1ecf1;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
 }
 .status-primary {
   color: #052c65;
   background-color: #cfe2ff;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
 }
 .status-light-success {
   color: #0f5132;
@@ -667,9 +661,6 @@ form:not(.nav-search) > * {
   100% {
     background-position: 0 0;
   }
-}
-.bg-success {
-  background-color: #198754 !important;
 }
 .badge {
   display: inline-block;
@@ -1770,9 +1761,11 @@ form:not(.nav-search) > * {
   font-weight: 500;
 }
 .form-text {
+  display: block;
   margin-top: 0.25rem;
   font-size: 0.875em;
-  color: #6c757d;
+  line-height: 1.5;
+  color: #585d62;
 }
 .form-actions {
   display: -webkit-box;
