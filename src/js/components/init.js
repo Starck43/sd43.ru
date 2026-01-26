@@ -1,8 +1,8 @@
 import {Alert} from "./alert.js";
 import {Offcanvas} from "./offcanvas.js";
-import {Collapse} from "./collapse.js";
+// import {Collapse} from "./collapse.js";
 import {smoothScroll} from '../utils/viewport.js';
-import {isMobile, rafThrottle} from "../utils/common.js";
+import {rafThrottle} from "../utils/common.js";
 
 /**
  * Инициализация основных компонентов интерфейса
@@ -60,7 +60,6 @@ export function initComponents() {
     initOffcanvases();      // Выдвижные панели
     initSearch();           // Поиск
     initAlerts();           // Уведомления
-    initCollapse();         // Сворачиваемые блоки
     initCollapsedBlocks();  // Свернутые блоки
 }
 
@@ -145,38 +144,6 @@ function initSearch() {
     });
 }
 
-/**
- * Инициализация функциональности сворачивания для всех элементов с data-toggle="collapse"
- */
-function initCollapse() {
-    const toggles = document.querySelectorAll('[data-toggle="collapse"]');
-
-    toggles.forEach(toggle => {
-        // Если уже инициализирован - пропускаем
-        if (toggle.dataset.collapseInitialized) return;
-        toggle.dataset.collapseInitialized = 'true';
-
-        const targetSelector = toggle.getAttribute('href') || toggle.getAttribute('data-target');
-        if (!targetSelector) return;
-
-        const target = document.querySelector(targetSelector);
-        if (!target) return;
-
-        toggle.addEventListener('click', (e) => {
-            if (window.innerWidth >= 992 || !isMobile()) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            new Collapse(target).toggle();
-
-            requestAnimationFrame(() => {
-                const isNowExpanded = target.classList.contains('show');
-                toggle.setAttribute('aria-expanded', isNowExpanded.toString());
-            });
-        });
-    });
-}
 
 /**
  * Инициализация разворачиваемых блоков
