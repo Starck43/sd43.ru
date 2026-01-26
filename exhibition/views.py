@@ -380,6 +380,8 @@ class ExhibitorDetail(MetaSeoMixin, DetailView):
 		context['object_list'] = Portfolio.objects.filter(
 			owner__slug=self.kwargs['slug'],
 			exhibition__isnull=False
+		).exclude(  # Добавляем исключение для upcoming выставок
+			exhibition__date_start__gt=now().date()
 		).annotate(
 			exh_year=F('exhibition__slug'),
 			win_year=Subquery(Winners.objects.filter(portfolio_id=OuterRef('pk')).values('exhibition__slug')[:1]),
@@ -464,17 +466,14 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
-		from django.utils.timezone import now
 
-		today = now().date()
 		exhibition = self.object
 		user = self.request.user
 		is_jury = is_jury_member(user)
 		is_exhibitor = is_exhibitor_of_exhibition(user, exhibition)
 
 		# Определяем статус выставки
-		context['exhibition_status'] = 'upcoming' if today < exhibition.date_start else \
-			'active' if today <= exhibition.date_end else 'finished'
+		context['exhibition_status'] = exhibition.status
 
 		# Показывать проекты в номинациях для:
 		# - Жюри и staff ВСЕГДА
@@ -506,14 +505,14 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 			portfolios = Portfolio.objects.filter(
 				exhibition=exhibition
 			).select_related('owner').prefetch_related('nominations')
-			
+
 			if (
-				context['exhibition_status'] == 'upcoming'
-				and is_exhibitor
-				and not is_jury
-				and not user.is_staff
+					context['exhibition_status'] == 'upcoming'
+					and is_exhibitor
+					and not is_jury
+					and not user.is_staff
 			):
-				portfolios = portfolios.filter(owner__user=user)	
+				portfolios = portfolios.filter(owner__user=user)
 
 			# Группируем проекты по номинациям вручную
 			projects_by_nomination = {}
@@ -521,7 +520,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 				for nomination in portfolio.nominations.all():
 					if nomination.id not in projects_by_nomination:
 						projects_by_nomination[nomination.id] = []
-					
+
 					projects_by_nomination[nomination.id].append({
 						'id': portfolio.id,
 						'title': portfolio.title,
@@ -556,7 +555,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		context['last_exh'] = self.model.objects.only('slug').first().slug
 		context['exh_year'] = self.kwargs['exh_year']
 		context['model_name'] = self.model.__name__.lower()
-		context['today'] = today
+		context['today'] = now().today()
 		context['cache_timeout'] = 2592000
 
 		return context
