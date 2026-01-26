@@ -5,32 +5,32 @@
 {% load thumbnail %}
 
 
+{% block persons_list %}
 
-{% block content %}
+    <ol class="list-style-none mt-2">
+        {% regroup object_list by exhibitor_name as exhibitors %}
 
-	{% cache 2592000 persons absolute_url exh_year %}
-	<ol class="winners-list">
-		{% regroup object_list by exhibitor_name as exhibitors %}
+        {% for person in exhibitors %}
+            <li class="winners-group mb-3">
+                <h3 class="mt-0">{{ person.grouper }}</h3>
+                <ul>
+                    {% for nom in person.list %}
+                        <li>
+                            <a
+                                    class="nomination-link"
+                                    href="{% url 'exhibition:project-detail-url' nom.exhibitor_slug nom.project_id %}"
+                            >
+                                <h4>{{ nom.nomination_title }}, <span>{{ nom.exh_year }}</span></h4>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% empty %}
+            <h3>Пока не определены!</h3>
+        {% endfor %}
+    </ol>
 
-		{% for person in exhibitors %}
-		<li>
-			<h3>{{ person.grouper }}</h3>
-			<ul>
-			{% for nom in person.list %}
-				<li>
-					<a class="nomination-link" href="{% url 'exhibition:project-detail-url' nom.exhibitor_slug nom.project_id %}">
-					<h4>{{ nom.nomination_title }}, <span>{{ nom.exh_year }}</span></h4>
-					</a>
-				</li>
-			{% endfor %}
-			</ul>
-		</li>
-		{% empty %}
-			<h3>Пока не определены!</h3>
-		{% endfor %}
-	</ol>
-	{% endcache %}
-
-{% endblock content %}
+{% endblock persons_list %}
 
 

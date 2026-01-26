@@ -61,8 +61,8 @@
 
 {% block site_title %}
 
-    <h1>
-        {{ object.title }}
+    <header class="d-flex align-center">
+        <h1>{{ object.title }}</h1>
         {% if victories %}
             <svg class="award">
                 <use xlink:href="#award-icon"></use>
@@ -75,7 +75,7 @@
                 </svg>
             </a>
         {% endif %}
-    </h1>
+    </header>
 {% endblock site_title %}
 
 {% block link %}

@@ -474,8 +474,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		# Определяем статус выставки
 		context['exhibition_status'] = 'upcoming' if today < exhibition.date_start else \
-			'active' if today <= exhibition.date_end else \
-				'finished'
+			'active' if today <= exhibition.date_end else 'finished'
 
 		# Показывать проекты в номинациях для:
 		# - Жюри и staff ВСЕГДА
@@ -489,19 +488,19 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		# Для завершенной выставки - показываем победителей
 		if context['exhibition_status'] == 'finished':
-			win_nominations = exhibition.nominations.filter(
+			context['win_nominations'] = exhibition.nominations.filter(
 				nomination_for_winner__exhibition_id=exhibition.id
 			).annotate(
 				exhibitor_name=F('nomination_for_winner__exhibitor__name'),
 				exhibitor_slug=F('nomination_for_winner__exhibitor__slug'),
-			).values('id', 'exhibitor_name', 'exhibitor_slug', 'title', 'slug')
-			context['win_nominations'] = win_nominations
+				project_id=F('nomination_for_winner__portfolio__project_id'),
+			).values('id', 'exhibitor_name', 'exhibitor_slug', 'project_id', 'title', 'slug')
 		else:
 			context['win_nominations'] = None
 
 		# Загружаем проекты для показа
 		if context['show_projects']:
-			# Используем прямой запрос чтобы избежать рекурсии с related_name
+			# Используем прямой запрос, чтобы избежать рекурсии с related_name
 
 			# Получаем портфолио связанные с этой выставкой и номинациями
 			portfolios = Portfolio.objects.filter(

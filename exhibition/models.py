@@ -633,7 +633,9 @@ class Winners(models.Model):
 		show_all=False,
 		auto_choose=True,
 		sort=True,
-		related_name='nomination_for_winner', on_delete=models.CASCADE, null=True,
+		related_name='nomination_for_winner',
+		on_delete=models.CASCADE,
+		null=True,
 		verbose_name='Номинация'
 	)
 	exhibitor = ChainedForeignKey(

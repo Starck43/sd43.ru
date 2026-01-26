@@ -51,28 +51,27 @@
 
 {% block content %}
 
-    {% block person %}
+    {% cache cache_timeout persons absolute_url exh_year %}
 
-        {% cache 2592000 persons absolute_url exh_year %}
+        {% block persons_list %}
 
             <div class="grid persons-grid">
                 {% for person in object_list %}
                     <a class="grid-cell" href="{{ person.get_absolute_url }}">
-
                         <div class="person-logo ratio ratio-1x1">
                             {% thumbnail person.logo "150x150" as xs %}
                                 {% thumbnail person.logo "300x300" as sm %}
                                     <img class="lazyload"
                                          src="{{ xs.url }}"
                                          data-src="{{ sm.url }}"
-                                         data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
+                                         data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w, {{ person.logo.url }} {{ person.logo.width }}w"
                                          data-sizes="auto"
                                          loading="lazy"
                                          title="{{ person.name }}"
                                          alt="{{ person.name }}"
                                     >
                                 {% empty %}
-                                    <img src="{% get_media_prefix %}site/no-person.png">
+                                    <img src="{% get_media_prefix %}site/no-person.png" alt="">
                                 {% endthumbnail %}
                             {% endthumbnail %}
                         </div>
@@ -83,8 +82,8 @@
                 {% endfor %}
             </div>
 
-        {% endcache %}
+        {% endblock persons_list %}
 
-    {% endblock person %}
+    {% endcache %}
 
 {% endblock content %}

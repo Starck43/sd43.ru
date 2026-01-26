@@ -184,7 +184,7 @@
 
 	// Для exh-nav-item убираем dropdown на десктопе
 	.nav-item.exh-nav-item
-		.dropdown-toggle::after
+		.dropdown-toggle::before
 			display: none
 
 		&:hover .dropdown-menu
@@ -195,9 +195,9 @@
 	position: relative
 	width: auto !important
 	margin: auto
-	&::after
-		position: absolute !important
-		top: 0
+
+	&::before
+		margin-top: -2px
 
 .dropdown-item
 	display: block

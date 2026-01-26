@@ -1029,7 +1029,7 @@ form:not(.nav-search) > * {
     visibility: visible;
     padding: 0.5rem 0;
   }
-  .nav-item.exh-nav-item .dropdown-toggle::after {
+  .nav-item.exh-nav-item .dropdown-toggle::before {
     display: none;
   }
   .nav-item.exh-nav-item:hover .dropdown-menu {
@@ -1042,9 +1042,8 @@ form:not(.nav-search) > * {
   width: auto !important;
   margin: auto;
 }
-.dropdown-toggle::after {
-  position: absolute !important;
-  top: 0;
+.dropdown-toggle::before {
+  margin-top: -2px;
 }
 .dropdown-item {
   display: block;
@@ -1224,8 +1223,8 @@ form:not(.nav-search) > * {
 .expanded > *:first-child {
   width: 100%;
 }
-.collapsed > *:first-child::after,
-.expanded > *:first-child::after {
+.collapsed > *:first-child::before,
+.expanded > *:first-child::before {
   content: "";
   position: relative;
   width: 1.5rem;
@@ -1237,11 +1236,11 @@ form:not(.nav-search) > * {
   transition: transform 0.3s ease;
   transition: transform 0.3s ease, -webkit-transform 0.3s ease;
 }
-.collapsed.bg-dark > *:first-child::after,
-.expanded.bg-dark > *:first-child::after {
+.collapsed.bg-dark > *:first-child::before,
+.expanded.bg-dark > *:first-child::before {
   background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 2 12 20" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>') no-repeat center;
 }
-.collapsed > *:first-child::after {
+.collapsed > *:first-child::before {
   -webkit-transform: rotate(-180deg);
   -ms-transform: rotate(-180deg);
   transform: rotate(-180deg);
@@ -1255,7 +1254,7 @@ form:not(.nav-search) > * {
   max-height: 900px;
   opacity: 1;
 }
-.expanded > *:first-child::after {
+.expanded > *:first-child::before {
   -webkit-transform: rotate(-90deg);
   -ms-transform: rotate(-90deg);
   transform: rotate(-90deg);

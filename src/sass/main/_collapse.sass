@@ -18,7 +18,7 @@ $arrow-dark: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" vi
 
 	> *:first-child
 		width: 100%
-		&::after
+		&::before
 			content: ''
 			position: relative
 			width: 1.5rem
@@ -28,12 +28,12 @@ $arrow-dark: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" vi
 			transition: transform 0.3s ease
 
 	&.bg-dark > *:first-child
-		&::after
+		&::before
 			background: url($arrow-light) no-repeat center
 
 .collapsed
 	> *:first-child
-		&::after
+		&::before
 			transform: rotate(-180deg)
 
 	> *:last-child
@@ -48,7 +48,7 @@ $arrow-dark: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" vi
 		opacity: 1
 
 	> *:first-child
-		&::after
+		&::before
 			transform: rotate(-90deg)
 
 	> *:last-child
