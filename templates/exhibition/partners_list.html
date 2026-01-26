@@ -17,9 +17,9 @@
                         <div class="partner-logo ratio ratio-1x1">
                             {% thumbnail partner.logo "150x150" as logo_1x %}
                                 {% thumbnail partner.logo "300x300" as logo_2x %}
-                                    <img class="lazyload"
+                                    <img class="lazyload p-2"
                                          data-src="{{ logo_2x.url }}"
-                                         data-srcset="{{ logo_1x.url }} {{ logo_1x.x }}w, {{ logo_2x.url }} {{ logo_2x.x }}w, {{ partner.logo }} {{ partner.logo.width }}w"
+                                         data-srcset="{{ logo_1x.url }} {{ logo_1x.x }}w, {{ logo_2x.url }} {{ logo_2x.x }}w, {{ partner.logo.url }} {{ partner.logo.width }}w"
                                          data-sizes="auto"
                                          loading="lazy"
                                          title="{{ partner.name }}"

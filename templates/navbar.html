@@ -1,9 +1,9 @@
 {% load cache %}
 
-<div class="container-fluid">
+<div class="container-fluid centered">
 
-    <div class="navbar-search me-auto">
-        <div class="nav-search-link navbar-button">
+    <div class="nav-item navbar-search mr-1">
+        <div class="nav-search-link btn-md ratio">
             <svg class="search-icon icon">
                 <use xlink:href="#search-icon"></use>
             </svg>
@@ -25,8 +25,8 @@
     </div>
 
     <button
+            class="nav-item navbar-toggler btn-lg ratio"
             type="button"
-            class="navbar-toggler navbar-button"
             data-toggle="offcanvas"
             data-target="#navbarMenu"
             aria-controls="navbarMenu"
@@ -37,32 +37,37 @@
     </button>
 
     <div id="navbarMenu" class="navbar-menu navbar-collapse offcanvas offcanvas-end d-flex align-center gap-2">
-        <button type="button" class="btn-close btn-md d-lg-none" data-dismiss="offcanvas" aria-label="Закрыть">
+        <button type="button" class="btn-close btn-lg d-lg-none" data-dismiss="offcanvas" aria-label="Закрыть">
             <svg class="close-icon icon">
                 <use xlink:href="#close-icon"></use>
             </svg>
         </button>
 
-        <ul class="navbar-items align-center">
+        <ul class="nav-items align-center">
 
             {% cache 2592000 navbar %}
 
-                <li class="nav-item dropdown exh-nav-item bg-dark collapsed">
-                    {% if exhibitions_list %}
-                        <div id="exhibitionsMenuLink" class="nav-link dropdown-toggle" href="/exhibitions/" role="button"
-                           aria-expanded="false" aria-controls="dropdownYearsList">Выставки</div>
+                {% if exhibitions_list %}
+                    <li class="nav-item dropdown exhibitions-item bg-dark collapsed">
+                        <div
+                                class="nav-link dropdown-toggle d-lg-none"
+                                role="button"
+                                aria-controls="dropdownYearsList"
+                        >
+                            Выставки
+                        </div>
 
-                        <ul id="dropdownYearsList" class="dropdown-menu" aria-labelledby="exhibitionsMenuLink">
+                        <a class="nav-link" href="/exhibitions/">Выставки</a>
+
+                        <ul id="dropdownYearsList" class="dropdown-menu d-lg-none" aria-labelledby="exhibitionsMenuLink">
                             {% for e in exhibitions_list %}
                                 <li><a class="dropdown-item" href="{{ e.get_absolute_url }}">
                                     {{ e.date_start|date:"Y" }}
                                 </a></li>
                             {% endfor %}
                         </ul>
-                    {% else %}
-                        <a class="nav-link" href="/exhibitions/">Выставки</a>
-                    {% endif %}
-                </li>
+                    </li>
+                {% endif %}
 
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'exhibition:exhibitors-list-url' %}">Участники</a>
@@ -89,26 +94,23 @@
             {% endcache %}
 
             <li class="nav-item">
-                <a class="nav-link account-link" aria-current="page"
-                   href="{% if user.is_authenticated and user.is_staff %}/admin/{% elif user.is_authenticated %}/account/{% else %}/accounts/login/?next={{ request.get_full_path|urlencode }}{% endif %}"
-                   rel="nofollow">
+                <a
+                        class="nav-link account-link text-sm"
+                        aria-current="page"
+                        href="{% if user.is_authenticated and user.is_staff %}/admin/{% elif user.is_authenticated %}/account/{% else %}/accounts/login/?next={{ request.get_full_path|urlencode }}{% endif %}"
+                        rel="nofollow"
+                >
                     {% if user.is_authenticated %}{{ request.user.username }}{% else %}Войти{% endif %}
                 </a>
             </li>
         </ul>
 
         <div class="nav-item social-block">
-            <a class="nav-social-link navbar-button" href="https://vk.com/sfera43design" target="_blank">
+            <a class="nav-social-link btn-sm ratio" href="https://vk.com/sfera43design" target="_blank">
                 <svg class="icon vk">
                     <use xlink:href="#logo-vk"></use>
                 </svg>
             </a>
-        </div>
-
-        <div class="nav-item nav-search-link navbar-button">
-            <svg class="search-icon icon">
-                <use xlink:href="#search-icon"></use>
-            </svg>
         </div>
 
     </div>

@@ -13,6 +13,7 @@ from .forms import (
 	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm
 )
 from .logic import delete_cached_fragment
+from .mixins import ProfileAdminMixin, PersonAdminMixin
 from .models import (
 	Person, Profile, Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
@@ -23,19 +24,19 @@ from .models import (
 def get_app_list(self, request):
 	ordered_models = [
 		('exhibition', [
-			'Portfolio',
-			'Image',
-			'Gallery',
+			'Exhibitions',
 			'Categories',
 			'Nominations',
 			'Exhibitors',
-			'Organizer',
-			'Partners',
 			'Jury',
-			'Exhibitions',
-			'Events',
+			'Partners',
+			'Organizer',
 			'Winners',
+			'Portfolio',
 			'PortfolioAttributes',
+			'Image',
+			'Gallery',
+			'Events',
 			'MetaSEO'
 		])
 	]
@@ -201,103 +202,69 @@ class ProfileAdmin(admin.ModelAdmin):
 	fieldsets = (
 		('Профиль', {
 			'classes': ('profile-block',),
-			'fields': ('address', 'phone', 'email', 'site', 'vk',)
+			'fields': ('address', 'phone', 'email', 'site', 'vk', 'tg', 'instagram',)
 		}),
 	)
 	list_display = ('phone', 'email',)
 
 
 @admin.register(Exhibitors)
-class ExhibitorsAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = PersonAdmin.fieldsets + ProfileAdmin.fieldsets + MetaSeoFieldsAdmin.fieldsets
+class ExhibitorsAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	ordering = ('name',)
-	# prepopulated_fields = {"slug": ('name',)} # adding name to slug field
-
-	list_display = ('logo_thumb', 'name', 'user_name',)
-	search_fields = PersonAdmin.search_fields
-
-	# list_editable = ['user']
-	# add_form = PersonUserForm
-
-	def user_name(self, obj):
-		if not obj.user:
-			return None
-
-		if (not obj.user.first_name) and (not obj.user.last_name):
-			return obj.user.username
-		else:
-			return "%s %s" % (obj.user.first_name, obj.user.last_name)
-
-	user_name.short_description = 'Пользователь'
-
-	def get_search_results(self, request, queryset, search_term):
-		queryset, use_distinct = super().get_search_results(
-			request, queryset, search_term
-		)
-
-		if 'autocomplete' in request.path:
-			queryset = queryset.order_by('name')
-
-		return queryset, use_distinct
 
 	def save_model(self, request, obj, form, change):
-		delete_cached_fragment('persons', 'exhibitors', None)
-		exhibitions = Exhibitions.objects.filter(exhibitors=obj.id).only('slug')
-		for exh in exhibitions:
-			delete_cached_fragment('persons', 'exhibitors', exh.slug)
-			delete_cached_fragment('exhibition_content', exh.slug)
-
 		super().save_model(request, obj, form, change)
+
+		# Вся логика очистки кэша здесь
+		if change and obj.user:
+			articles = Article.objects.filter(owner=obj.user)
+			if articles:
+				delete_cached_fragment('articles')
+				for article in articles:
+					delete_cached_fragment('article', article.id)
+
+		delete_cached_fragment('persons', 'exhibitors', None)
+
+		if obj.id:
+			exhibitions = Exhibitions.objects.filter(exhibitors=obj.id).only('slug')
+			for exh in exhibitions:
+				delete_cached_fragment('persons', 'exhibitors', exh.slug)
+				delete_cached_fragment('exhibition_content', exh.slug)
 
 
 @admin.register(Jury)
-class JuryAdmin(PersonAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = (
-		(None, {
-			'classes': ('person-block',),
-			'fields': ('user', ('logo',), 'name', 'slug', 'excerpt', 'description', 'sort',)
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('logo_thumb', 'name', 'excerpt',)
-	list_display_links = ('logo_thumb', 'name',)
+class JuryAdmin(PersonAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+
 		delete_cached_fragment('persons', 'jury', None)
 		exhibitions = Exhibitions.objects.filter(jury=obj.id).only('slug')
 		for exh in exhibitions:
 			delete_cached_fragment('persons', 'jury', exh.slug)
 			delete_cached_fragment('exhibition_content', exh.slug)
 
-		super().save_model(request, obj, form, change)
-
 
 @admin.register(Organizer)
-class OrganizerAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = PersonAdmin.fieldsets + ProfileAdmin.fieldsets + MetaSeoFieldsAdmin.fieldsets
+class OrganizerAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	list_display = ('logo_thumb', 'name', 'description_html',)
-	list_display_links = ('logo_thumb', 'name',)
 	ordering = ('sort',)
 
+	@admin.display(description='Описание для главной страницы', empty_value='')
 	def description_html(self, obj):
 		return format_html(obj.description)
 
-	description_html.short_description = 'Описание для главной страницы'
-
 	def save_model(self, request, obj, form, change):
-		delete_cached_fragment('index_page')
 		super().save_model(request, obj, form, change)
+		delete_cached_fragment('index_page')
 
 
 @admin.register(Partners)
-class PartnersAdmin(PersonAdmin, ProfileAdmin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = PersonAdmin.fieldsets + ProfileAdmin.fieldsets + MetaSeoFieldsAdmin.fieldsets
-	list_display = ('logo_thumb', 'name', 'phone',)
-	list_display_links = ('logo_thumb', 'name', 'phone',)
+class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
+
 		delete_cached_fragment('index_page')
 		delete_cached_fragment('persons', 'partners', None)
 
@@ -367,6 +334,7 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
+
 		# сохраним связанные с выставкой фото
 		images = request.FILES.getlist('files')
 		for image in images:
@@ -403,14 +371,14 @@ class CategoriesAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
+	@admin.display(description='Номинации', empty_value='')
 	def nominations_list(self, obj):
 		return ', '.join(obj.nominations_set.all().values_list('title', flat=True))
 
-	nominations_list.short_description = 'Номинации'
-
 	def save_model(self, request, obj, form, change):
-		delete_cached_fragment('categories_list')
 		super().save_model(request, obj, form, change)
+
+		delete_cached_fragment('categories_list')
 
 
 @admin.register(Nominations)
@@ -428,13 +396,13 @@ class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	list_per_page = 20
 	empty_value_display = '<пусто>'
 
+	@admin.display(description='Описание', empty_value='')
 	def description_html(self, obj):
 		return format_html(obj.description)
 
-	description_html.short_description = 'Описание'
-
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
+
 		portfolio = Portfolio.objects.filter(nominations=obj)
 		for item in portfolio:
 			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, True)
@@ -527,13 +495,12 @@ class ImageAdmin(AdminImageMixin, admin.ModelAdmin):
 	# 	for image in request.FILES.getlist('images'):
 	# 		obj.create(image=image)
 
+	@admin.display(description='Автор', empty_value='')
 	def author(self, obj):
 		author = None
 		if obj.portfolio:
 			author = obj.portfolio.owner
 		return author
-
-	author.short_description = 'Автор'
 
 
 @admin.register(PortfolioAttributes)
@@ -585,14 +552,12 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 			# 'admin/js/portfolio_admin.js',
 		)
 
+	@admin.display(description='Номинации', ordering="nominations__title", empty_value='')
 	def nominations_list(self, obj):
 		"""Отображение списка номинаций в админке"""
 		if obj.nominations.exists():
 			return ', '.join(obj.nominations.values_list('title', flat=True))
 		return 'Нет номинаций'
-
-	nominations_list.short_description = 'Номинации'
-	nominations_list.admin_order_field = 'nominations__title'
 
 	def formfield_for_foreignkey(self, db_field, request, **kwargs):
 		if db_field.name == "owner":

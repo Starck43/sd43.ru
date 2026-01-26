@@ -46,7 +46,7 @@ class AccountSignupForm(SignupForm):
 	# 'duplicate_username': ("Имя пользователя уже существует")
 	# }
 
-	# def clean_username(self):
+	# def _generate_username(self):
 	# 	username = self.cleaned_data["username"]
 	# 	if self.instance.username == username:
 	# 		return username

@@ -20,6 +20,7 @@ from uuslug import uuslug
 
 from crm import models
 from crm.validators import svg_validator
+from .base_models import UserModel
 from .logic import (
 	MediaFileStorage, get_image_html, image_resize, portfolio_upload_to, cover_upload_to, gallery_upload_to,
 	limit_file_size, update_google_sitemap
@@ -29,11 +30,9 @@ LOGO_FOLDER = 'logos/'
 BANNER_FOLDER = 'banners/'
 
 
-class Person(models.Model):
+class Person(UserModel, models.Model):
 	""" Abstract model for Exhibitors, Organizer, Jury, Partners """
-	user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Пользователь')
 	logo = models.ImageField('Логотип', upload_to=LOGO_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
-	# avatar = models.ImageField('Аватар', upload_to=avatar_folder, storage=MediaFileStorage(), null=True, blank=True)
 	name = models.CharField('Имя контакта', max_length=100)
 	slug = models.SlugField('Ярлык', max_length=100, unique=True)
 	description = RichTextUploadingField('Информация о контакте', blank=True)
@@ -45,11 +44,20 @@ class Person(models.Model):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.original_logo = self.logo
+		self.original_slug = self.slug
 
 	def __str__(self):
 		return self.name
 
-	def save(self, request, *args, **kwargs):
+	def save(self, *args, **kwargs):
+		# Сначала вызываем логику создания пользователя из UserModel
+		super().save(*args, **kwargs)
+
+		request = None
+		for arg in args:
+			if hasattr(arg, 'META'):  # Это request
+				request = arg
+				break
 
 		if not self.slug:
 			self.slug = uuslug(self.name.lower(), instance=self)
@@ -58,13 +66,35 @@ class Person(models.Model):
 		if self.original_logo and self.original_logo != self.logo:
 			delete(self.original_logo)
 
-		resized_logo = image_resize(self.logo, [450, 450], uploaded_file=request.FILES.get('logo'))
-		if resized_logo and resized_logo != 'error':
-			self.logo = resized_logo
+		if request and 'logo' in request.FILES:
+			resized_logo = image_resize(self.logo, [450, 450], uploaded_file=request.FILES.get('logo'))
+			if resized_logo and resized_logo != 'error':
+				self.logo = resized_logo
 
-		if resized_logo != 'error':
-			super().save(*args, **kwargs)
-			self.original_logo = self.logo
+		if self.original_slug and self.slug != self.original_slug:
+			self.handle_slug_change()
+			self.original_slug = self.slug
+
+		super(Person, self).save(*args, **kwargs)
+		self.original_logo = self.logo
+
+	def handle_slug_change(self):
+		"""Обработка изменения slug. Переопределяется в дочерних классах при необходимости."""
+
+		portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.original_slug)
+		if path.exists(portfolio_folder):
+			new_portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.slug)
+			# переименуем имя папки с проектами текущего участника
+			rename(portfolio_folder, new_portfolio_folder)
+
+			# почистим кэшированные файлы и изменим путь к файлам в таблице Image
+			owner_images = Image.objects.filter(portfolio__owner__slug=self.original_slug)
+			for image in owner_images:
+				# Only clears key-value store data in thumbnail-kvstore, but does not delete image file
+				delete(image.file, delete_file=False)
+				renamed_file = str(image.file).replace(self.original_slug, self.slug)
+				image.file = renamed_file
+				image.save()
 
 	def logo_thumb(self):
 		return get_image_html(self.logo)
@@ -82,9 +112,9 @@ class Profile(models.Model):
 	phone = models.CharField('Контактный телефон', validators=[phone_regex], max_length=18, blank=True)
 	email = models.EmailField('E-mail', max_length=75, blank=True)
 	site = models.URLField('Сайт', max_length=75, blank=True)
-	instagram = models.CharField('Instagram', max_length=75, blank=True, default="https://instagram.com")
-	fb = models.CharField('Facebook', max_length=75, blank=True, default="https://facebook.com")
-	vk = models.CharField('Вконтакте', max_length=75, blank=True, default="https://vk.com")
+	instagram = models.CharField('Instagram', max_length=75, blank=True)
+	tg = models.CharField('Телеграм', max_length=75, blank=True)
+	vk = models.CharField('Вконтакте', max_length=75, blank=True)
 
 	class Meta:
 		abstract = True  # The table will not be created
@@ -103,7 +133,7 @@ class Profile(models.Model):
 				prefix = 'tel' if name == 'phone' else 'mailto'
 				link = prefix + ':' + value.lower()
 
-			if name in ['description', 'vk', 'fb', 'instagram']:
+			if name in ['description', 'vk', 'tg', 'instagram']:
 				label = ''
 
 			if name == 'site' and value:
@@ -117,58 +147,12 @@ class Profile(models.Model):
 class Exhibitors(Person, Profile):
 	objects = UserManager()
 
-	# Metadata
 	class Meta(Person.Meta):
 		verbose_name = 'Участник выставки'
 		verbose_name_plural = 'Участники'
 		ordering = ['user__last_name']
-		# unique_together = ('name',)
 		db_table = 'exhibitors'
 		unique_together = ['user', ]
-
-	original_slug = None
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.original_slug = self.slug
-
-	def save(self, *args, **kwargs):
-		# user = get_user_model()
-		if not self.user and self.email:
-			username = self.clean_username(self.email.rpartition('@')[0])
-			if not username:
-				username = self.slug
-			if username:
-				user = User.objects.create_user(username=username, email=self.email, password='1111')
-				user.save()
-				self.user = user
-
-		if self.original_slug and self.slug != self.original_slug:
-			portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.original_slug)
-			if path.exists(portfolio_folder):
-				new_portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.slug)
-				# переименуем имя папки с проектами текущего участника
-				rename(portfolio_folder, new_portfolio_folder)
-				# почистим кэшированные файлы и изменим путь к файлам в таблице Image для всех портфолио,
-				# принадлежащих текущему участнику
-				owner_images = Image.objects.filter(portfolio__owner__slug=self.original_slug)
-				for image in owner_images:
-					# Only clears key-value store data in thumbnail-kvstore, but does not delete image file
-					delete(image.file, delete_file=False)
-					renamed_file = str(image.file).replace(self.original_slug, self.slug)
-					image.file = renamed_file
-					image.save()
-
-			self.original_slug = self.slug
-
-		super().save(*args, **kwargs)
-
-	def clean_username(self, username):
-		try:
-			User.objects.get(username=username)
-		except User.DoesNotExist:
-			return username
-		return None
 
 	def get_absolute_url(self):
 		return reverse('exhibition:exhibitor-detail-url', kwargs={'slug': self.slug})
@@ -190,7 +174,6 @@ class Jury(Person):
 
 	objects = UserManager()
 
-	# Metadata
 	class Meta(Person.Meta):
 		verbose_name = 'Жюри'
 		verbose_name_plural = 'Жюри'
@@ -208,7 +191,6 @@ class Jury(Person):
 class Partners(Person, Profile):
 	objects = UserManager()
 
-	# Metadata
 	class Meta(Person.Meta):
 		verbose_name = 'Партнер выставки'
 		verbose_name_plural = 'Партнеры'
@@ -239,7 +221,6 @@ class Categories(models.Model):
 	)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
 
-	# Metadata
 	class Meta:
 		ordering = ['sort', 'title']
 		verbose_name = 'Категория'
@@ -353,6 +334,13 @@ class Exhibitions(models.Model):
 
 	def __str__(self):
 		return self.title
+
+	@property
+	def status(self):
+		from django.utils.timezone import now
+
+		today = now().date()
+		return 'upcoming' if today < self.date_start else 'active' if today <= self.date_end else 'finished'
 
 	def exh_year(self):
 		return self.date_start.strftime('%Y')

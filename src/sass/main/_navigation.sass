@@ -19,10 +19,6 @@
 		z-index: 1030
 
 	.container-fluid
-		display: flex
-		flex-wrap: inherit
-		align-items: center
-		justify-content: space-between
 		width: 100%
 		padding: 0.6em $container-margin-lg
 		margin: 0.6em 0
@@ -31,29 +27,10 @@
 			margin: 0
 			z-index: 1
 
-	.navbar-button
-		position: relative
-		display: block
-		width: 1.6rem
-		height: 1.6rem
-		padding: 0
-		margin: 0 var(--gap)
-		line-height: 1
-		color: $menu-text-color
-		background-color: transparent
-		border: none
-		opacity: 0.7
-		transition: all 200ms ease-in-out
-		cursor: pointer
-
-		&:hover
-			opacity: 1
-
-			svg
-				stroke-width: 2
-
 	.navbar-toggler
 		display: none
+		margin: 0.5rem 0
+
 		+mixins.media-max(lg)
 			display: block
 
@@ -87,7 +64,7 @@
 				visibility: visible
 				transition: transform 0.3s ease-in-out
 
-	.navbar-items
+	.nav-items
 		display: flex
 		flex-direction: row
 		width: 100%
@@ -104,100 +81,75 @@
 
 	.nav-item
 		margin: 0
+		color: $menu-text-color
+		opacity: 0.8
+		transition: opacity 200ms ease-in-out
+		cursor: pointer
+
 		+mixins.media-max(lg)
 			padding: 0.5rem 0
 
 		&.dropdown
 			position: relative
 
+		&:hover
+			opacity: 1
+			svg
+				stroke-width: 2
+
 	.nav-link
 		display: block
 		padding: 0.4rem 1rem
 		text-decoration: none
 		position: relative
+		color: $menu-text-color !important
 		font-weight: 200
-		color: $menu-text-color
-		opacity: 0.8
 		text-transform: lowercase
 		white-space: nowrap
 		text-align: center
-		transition: opacity 200ms ease-in-out
-	
-		&.dropdown-toggle
-			padding: 0.2rem 1.5rem
-
-		&:hover
-			color: $menu-text-color !important
-			opacity: 1
 
 	.account-link
-		color: $menu-text-color
-		font-weight: 300
 		border: 1px solid $menu-text-color
 		border-radius: $border-radius
+		margin: 0 1rem
+
+		+mixins.media-max(lg)
+			margin-top: 1rem
 
 	.btn-close
 		margin: $container-margin-xs $container-margin-xs 0 auto
 		color: $menu-text-color
 
+.exhibitions-item a.nav-link
+	+mixins.media-max(lg)
+		display: none
+
 // Dropdown menu
 .dropdown-menu
-	position: absolute
-	display: block
+	display: grid
+	grid-template-columns: repeat(auto-fill, minmax(70px, 1fr))
+	gap: 0 0.5em
 	width: 100%
 	margin: auto
 	padding: 0
-	background-color: $submenu-bg
 	border-radius: $border-radius
 	list-style: none
 	transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out
-	visibility: hidden
 	min-width: 200px
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1)
 
-	&.show
-		visibility: visible
-
-	+mixins.media-max(lg)
-		position: static
-		display: none
-		background-color: transparent
-		box-shadow: none
-		opacity: 1
-		visibility: visible
-		transition: none
-		max-height: none
-
-		&.show
-			display: grid
-			grid-template-columns: repeat(auto-fill, minmax(70px, 1fr))
-			gap: 0 0.5em
-
-// Desktop dropdown behavior (hover)
-+mixins.media-min(lg)
-	.nav-item.dropdown:not(.exh-nav-item)
-		&:hover .dropdown-menu
-			max-height: 500px
-			opacity: 1
-			visibility: visible
-			padding: 0.5rem 0
-
-	// Для exh-nav-item убираем dropdown на десктопе
-	.nav-item.exh-nav-item
-		.dropdown-toggle::before
-			display: none
-
-		&:hover .dropdown-menu
-			display: none
-
 .dropdown-toggle
-	cursor: pointer
 	position: relative
 	width: auto !important
 	margin: auto
+	cursor: pointer
 
 	&::before
-		margin-top: -2px
+		position: absolute !important
+		width: 1.3rem !important
+		height: 1.3rem !important
+		top: 0.4rem
+		right: -0.2rem
 
 .dropdown-item
 	display: block
@@ -250,43 +202,30 @@
 // Search in navbar
 .nav-search-link
 	text-decoration: none
-
-	+mixins.media-max(lg)
-		margin-left: 0.25rem
-
-.nav-item.nav-search-link
-	+mixins.media-max(lg)
-		display: none
-
-.navbar-search
-	display: none
-	+mixins.media-max(lg)
-		display: block
+	margin-left: 0.25rem
+	+mixins.media-min(lg)
+		padding: 0.3rem 0
 
 
 // Social links
 .social-block
 	display: flex
-	flex-direction: row
 	align-items: center
 	+mixins.media-max(lg)
 		position: absolute
 		flex-direction: column
-		width: 40px
+		height: auto
 		right: 0.75em
-		bottom: 1.5rem
-		opacity: 0
-		transform: translateY(-100%)
-		transition: transform 0.6s 0.2s ease-out, opacity 0.6s 0.2s ease-out
+		bottom: -3rem
+		transition: all 1s ease-out
 
 .navbar-collapse.show .social-block
 	+mixins.media-max(lg)
-		opacity: 1
-		transform: translateY(0)
+		bottom: 1rem
 
 .nav-social-link
 	display: inline-block
-	margin-right: 1vw
+	margin-right: 0.75rem
 	text-decoration: none
 
 	svg.icon
@@ -297,10 +236,6 @@
 			stroke: $main-color
 			stroke-width: 2
 
-	+mixins.media-max(lg)
-		display: block
-		margin: 1em 0 2vh
-		text-align: center
 
 // Responsive adjustments
 @media (max-width: 575.98px) and (orientation: landscape)
@@ -312,5 +247,5 @@
 		.nav-search-link .search-icon
 			stroke: $main-color
 
-	.navbar ul.navbar-items
+	.navbar ul.nav-items
 		font-size: 1em
