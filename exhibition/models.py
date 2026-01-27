@@ -118,41 +118,36 @@ class Profile(models.Model):
 	phone = models.CharField('Контактный телефон', validators=[phone_regex], max_length=18, blank=True)
 	email = models.EmailField('E-mail', max_length=75, blank=True)
 	site = models.URLField('Сайт', max_length=75, blank=True)
-	instagram = models.CharField('Instagram', max_length=75, blank=True)
-	tg = models.CharField('Телеграм', max_length=75, blank=True)
-	vk = models.CharField('Вконтакте', max_length=75, blank=True)
+	instagram = models.CharField('Instagram', max_length=75, blank=True, default="")
+	tg = models.CharField('Телеграм', max_length=75, blank=True, default='https://tg.me')
+	vk = models.CharField('Вконтакте', max_length=75, blank=True, default="https://vk.com")
 
 	class Meta:
 		abstract = True
 
 	def __iter__(self):
-		exclude_fields = {'user', 'id'}
-
 		for field in self._meta.fields:
 			name = field.name
-
-			if name in exclude_fields:
-				continue
-
 			label = field.verbose_name
-			value = getattr(self, name, None)
-
-			if not value:
-				continue
-
+			value = field.value_to_string(self)
 			link = None
-			if name == 'site' and value:
-				value = re.sub(r'^https?:\/\/|\/$', '', value, flags=re.MULTILINE)
-				link = 'https://' + value
+			if value and type(field.default) is str:
+				value = value.rsplit('/', 1)[-1]
+				link = field.default + '/' + value.lower()
 
-			if name in ['phone', 'email']:
+			if value and name in ['phone', 'email']:
 				prefix = 'tel' if name == 'phone' else 'mailto'
 				link = prefix + ':' + value.lower()
 
 			if name in ['description', 'vk', 'tg', 'instagram']:
 				label = ''
 
-			yield (name, label, str(value), link)
+			if name == 'site' and value:
+				value = re.sub(r'^https?:\/\/|\/$', '', value, flags=re.MULTILINE)
+				link = 'https://' + value
+
+			if (name == 'address' or name == 'site' or link) and value:
+				yield (name, label, value, link)
 
 
 class Exhibitors(Person, Profile):
@@ -537,11 +532,10 @@ class PortfolioManager(models.Manager):
 			# Владелец видит:
 			# 1. Все свои проекты (даже с upcoming выставками)
 			# 2. Проекты других участников, которые доступны всем
-			queryset = queryset.filter(
+			return queryset.filter(
 				models.Q(owner=exhibitor) |  # Свои проекты без ограничений
 				models.Q(exhibition__date_start__lte=today)  # Проекты с начавшейся/завершенной выставкой
 			)
-			return queryset
 
 		# Обычные авторизованные пользователи (не staff, не жюри, не участник)
 		return queryset.filter(exhibition__date_start__lte=today)
