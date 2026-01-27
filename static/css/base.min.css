@@ -2499,7 +2499,9 @@ h4 {
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  gap: calc(20% - 170px);
+  -webkit-column-gap: calc(20% - 170px);
+  -moz-column-gap: calc(20% - 170px);
+  column-gap: calc(20% - 170px);
   margin: 0 0.75rem 0.75rem;
   padding-top: 1.5vh !important;
 }
@@ -2517,7 +2519,6 @@ h4 {
   position: relative;
   display: block;
   width: 180px;
-  margin-bottom: 0.75em;
 }
 #site-header .brand-logo.loaded ~ .banner-link,
 #site-header .brand-logo.loaded ~ .brand-text {
@@ -2555,7 +2556,9 @@ h4 {
 }
 @media (max-width: 1399.99px) {
   #site-header {
-    gap: 60px;
+    -webkit-column-gap: 60px;
+    -moz-column-gap: 60px;
+    column-gap: 60px;
   }
   #site-header .brand-logo {
     width: 160px;
@@ -2572,7 +2575,9 @@ h4 {
 }
 @media (max-width: 1199.99px) {
   #site-header {
-    gap: 40px;
+    -webkit-column-gap: 40px;
+    -moz-column-gap: 40px;
+    column-gap: 40px;
   }
   #site-header .brand-logo {
     width: 140px;
@@ -2588,7 +2593,9 @@ h4 {
 }
 @media (max-width: 991.99px) {
   #site-header {
-    gap: 10px;
+    -webkit-column-gap: 10px;
+    -moz-column-gap: 10px;
+    column-gap: 10px;
   }
   #site-header .brand-logo {
     width: 110px;
@@ -2600,8 +2607,10 @@ h4 {
 }
 @media (max-width: 767.99px) {
   #site-header {
+    -webkit-column-gap: 1.5rem;
+    -moz-column-gap: 1.5rem;
+    column-gap: 1.5rem;
     padding-top: 1.5rem;
-    gap: 1.5rem;
   }
   #site-header .brand-logo {
     width: 80px;
@@ -2616,7 +2625,9 @@ h4 {
 }
 @media (max-width: 575.99px) {
   #site-header {
-    gap: 0.75rem;
+    -webkit-column-gap: 0.75rem;
+    -moz-column-gap: 0.75rem;
+    column-gap: 0.75rem;
   }
   #site-header .brand-logo {
     width: 50px;
