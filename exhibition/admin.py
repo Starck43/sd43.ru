@@ -13,45 +13,13 @@ from .forms import (
 	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm
 )
 from .logic import delete_cached_fragment
-from .mixins import ProfileAdminMixin, PersonAdminMixin
+from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin
 from .models import (
 	Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
 )
 
 
-# Creating a model's sort function for admin
-def get_app_list(self, request):
-	ordered_models = [
-		('exhibition', [
-			'Exhibitions',
-			'Categories',
-			'Nominations',
-			'Exhibitors',
-			'Jury',
-			'Partners',
-			'Organizer',
-			'Winners',
-			'Portfolio',
-			'PortfolioAttributes',
-			'Image',
-			'Gallery',
-			'Events',
-			'MetaSEO'
-		])
-	]
-	app_dict = self._build_app_dict(request)
-
-	for app_name, object_list in ordered_models:
-		app = app_dict.get(app_name, None)
-		if app:
-			app['models'].sort(key=lambda x: object_list.index(x['object_name']))
-	# yield app
-
-	return sorted(app_dict.values(), key=lambda x: x['name'].lower())
-
-
-admin.AdminSite.get_app_list = get_app_list
 admin.site.unregister(User)  # чтобы снять с регистрации модель User
 
 
@@ -148,7 +116,7 @@ class MetaSeoFieldsAdmin:
 
 	meta_fields = ('meta_title', 'meta_description', 'meta_keywords')
 	fieldsets = (
-		('СЕО', {
+		('СЕО Настройки', {
 			'classes': ('meta-block',),
 			'fields': meta_fields
 		}),
@@ -238,7 +206,7 @@ class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, adm
 
 
 @admin.register(Exhibitions)
-class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	form = ExhibitionsForm
 	list_display = ('title', 'date_start', 'date_end',)
 	list_display_links = ('title',)
@@ -267,13 +235,14 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		("Партнеры", {
 			'fields': ('partners',)
 		}),
-		("Фоторепортаж", {
+		("Фото с выставки", {
 			'fields': ('files',)
 		}),
-		("СЕО", {
+		("СЕО Настройки", {
 			'fields': MetaSeoFieldsAdmin.meta_fields
 		}),
 	)
+	filter_horizontal = ('nominations', 'jury', 'partners', 'exhibitors',)
 
 	def get_search_results(self, request, queryset, search_term):
 		queryset, use_distinct = super().get_search_results(
@@ -317,18 +286,13 @@ class ExhibitionsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 
 @admin.register(Categories)
-class CategoriesAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+class CategoriesAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	list_display = ('logo_thumb', 'title', 'nominations_list', 'description')
 	list_display_links = ('logo_thumb', 'title')
-	readonly_fields = ['logo_preview']
 
 	fieldsets = (
 		(None, {
 			'fields': ('title', 'slug', 'description', 'logo', 'sort')
-		}),
-		('Превью логотипа', {
-			'classes': ('collapse',),
-			'fields': ('logo_preview',)
 		}),
 	)
 
@@ -409,14 +373,14 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	)
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
-	list_display = ('exh_year', 'nomination', 'exhibitor', 'portfolio')
-	list_display_links = list_display
+	list_display = ('exhibitor', 'exh_year', 'nomination', 'portfolio')
+	list_display_links = ('exhibitor',)
 	# search_fields = ('nomination__title', 'exhibitor__name',)
 	list_filter = ('exhibition__date_start', 'nomination', 'exhibitor')
 	date_hierarchy = 'exhibition__date_start'
 	ordering = ('-exhibition__date_start',)
 
-	list_per_page = 30
+	list_per_page = 20
 	save_as = True
 	save_on_top = True  # adding the Save button on top bar
 
@@ -439,7 +403,7 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 
 @admin.register(Image)
-class ImageAdmin(AdminImageMixin, admin.ModelAdmin):
+class ImageAdmin(MediaWidgetMixin, admin.ModelAdmin):
 	form = ImageForm
 	fields = ('portfolio', 'title', 'description', 'file', 'sort')
 	readonly_fields = ('file_thumb',)
@@ -479,18 +443,20 @@ class PortfolioAttributesAdmin(admin.ModelAdmin):
 
 
 @admin.register(Portfolio)
-class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	form = PortfolioAdminForm
 
 	fieldsets = (
-		(None, {
+		('Основная информация', {
 			'classes': ('portfolio-block',),
 			'fields': (
-				'owner', 'exhibition', 'categories', 'nominations', 'title', 'description', 'cover', 'files',
+				'owner', 'exhibition', 'categories', 'nominations',
+				'title', 'description', 'cover', 'files',
 				'attributes', 'status', 'order'
 			),
 		}),
 	)
+
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
 	list_display = ('id', 'owner', '__str__', 'exhibition', 'nominations_list', 'status')
@@ -502,6 +468,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	)
 	date_hierarchy = 'exhibition__date_start'
 	# autocomplete_fields = ('owner', 'exhibition')
+	jazzmin_section_order = ("Основная информация", "Фото проектов", "Рейтинги", "Комментарии", "СЕО Настройки", )
 
 	list_per_page = 50
 	save_on_top = True
@@ -554,7 +521,7 @@ class PortfolioAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 
 @admin.register(Gallery)
-class GalleryAdmin(AdminImageMixin, admin.ModelAdmin):
+class GalleryAdmin(MediaWidgetMixin, admin.ModelAdmin):
 	fields = ('exhibition', 'title', 'file',)
 	list_display = ('file_thumb', 'exhibition', 'title',)
 	list_display_links = list_display

@@ -14,8 +14,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 INSTALLED_APPS = [
 	'jazzmin',
-	#'django_static_jquery_ui',
-	#'django_tabbed_changeform_admin',
+	# 'django_static_jquery_ui',
+	# 'django_tabbed_changeform_admin',
 	'django.contrib.admin',
 	'django.contrib.auth',
 	'django.contrib.sites',
@@ -198,6 +198,91 @@ STORAGES = {
 	},
 }
 
+JAZZMIN_SETTINGS = {
+	"site_title": "Панель администрирования сайта Сфера Дизайна",
+	"site_brand": "Сфера Дизайна",
+	"site_logo": "admin/img/brand/sd-logo-icon.jpg",
+	"site_icon": "admin/img/brand/sd-logo.jpg",
+	"login_logo": "admin/img/brand/sd-logo-default.png",
+	# "login_logo_dark": "admin/img/brand/sd-logo-dark.png",
+	"welcome_sign": "Администрирование сайта Сфера Дизайна.\n Введите email/login и пароль",
+	"copyright": "© Компании Арт-Сервис",
+	"hide_models": [],
+	"order_with_respect_to": [
+		'exhibition',
+		'exhibition.Exhibitions',
+		'exhibition.Categories',
+		'exhibition.Nominations',
+		'exhibition.Exhibitors',
+		'exhibition.Jury',
+		'exhibition.Partners',
+		'exhibition.Organizer',
+		'exhibition.Winners',
+		'exhibition.Portfolio',
+		'exhibition.PortfolioAttributes',
+		'exhibition.Image',
+		'exhibition.Gallery',
+		'exhibition.Events',
+		'exhibition.MetaSEO',
+		'rating',
+		'blog',
+		'ads',
+		'designers'
+	],
+	"changeform_format": "horizontal_tabs",
+	"related_modal_active": True,
+	# "custom_js": "admin/js/custom.js",
+	"topmenu_links": [
+		{"name": "Перейти на сайт", "url": "https://sd43.ru", "new_window": True, "permissions": ["auth.view_user"]},
+	],
+	"icons": {
+		"exhibition.Categories": "fas fa-layer-group",
+		"exhibition.Nominations": "fas fa-window-restore",
+		"exhibition.Portfolio": "fas fa-file-image",
+		"exhibition.Gallery": "fas fa-file-image",
+		"exhibition.Image": "fas fa-file-image",
+		"exhibition.PortfolioAttributes": "fas fa-tags",
+
+		"auth": "fas fa-users-cog",
+		"auth.user": "fas fa-user",
+		"auth.Group": "fas fa-users",
+	},
+	"show_ui_builder": False,
+}
+
+JAZZMIN_UI_TWEAKS = {
+	"navbar_small_text": True,
+	"footer_small_text": True,
+	"body_small_text": False,
+	"brand_small_text": False,
+	"brand_colour": False,
+	"accent": "accent-indigo",
+	"navbar": "navbar-white navbar-light",
+	"no_navbar_border": True,
+	"navbar_fixed": False,
+	"layout_boxed": False,
+	"footer_fixed": False,
+	"sidebar_fixed": False,
+	"sidebar": "sidebar-dark-indigo",
+	"sidebar_nav_small_text": False,
+	"sidebar_disable_expand": False,
+	"sidebar_nav_child_indent": False,
+	"sidebar_nav_compact_style": True,
+	"sidebar_nav_legacy_style": False,
+	"sidebar_nav_flat_style": False,
+	"theme": "lux",
+	"dark_mode_theme": None,
+	"button_classes": {
+		"primary": "btn-primary",
+		"secondary": "btn-outline-secondary",
+		"info": "btn-info",
+		"warning": "btn-warning",
+		"danger": "btn-danger",
+		"success": "btn-success"
+	},
+	"actions_sticky_top": True
+}
+
 # sorl-thumbnail settings
 THUMBNAIL_REDIS_URL = os.getenv('THUMBNAIL_REDIS_URL', 'redis://127.0.0.1:6379/1')
 if THUMBNAIL_REDIS_URL:
@@ -240,7 +325,7 @@ CKEDITOR_CONFIGS = {
 		],
 		'font_names': 'Corbel;Calibri;Arial;Tahoma;Sans serif;Helvetica;Symbol',
 		'width': '100%',
-		'height': 200,
+		'height': 400,
 		'tabSpaces': 4,
 		'removePlugins': 'flash,iframe',
 	},

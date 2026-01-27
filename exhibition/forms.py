@@ -278,7 +278,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	class Meta:
 		model = Portfolio
 		fields = (
-			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'cover', 'files',
+			'owner', 'exhibition', 'categories', 'nominations', 'attributes', 'title', 'description', 'files',
 			'status',
 		)
 
@@ -288,10 +288,9 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 		)
 
 		widgets = {
-			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+			# 'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
 			'status': forms.Select(choices=STATUS_CHOICES),
 		}
-
 
 	def clean(self):
 		cleaned_data = super().clean()

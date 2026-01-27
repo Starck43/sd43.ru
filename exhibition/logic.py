@@ -10,10 +10,11 @@ from sys import getsizeof
 
 import PIL
 from PIL import Image as PILImage, ImageOps
+from django.db.models.fields.files import ImageFieldFile
 from django.http import HttpResponse
 from django.conf import settings
 from django.core.mail import EmailMessage, BadHeaderError
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
@@ -33,7 +34,6 @@ DEFAULT_KEEP_META = getattr(settings, 'DJANGORESIZED_DEFAULT_KEEP_META', False)
 
 
 def get_image_html(obj, width=50, height=None, css_class='', crop='center'):
-
 	if not obj or not obj.name:
 		return format_html('<img src="/media/site/no-image.png" width="{}" class="{}"/>', width, css_class)
 
@@ -209,6 +209,46 @@ def image_resize(obj, size=None, uploaded_file=None):
 	else:
 		# Файл не требует обработки
 		return None
+
+
+def get_absolute_path(relative_path):
+	base_dir = path.dirname(path.dirname(path.abspath(__file__)))
+	absolute_path = path.join(base_dir, relative_path)
+	return absolute_path
+
+
+def get_image_url(obj: ImageFieldFile, request=None):
+	if is_file_exist(obj):
+		return request.build_absolute_uri(obj.url) if request else obj.url
+
+	return None
+
+
+def is_file_exist(obj):
+	if not obj:
+		return False
+
+	if isinstance(obj, str):
+		return path.isfile(get_absolute_path(obj))
+
+	try:
+		# Если файл сохранён — у него есть путь
+		if hasattr(obj, 'path'):
+			return path.isfile(obj.path)
+		else:
+			# Если это строка пути, пробуем через storage
+			return default_storage.exists(obj)
+	except NotImplementedError:
+		# Например, если используется RemoteStorage, который не реализует .path
+		return obj and default_storage.exists(obj.name)
+
+
+def is_image_file(obj):
+	if not obj or not is_file_exist(obj):
+		return False
+	name = obj if isinstance(obj, str) else obj.file.name
+	_, ext = path.splitext(name.lower())
+	return ext[1:] in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
 
 
 def limit_file_size(file):

@@ -249,13 +249,6 @@ class Categories(models.Model):
 	logo_thumb.short_description = 'Логотип'
 	logo_thumb.allow_tags = True
 
-	def logo_preview(self):
-		"""Большое превью для формы редактирования"""
-		return get_image_html(self.logo, width=200, height=200, css_class='admin-preview')
-
-	logo_preview.short_description = 'Превью логотипа'
-	logo_preview.allow_tags = True
-
 	def get_absolute_url(self):
 		return reverse('exhibition:projects-list-url', kwargs={'slug': self.slug})
 

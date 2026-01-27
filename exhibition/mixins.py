@@ -1,10 +1,19 @@
 from django.contrib import admin
+from django.db.models import ImageField, FileField
 
 from .models import MetaSEO
 from ads.models import Banner
+from .widgets import MediaWidget
 
 
-class PersonAdminMixin:
+class MediaWidgetMixin:
+	formfield_overrides = {
+		ImageField: {'widget': MediaWidget},
+		FileField: {'widget': MediaWidget},
+	}
+
+
+class PersonAdminMixin(MediaWidgetMixin):
 	"""Mixin для добавления полей Person в админку"""
 
 	prepopulated_fields = {"slug": ('name',)}
@@ -61,7 +70,7 @@ class ProfileAdminMixin:
 
 	def get_list_display(self, request):
 		list_display = super().get_list_display(request)
-		return list_display + ('phone', 'email',)
+		return list_display
 
 
 class ExhibitionYearListMixin:
