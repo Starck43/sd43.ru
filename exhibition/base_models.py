@@ -5,7 +5,7 @@ from django.utils.crypto import get_random_string
 
 class UserModel(models.Model):
 	"""
-	Базовый миксин для автоматического создания пользователя при сохранении объекта, если user не указан
+	Базовый миксин для автоматического создания пользователя при сохранении объекта
 	"""
 	user = models.OneToOneField(
 		User,

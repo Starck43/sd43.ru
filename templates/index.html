@@ -52,13 +52,13 @@
 
         {% if exhibitions_list.first.partners.first %}
             <section class="partners-container">
-                <header class="pb-0 text-center"><h2>{{ exhibitions_list.first.partners.first|verbose_name_plural }}</h2></header>
-                <div class="partners-list">
+                <header class="pb-0 text-center"><h2>Партнеры выставки</h2></header>
+                <div class="grid partners-list">
                     {% for partner in exhibitions_list.first.partners.all %}
-                            <a class="partner-link d-flex ratio ratio-1x1" href="{{ partner.get_absolute_url }}">
+                            <a class="grid-cell partner-link d-flex ratio ratio-1x1" href="{{ partner.get_absolute_url }}">
                                 {% thumbnail partner.logo "150x150" as logo_1x %}
                                     {% thumbnail partner.logo "300x300" as logo_2x %}
-                                        <img class="lazyload"
+                                        <img class="lazyload p-2"
                                              data-src="{{ logo_2x.url }}"
                                              data-srcset="{{ logo_1x.url }} {{ logo_1x.x }}w, {{ logo_2x.url }} {{ logo_2x.x }}w, {{ partner.logo.url }} {{ partner.logo.width }}w"
                                              data-sizes="auto"

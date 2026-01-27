@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now
 
 from exhibition.models import Portfolio
-from rating.utils import is_jury_member
+from exhibition.utils import is_jury_member
 
 
 class Rating(models.Model):

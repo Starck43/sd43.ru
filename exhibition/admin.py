@@ -15,7 +15,7 @@ from .forms import (
 from .logic import delete_cached_fragment
 from .mixins import ProfileAdminMixin, PersonAdminMixin
 from .models import (
-	Person, Profile, Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
+	Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
 )
 
@@ -169,43 +169,6 @@ class MetaSeoFieldsAdmin:
 				description=form.cleaned_data['meta_description'],
 				keywords=form.cleaned_data['meta_keywords'],
 			)
-
-
-class PersonAdmin(admin.ModelAdmin):
-	model = Person
-
-	fieldsets = (
-		(None, {
-			'classes': ('person-block',),
-			'fields': ('user', ('logo',), 'name', 'slug', 'description', 'sort',)
-		}),
-	)
-	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
-	list_display = ('logo_thumb', 'name', 'slug',)
-	search_fields = ('name', 'slug', 'description',)
-	list_display_links = ('logo_thumb', 'name',)
-	list_per_page = 20
-	#inlines = [RatingInline, ReviewInline]
-
-	def save_model(self, request, obj, form, change):
-		if change and obj.user:
-			articles = Article.objects.filter(owner=obj.user)
-			for article in articles:
-				delete_cached_fragment('article', article.id)
-		delete_cached_fragment('articles')
-		obj.save(request)
-
-
-class ProfileAdmin(admin.ModelAdmin):
-	model = Profile
-
-	fieldsets = (
-		('Профиль', {
-			'classes': ('profile-block',),
-			'fields': ('address', 'phone', 'email', 'site', 'vk', 'tg', 'instagram',)
-		}),
-	)
-	list_display = ('phone', 'email',)
 
 
 @admin.register(Exhibitors)

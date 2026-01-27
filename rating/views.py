@@ -8,7 +8,7 @@ from django.views.generic.base import View
 
 from exhibition.models import Portfolio
 from .models import Rating, Reviews
-from .utils import is_jury_member
+from exhibition.utils import is_jury_member
 
 
 @method_decorator(csrf_exempt, name='dispatch')

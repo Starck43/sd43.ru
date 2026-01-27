@@ -134,11 +134,9 @@
 		background-color: $main-color
 
 
-.partners-list,
-.organizers-list
-	display: grid
+.grid.partners-list,
+.grid.organizers-list
 	grid-template-columns: repeat(2, 1fr)
-	gap: 4vw
 	+mixins.media-min(sm)
 		grid-template-columns: repeat(3, 1fr)
 	+mixins.media-min(md)

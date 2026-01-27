@@ -47,7 +47,9 @@
     <div class="controls">
         <a
                 class="back-link"
-                href="{% if request.META.HTTP_REFERER %}{{ request.META.HTTP_REFERER }}{% else %}/{{ model_name }}/{% endif %}"
+                href="
+
+                        {% if request.META.HTTP_REFERER %}{{ request.META.HTTP_REFERER }}{% else %}/{{ model_name }}/{% endif %}"
                 onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
         >
             <svg class="icon arrow-icon arrow-left">
@@ -129,58 +131,59 @@
                         </ol>
                     </section>
                 {% endif %}
-
-                {% if object_list %}
-                    <section class="participant-projects">
-                        <h2>Работы участника</h2>
-                        <div class="grid projects-grid">
-                            {% for e in object_list %}
-
-                                {% with cover=e.project_cover %}
-                                    {% if cover %}
-                                        <a id="project-{{ e.id }}"
-                                           class="grid-cell ratio ratio-1x1 centered"
-                                           href="{{ e.get_absolute_url }}"
-                                        >
-                                            <figure>
-                                                {% thumbnail cover "320" crop="center" as xs %}
-                                                    {% thumbnail cover "576" crop="center" as sm %}
-                                                        <img class="project-cover lazyload"
-                                                             src="{{ xs.url }}"
-                                                             data-src="{{ sm.url }}"
-                                                             data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
-                                                             data-sizes="auto"
-                                                             loading="lazy"
-                                                        >
-                                                    {% endthumbnail %}
-                                                {% endthumbnail %}
-
-                                                <figcaption class="d-flex-column">
-                                                    <h3 class="project-title">{{ e.title }}</h3>
-                                                    <div class="extra d-flex justify-between">
-                                                        {% if e.win_year %}
-                                                            <div class="portfolio-award d-flex">
-                                                                <svg class="award">
-                                                                    <use xlink:href="#award-icon"></use>
-                                                                </svg>
-                                                                <span>{{ e.win_year }}</span>
-                                                            </div>
-                                                        {% else %}
-                                                            <span>{{ e.exh_year }}</span>
-                                                        {% endif %}
-                                                    </div>
-                                                </figcaption>
-                                            </figure>
-                                        </a>
-                                    {% endif %}
-                                {% endwith %}
-
-                            {% endfor %}
-                        </div>
-                    </section>
-                {% endif %}
-
             {% endcache %}
+
+
+            {% if object_list %}
+                <section class="participant-projects">
+                    <h2>Работы участника</h2>
+                    <div class="grid projects-grid">
+                        {% for e in object_list %}
+
+                            {% with cover=e.project_cover %}
+                                {% if cover %}
+                                    <a id="project-{{ e.id }}"
+                                       class="grid-cell ratio ratio-1x1 centered"
+                                       href="{{ e.get_absolute_url }}"
+                                    >
+                                        <figure>
+                                            {% thumbnail cover "320" crop="center" as xs %}
+                                                {% thumbnail cover "576" crop="center" as sm %}
+                                                    <img class="project-cover lazyload"
+                                                         src="{{ xs.url }}"
+                                                         data-src="{{ sm.url }}"
+                                                         data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
+                                                         data-sizes="auto"
+                                                         loading="lazy"
+                                                         alt="{{ e.title }}"
+                                                    >
+                                                {% endthumbnail %}
+                                            {% endthumbnail %}
+
+                                            <figcaption class="d-flex-column">
+                                                <h3 class="project-title">{{ e.title }}</h3>
+                                                <div class="extra d-flex justify-between">
+                                                    {% if e.win_year %}
+                                                        <div class="portfolio-award d-flex">
+                                                            <svg class="award">
+                                                                <use xlink:href="#award-icon"></use>
+                                                            </svg>
+                                                            <span>{{ e.win_year }}</span>
+                                                        </div>
+                                                    {% else %}
+                                                        <span>{{ e.exh_year }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </figcaption>
+                                        </figure>
+                                    </a>
+                                {% endif %}
+                            {% endwith %}
+
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
 
         {% endif %}
 

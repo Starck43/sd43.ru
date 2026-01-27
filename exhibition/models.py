@@ -41,23 +41,29 @@ class Person(UserModel, models.Model):
 	class Meta:
 		abstract = True  # Table will not be created
 
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.original_logo = self.logo
-		self.original_slug = self.slug
-
 	def __str__(self):
 		return self.name
 
 	def save(self, *args, **kwargs):
-		# Сначала вызываем логику создания пользователя из UserModel
 		super().save(*args, **kwargs)
 
+		# Извлекаем request из kwargs если он там есть
 		request = None
 		for arg in args:
 			if hasattr(arg, 'META'):  # Это request
 				request = arg
 				break
+
+		# Первый save() - инициализируем оригинальные значения
+		if not hasattr(self, 'original_logo'):
+			self.original_logo = None
+		if not hasattr(self, 'original_slug'):
+			self.original_slug = None
+
+		# Если это новый объект (еще нет id), устанавливаем значения
+		if self.pk is None:
+			self.original_logo = self.logo
+			self.original_slug = self.slug
 
 		if not self.slug:
 			self.slug = uuslug(self.name.lower(), instance=self)
@@ -117,31 +123,36 @@ class Profile(models.Model):
 	vk = models.CharField('Вконтакте', max_length=75, blank=True)
 
 	class Meta:
-		abstract = True  # The table will not be created
+		abstract = True
 
 	def __iter__(self):
+		exclude_fields = {'user', 'id'}
+
 		for field in self._meta.fields:
 			name = field.name
-			label = field.verbose_name
-			value = field.value_to_string(self)
-			link = None
-			if value and type(field.default) is str:
-				value = value.rsplit('/', 1)[-1]
-				link = field.default + '/' + value.lower()
 
-			if value and name in ['phone', 'email']:
+			if name in exclude_fields:
+				continue
+
+			label = field.verbose_name
+			value = getattr(self, name, None)
+
+			if not value:
+				continue
+
+			link = None
+			if name == 'site' and value:
+				value = re.sub(r'^https?:\/\/|\/$', '', value, flags=re.MULTILINE)
+				link = 'https://' + value
+
+			if name in ['phone', 'email']:
 				prefix = 'tel' if name == 'phone' else 'mailto'
 				link = prefix + ':' + value.lower()
 
 			if name in ['description', 'vk', 'tg', 'instagram']:
 				label = ''
 
-			if name == 'site' and value:
-				value = re.sub(r'^https?:\/\/|\/$', '', value, flags=re.MULTILINE)
-				link = 'https://' + value
-
-			if (name == 'address' or name == 'site' or link) and value:
-				yield (name, label, value, link)
+			yield (name, label, str(value), link)
 
 
 class Exhibitors(Person, Profile):
@@ -356,6 +367,77 @@ class Exhibitions(models.Model):
 		return reverse('exhibition:exhibition-detail-url', kwargs={'exh_year': self.slug})
 
 
+class Winners(models.Model):
+	""" Таблица Победителей """
+	exhibition = models.ForeignKey(
+		Exhibitions, related_name='exhibition_for_winner', on_delete=models.CASCADE,
+		null=True, verbose_name='Выставка'
+	)
+	nomination = ChainedForeignKey(
+		Nominations,
+		chained_field="exhibition",
+		chained_model_field="nominations_for_exh",
+		show_all=False,
+		auto_choose=True,
+		sort=True,
+		related_name='nomination_for_winner',
+		on_delete=models.CASCADE,
+		null=True,
+		verbose_name='Номинация'
+	)
+	exhibitor = ChainedForeignKey(
+		Exhibitors,
+		chained_field="exhibition",
+		chained_model_field="exhibitors_for_exh",
+		show_all=False,
+		auto_choose=True,
+		sort=True,
+		related_name='exhibitor_for_winner', on_delete=models.CASCADE, null=True,
+		verbose_name='Победители выставки'
+	)
+	portfolio = ChainedForeignKey(
+		'Portfolio',
+		chained_field="exhibitor",
+		chained_model_field="owner",
+		show_all=False,
+		auto_choose=True,
+		sort=True,
+		related_name='portfolio_for_winner', on_delete=models.SET_NULL, null=True,
+		verbose_name='Проект'
+	)
+
+	class Meta:
+		ordering = ['-exhibition__slug']
+		verbose_name = 'Победитель выставки'
+		verbose_name_plural = 'Победители'
+		db_table = 'winners'
+		unique_together = ['exhibition', 'exhibitor', 'nomination']
+
+	def save(self, *args, **kwargs):
+		super().save(*args, **kwargs)
+		update_google_sitemap()  # обновим карту сайта Google
+
+	def __str__(self):
+		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
+
+	def exh_year(self):
+		# return only Exhibition's year from date_start
+		return self.exhibition.date_start.strftime('%Y')
+
+	exh_year.short_description = 'Выставка'
+
+	def name(self):
+		return self.exhibitor.name
+
+	name.short_description = 'Победитель'
+
+	def get_absolute_url(self):
+		return reverse(
+			'exhibition:winner-detail-url',
+			kwargs={'exh_year': self.exhibition.slug, 'slug': self.nomination.slug}
+		)
+
+
 class Events(models.Model):
 	""" Таблица Мероприятий """
 	exhibition = models.ForeignKey(
@@ -432,21 +514,37 @@ class PortfolioManager(models.Manager):
 
 	def get_visible_projects(self, user=None):
 		"""Возвращает видимые проекты в зависимости от прав пользователя"""
+		queryset = self.get_queryset().filter(exhibition__isnull=False)
+		today = now().date()
 
-		queryset = self.get_queryset()
+
+		if not user or not user.is_authenticated:
+			# Неавторизованные пользователи видят только:
+			# - проекты без выставки
+			# - проекты с начавшейся или завершенной выставкой
+			return queryset.filter(exhibition__date_start__lte=today)
 
 		# Staff и жюри видят все проекты
-		if user and (user.is_staff or hasattr(user, 'jury')):
+		from .utils import is_jury_member, get_exhibitor_for_user
+
+		if user.is_staff or is_jury_member(user):
 			return queryset
 
-		# Обычные пользователи видят только:
-		# - проекты без выставки
-		# - проекты с завершенной выставкой (после даты окончания)
-		today = now().date()
-		return queryset.filter(
-			models.Q(exhibition__isnull=True) |
-			models.Q(exhibition__date_end__lt=today)
-		)
+		# Пытаемся найти участника (exhibitor) для этого пользователя
+		exhibitor = get_exhibitor_for_user(user)
+
+		if exhibitor:
+			# Владелец видит:
+			# 1. Все свои проекты (даже с upcoming выставками)
+			# 2. Проекты других участников, которые доступны всем
+			queryset = queryset.filter(
+				models.Q(owner=exhibitor) |  # Свои проекты без ограничений
+				models.Q(exhibition__date_start__lte=today)  # Проекты с начавшейся/завершенной выставкой
+			)
+			return queryset
+
+		# Обычные авторизованные пользователи (не staff, не жюри, не участник)
+		return queryset.filter(exhibition__date_start__lte=today)
 
 
 class Portfolio(models.Model):
@@ -608,80 +706,9 @@ class Portfolio(models.Model):
 		)
 
 
-class Winners(models.Model):
-	""" Таблица Победителей """
-	exhibition = models.ForeignKey(
-		Exhibitions, related_name='exhibition_for_winner', on_delete=models.CASCADE,
-		null=True, verbose_name='Выставка'
-	)
-	nomination = ChainedForeignKey(
-		Nominations,
-		chained_field="exhibition",
-		chained_model_field="nominations_for_exh",
-		show_all=False,
-		auto_choose=True,
-		sort=True,
-		related_name='nomination_for_winner',
-		on_delete=models.CASCADE,
-		null=True,
-		verbose_name='Номинация'
-	)
-	exhibitor = ChainedForeignKey(
-		Exhibitors,
-		chained_field="exhibition",
-		chained_model_field="exhibitors_for_exh",
-		show_all=False,
-		auto_choose=True,
-		sort=True,
-		related_name='exhibitor_for_winner', on_delete=models.CASCADE, null=True,
-		verbose_name='Победители выставки'
-	)
-	portfolio = ChainedForeignKey(
-		Portfolio,
-		chained_field="exhibitor",
-		chained_model_field="owner",
-		show_all=False,
-		auto_choose=True,
-		sort=True,
-		related_name='portfolio_for_winner', on_delete=models.SET_NULL, null=True,
-		verbose_name='Проект'
-	)
-
-	# Metadata
-	class Meta:
-		ordering = ['-exhibition__slug']
-		verbose_name = 'Победитель выставки'
-		verbose_name_plural = 'Победители'
-		db_table = 'winners'
-		unique_together = ['exhibition', 'exhibitor', 'nomination']
-
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
-
-	def __str__(self):
-		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
-
-	def exh_year(self):
-		# return only Exhibition's year from date_start
-		return self.exhibition.date_start.strftime('%Y')
-
-	exh_year.short_description = 'Выставка'
-
-	def name(self):
-		return self.exhibitor.name
-
-	name.short_description = 'Победитель'
-
-	def get_absolute_url(self):
-		return reverse(
-			'exhibition:winner-detail-url',
-			kwargs={'exh_year': self.exhibition.slug, 'slug': self.nomination.slug}
-		)
-
-
-# Exhibition Photo Gallery
 class Gallery(models.Model):
+	""" Exhibition Photo Gallery """
+
 	exhibition = models.ForeignKey(
 		Exhibitions, on_delete=models.CASCADE, related_name='gallery',
 		verbose_name='Выставка'

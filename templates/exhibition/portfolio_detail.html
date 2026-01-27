@@ -62,7 +62,15 @@
 {% block site_title %}
 
     <header class="d-flex align-center">
-        <h1>{{ object.title }}</h1>
+        <div class="d-flex-column">
+            {% with portfolio.nominations.first as nomination %}
+                <h1 class="mb-0">{{ object.title|default:nomination }}</h1>
+                {% if object.title %}
+                    <p class="text-uppercase mt-0">{{ nomination }}</p>
+                {% endif %}
+            {% endwith %}
+        </div>
+
         {% if victories %}
             <svg class="award">
                 <use xlink:href="#award-icon"></use>
@@ -76,6 +84,7 @@
             </a>
         {% endif %}
     </header>
+
 {% endblock site_title %}
 
 {% block link %}
@@ -101,7 +110,7 @@
 
             {% if portfolio.exhibition %}
                 <div class="portfolio-meta flex-content">
-                    <div class="portfolio-owner">Автор работы: <a
+                    <div class="portfolio-owner">Автор проекта: <a
                             href="{{ portfolio.owner.get_absolute_url }}">{{ portfolio.owner }}</a></div>
                     <div class="portfolio-exhibition">Участие в выставке: <a
                             href="{% url 'exhibition:exhibition-detail-url' portfolio.exhibition.slug %}">{{ portfolio.exhibition }}</a>
@@ -111,10 +120,17 @@
                         <div>Победа в номинации:
                             {% for victory in victories %}
                                 <span class="project-award">
-					<a href="{{ victory.nomination.get_absolute_url }}">{{ victory.nomination.title }}</a>, {{ victory.exhibition.slug }}
-				</span>
+                                    <a href="{{ victory.nomination.get_absolute_url }}">{{ victory.nomination.title }}</a>, {{ victory.exhibition.slug }}
+                                </span>
                             {% endfor %}
                         </div>
+
+                    {% elif portfolio.nominations.first %}
+                        {% with portfolio.nominations.first as nomination %}
+                            <div>Номинация:
+                                <b class="exh-nomination">{{ nomination }}</b>
+                            </div>
+                        {% endwith %}
                     {% endif %}
                 </div>
             {% endif %}

@@ -1,19 +1,7 @@
 from django.utils.timezone import now
 from datetime import timedelta
 
-from exhibition.models import Jury
-
-
-def is_jury_member(user):
-	"""Проверка, является ли пользователь членом жюри"""
-	if not user or not user.is_authenticated:
-		return False
-	try:
-		# Админы не являются автоматически членами жюри
-		# Нужно явно добавить их в модель Jury
-		return Jury.objects.filter(user=user).exists()
-	except:
-		return False
+from exhibition.utils import is_jury_member
 
 
 def can_rate_during_exhibition(user, portfolio):

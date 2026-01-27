@@ -1,6 +1,6 @@
 from django import forms
 from .models import Rating, Reviews
-from .utils import is_jury_member
+from exhibition.utils import is_jury_member
 
 
 def stars_choices():

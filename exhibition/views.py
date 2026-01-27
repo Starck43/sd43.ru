@@ -32,10 +32,9 @@ from blog.models import Article
 from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
-from rating.utils import is_jury_member
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
 
-from .utils import is_exhibitor_of_exhibition
+from .utils import is_exhibitor_of_exhibition, is_jury_member
 from .logic import send_email, send_email_async, set_user_group
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
@@ -54,8 +53,9 @@ def index(request):
 	""" Main page """
 	context = {
 		'html_classes': ['home'],
-		'organizers': Organizer.objects.all().only('logo', 'name', 'description').order_by('sort', 'name'),
+		'organizers': Organizer.objects.all().only('sort', 'logo', 'name', 'description').order_by('sort', 'name'),
 	}
+
 	return render(request, 'index.html', context)
 
 
@@ -260,8 +260,8 @@ class ProjectsList(MetaSeoMixin, BannersMixin, ListView):
 				output_field=CharField()
 			)
 		).values(
-			'id', 'title', 'last_exh_year', 'win_year', 'average', 'owner__name', 'owner__slug', 'project_id',
-			'project_cover'
+			'id', 'project_id', 'project_cover', 'title', 'nominations__title',
+			'last_exh_year', 'win_year', 'average', 'owner__name', 'owner__slug'
 		).order_by(
 			'-last_exh_year', '-win_year', '-average'
 		)[start_page:end_page]
@@ -377,11 +377,11 @@ class ExhibitorDetail(MetaSeoMixin, DetailView):
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 
-		context['object_list'] = Portfolio.objects.filter(
+		base_queryset = Portfolio.objects.get_visible_projects(self.request.user)
+
+		context['object_list'] = base_queryset.filter(
 			owner__slug=self.kwargs['slug'],
 			exhibition__isnull=False
-		).exclude(  # Добавляем исключение для upcoming выставок
-			exhibition__date_start__gt=now().date()
 		).annotate(
 			exh_year=F('exhibition__slug'),
 			win_year=Subquery(Winners.objects.filter(portfolio_id=OuterRef('pk')).values('exhibition__slug')[:1]),
@@ -470,20 +470,37 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		exhibition = self.object
 		user = self.request.user
 		is_jury = is_jury_member(user)
-		is_exhibitor = is_exhibitor_of_exhibition(user, exhibition)
 
 		# Определяем статус выставки
 		context['exhibition_status'] = exhibition.status
 
-		# Показывать проекты в номинациях для:
-		# - Жюри и staff ВСЕГДА
-		# - Участники видят только свои выставленные проекты
-		# - Всех пользователей во время активной выставки
+		# Для upcoming выставок: участник может видеть только свои проекты
+		# Для active/finished выставок: все видят все проекты
 		context['show_projects'] = (
-				self.request.user.is_staff or
-				is_jury or is_exhibitor or
-				context['exhibition_status'] == 'active'
+				user.is_staff or
+				is_jury or
+				context['exhibition_status'] in ['active', 'finished']
 		)
+
+		is_exhibitor = is_exhibitor_of_exhibition(user, exhibition)
+
+		# Если выставка upcoming и пользователь не staff/жюри,
+		# но является участником этой выставки - показываем только его проекты
+		if context['exhibition_status'] == 'upcoming' and not (user.is_staff or is_jury):
+			context['show_projects'] = is_exhibitor
+
+		portfolios = Portfolio.objects.get_visible_projects(user).filter(
+			exhibition=exhibition
+		).select_related('owner').prefetch_related('nominations')
+
+		# Если upcoming выставка и пользователь участник (но не staff/жюри)
+		# показываем только его проекты
+		if (
+				context['exhibition_status'] == 'upcoming' and
+				is_exhibitor and
+				not (user.is_staff or is_jury)
+		):
+			portfolios = portfolios.filter(owner__user=user)
 
 		# Для завершенной выставки - показываем победителей
 		if context['exhibition_status'] == 'finished':
@@ -499,20 +516,6 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 		# Загружаем проекты для показа
 		if context['show_projects']:
-			# Используем прямой запрос, чтобы избежать рекурсии с related_name
-
-			# Получаем портфолио связанные с этой выставкой и номинациями
-			portfolios = Portfolio.objects.filter(
-				exhibition=exhibition
-			).select_related('owner').prefetch_related('nominations')
-
-			if (
-					context['exhibition_status'] == 'upcoming'
-					and is_exhibitor
-					and not is_jury
-					and not user.is_staff
-			):
-				portfolios = portfolios.filter(owner__user=user)
 
 			# Группируем проекты по номинациям вручную
 			projects_by_nomination = {}
@@ -633,22 +636,22 @@ class WinnerProjectDetail(MetaSeoMixin, BannersMixin, DetailView):
 
 class ProjectDetail(MetaSeoMixin, DetailView):
 	""" Project detail """
+
 	model = Portfolio
 	context_object_name = 'portfolio'
 	template_name = 'exhibition/portfolio_detail.html'
-
 	# slug_url_kwarg = 'slug'
 
 	def get_object(self, queryset=None):
-		# Найдем портфолио и победу в номинациях если есть
 		obj = None
 		if self.kwargs.get('owner') and self.kwargs.get('project_id'):
 			try:
-				obj = self.model.objects.get(
+				base_queryset = Portfolio.objects.get_visible_projects(self.request.user)
+				obj = base_queryset.get(
 					project_id=self.kwargs['project_id'],
 					owner__slug=self.kwargs['owner']
 				)
-			except self.model.DoesNotExist:
+			except (self.model.DoesNotExist, Portfolio.DoesNotExist):
 				pass
 
 		return obj
