@@ -220,12 +220,14 @@ class Categories(models.Model):
 		'Логотип',
 		upload_to=LOGO_FOLDER,
 		storage=MediaFileStorage(),
-		validators=[svg_validator],  # Добавляем валидатор
+		validators=[svg_validator],
 		null=True,
 		blank=True,
-		help_text='Загрузите SVG файл'
+		help_text='Загрузите SVG файл',
 	)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
+
+	logo.accept = ['.svg']
 
 	class Meta:
 		ordering = ['sort', 'title']

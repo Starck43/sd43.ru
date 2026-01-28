@@ -243,11 +243,13 @@ def is_file_exist(obj):
 		return obj and default_storage.exists(obj.name)
 
 
-def is_image_file(obj):
+def is_image_file(obj, file_ext=None):
 	if not obj or not is_file_exist(obj):
 		return False
 	name = obj if isinstance(obj, str) else obj.file.name
 	_, ext = path.splitext(name.lower())
+	if file_ext:
+		return ext == file_ext.lower()
 	return ext[1:] in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
 
 

@@ -402,46 +402,6 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		delete_cached_fragment('participant_detail', obj.portfolio.id)
 
 
-@admin.register(Image)
-class ImageAdmin(MediaWidgetMixin, admin.ModelAdmin):
-	form = ImageForm
-	fields = ('portfolio', 'title', 'description', 'file', 'sort')
-	readonly_fields = ('file_thumb',)
-	list_display = ('file_thumb', 'portfolio', 'title', 'author', 'sort',)
-	list_display_links = ('file_thumb', 'portfolio', 'title',)
-	list_filter = ('portfolio__owner', 'portfolio',)
-	search_fields = (
-		'title', 'file', 'portfolio__title', 'portfolio__owner__slug', 'portfolio__owner__name',
-		'portfolio__owner__user__first_name', 'portfolio__owner__user__last_name',
-	)
-
-	list_per_page = 30
-
-	# def save_model(self, request, obj, form, change):
-	# 	obj.save()
-	# 	for image in request.FILES.getlist('images'):
-	# 		obj.create(image=image)
-
-	@admin.display(description='Автор', empty_value='')
-	def author(self, obj):
-		author = None
-		if obj.portfolio:
-			author = obj.portfolio.owner
-		return author
-
-
-@admin.register(PortfolioAttributes)
-class PortfolioAttributesAdmin(admin.ModelAdmin):
-	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
-	search_fields = ('name',)
-	list_per_page = 30
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-		for category in Categories.objects.all():
-			delete_cached_fragment('sidebar', category.slug)
-
-
 @admin.register(Portfolio)
 class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	form = PortfolioAdminForm
@@ -538,6 +498,46 @@ class GalleryAdmin(MediaWidgetMixin, admin.ModelAdmin):
 
 		delete_cached_fragment('exhibition_overlay', obj.exhibition.slug)
 		delete_cached_fragment('exhibition_gallery', obj.exhibition.slug)
+
+
+@admin.register(Image)
+class ImageAdmin(MediaWidgetMixin, admin.ModelAdmin):
+	form = ImageForm
+	fields = ('portfolio', 'title', 'description', 'file', 'sort')
+	readonly_fields = ('file_thumb',)
+	list_display = ('file_thumb', 'portfolio', 'title', 'author', 'sort',)
+	list_display_links = ('file_thumb', 'portfolio', 'title',)
+	list_filter = ('portfolio__owner', 'portfolio',)
+	search_fields = (
+		'title', 'file', 'portfolio__title', 'portfolio__owner__slug', 'portfolio__owner__name',
+		'portfolio__owner__user__first_name', 'portfolio__owner__user__last_name',
+	)
+
+	list_per_page = 30
+
+	# def save_model(self, request, obj, form, change):
+	# 	obj.save()
+	# 	for image in request.FILES.getlist('images'):
+	# 		obj.create(image=image)
+
+	@admin.display(description='Автор', empty_value='')
+	def author(self, obj):
+		author = None
+		if obj.portfolio:
+			author = obj.portfolio.owner
+		return author
+
+
+@admin.register(PortfolioAttributes)
+class PortfolioAttributesAdmin(admin.ModelAdmin):
+	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
+	search_fields = ('name',)
+	list_per_page = 30
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+		for category in Categories.objects.all():
+			delete_cached_fragment('sidebar', category.slug)
 
 
 @admin.register(MetaSEO)
