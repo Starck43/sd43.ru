@@ -7,10 +7,14 @@ from .widgets import MediaWidget
 
 
 class MediaWidgetMixin:
-	formfield_overrides = {
-		ImageField: {'widget': MediaWidget},
-		FileField: {'widget': MediaWidget},
-	}
+	def formfield_for_dbfield(self, db_field, request, **kwargs):
+		if isinstance(db_field, (FileField, ImageField)):
+			# Создаем виджет и передаем ему поле
+			widget = MediaWidget(field=db_field)
+			kwargs['widget'] = widget
+			return db_field.formfield(**kwargs)
+
+		return super().formfield_for_dbfield(db_field, request, **kwargs)
 
 
 class PersonAdminMixin(MediaWidgetMixin):

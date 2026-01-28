@@ -21,6 +21,7 @@ from uuslug import uuslug
 from crm import models
 from crm.validators import svg_validator
 from .base_models import UserModel
+from .fields import SVGField
 from .logic import (
 	MediaFileStorage, get_image_html, image_resize, portfolio_upload_to, cover_upload_to, gallery_upload_to,
 	limit_file_size, update_google_sitemap
@@ -216,18 +217,15 @@ class Categories(models.Model):
 	title = models.CharField('Категория', max_length=150)
 	slug = models.SlugField('Ярлык', max_length=150, unique=True)
 	description = models.TextField('Описание категории', blank=True)
-	logo = models.FileField(
+	logo = SVGField(
 		'Логотип',
 		upload_to=LOGO_FOLDER,
 		storage=MediaFileStorage(),
-		validators=[svg_validator],
 		null=True,
 		blank=True,
 		help_text='Загрузите SVG файл',
 	)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
-
-	logo.accept = ['.svg']
 
 	class Meta:
 		ordering = ['sort', 'title']
