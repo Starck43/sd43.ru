@@ -35,7 +35,6 @@ class ImagesInline(admin.StackedInline):
 	fields = ('file_thumb', 'file', 'sort', 'filename')
 	list_display = ('file_thumb', 'sort')
 	readonly_fields = ('file_thumb', 'filename')
-	# ordering = ['sort']
 
 	min_num = 0
 	max_num = 20  # Максимум 20 изображений
@@ -465,6 +464,24 @@ class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 			kwargs["queryset"] = Exhibitions.objects.order_by('-date_start')
 
 		return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+	def save_related(self, request, form, formsets, change):
+		super().save_related(request, form, formsets, change)
+
+		order = request.POST.get('images_order')
+		if not order:
+			return
+
+		ids = [int(pk) for pk in order.split(',') if pk.isdigit()]
+
+		images = Image.objects.in_bulk(ids)
+
+		for index, image_id in enumerate(ids, start=1):
+			img = images.get(image_id)
+			if img:
+				img.sort = index
+
+		Image.objects.bulk_update(images.values(), ['sort'])
 
 	def save_model(self, request, obj, form, change):
 		images = request.FILES.getlist('files')

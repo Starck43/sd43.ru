@@ -787,12 +787,12 @@ class Image(models.Model):
 				'Размер файла не более %s Мб' % round(settings.FILE_UPLOAD_MAX_MEMORY_SIZE / 1024 / 1024)
 		)
 	)
-	sort = models.SmallIntegerField('Индекс сортировки', null=True, blank=True)
+	sort = models.SmallIntegerField('Индекс сортировки')
 
 	class Meta:
 		verbose_name = 'Фото'
 		verbose_name_plural = 'Фото проектов'
-		ordering = [Coalesce("sort", F('id') + 500)]  # сортировка в приоритете по полю sort, а потом уже по-умолчанию
+		ordering = ['sort']
 		db_table = 'images'
 
 	def __str__(self):
@@ -817,6 +817,14 @@ class Image(models.Model):
 		super().delete(*args, **kwargs)
 
 	def save(self, *args, **kwargs):
+		if self.sort is None:
+			max_sort = (
+					Image.objects
+					.filter(portfolio=self.portfolio)
+					.aggregate(m=models.Max('sort'))['m'] or 0
+			)
+			self.sort = max_sort + 1
+
 		# если файл заменен, то требуется удалить все миниатюры в кэше у sorl-thumbnails
 		if self.original_file and self.original_file != self.file:
 			delete(self.original_file)

@@ -5,121 +5,105 @@
 <div class="js-inline-admin-formset inline-group portfolio-images-grid"
      id="{{ inline_admin_formset.formset.prefix }}-group"
      data-inline-type="stacked"
-     data-inline-formset="{{ inline_admin_formset.inline_formset_data }}">
+     data-inline-formset="{{ inline_admin_formset.inline_formset_data }}"
+>
     <fieldset class="module {{ inline_admin_formset.classes }}">
         {% if inline_admin_formset.opts.verbose_name_plural %}
             <h2>{{ inline_admin_formset.opts.verbose_name_plural|capfirst }}</h2>
         {% endif %}
+
+        <input type="hidden" name="images_order" id="images-order">
         {{ inline_admin_formset.formset.management_form }}
         {{ inline_admin_formset.formset.non_form_errors }}
 
         <!-- Grid контейнер -->
         <div class="images-grid-container" data-is-draggable="true" data-initialized="false">
             {% for inline_admin_form in inline_admin_formset %}
-                <div class="image-grid-item{% if inline_admin_form.original or inline_admin_form.show_url %} has-original{% endif %}{% if forloop.last and inline_admin_formset.has_add_permission %} new-form last-related{% endif %}"
-                     id="{{ inline_admin_formset.formset.prefix }}-
-                             {% if not forloop.last %}{{ forloop.counter0 }}{% else %}empty{% endif %}">
+                {% with inline_admin_form.original as image_obj %}
+                    <div class="image-grid-item{% if image_obj or inline_admin_form.show_url %} has-original{% endif %}{% if forloop.last and inline_admin_formset.has_add_permission %} new-form empty-item last-related{% endif %}"
+                         id="{{ inline_admin_formset.formset.prefix }}-{% if not forloop.last %}{{ forloop.counter0 }}{% else %}empty{% endif %}"
+                         data-image-id="{{ image_obj.id }}"
+                    >
 
-                    <!-- Скрытые поля Django формы -->
-                    <div class="django-fields" style="display: none;">
-                        {{ inline_admin_form.form }}
-                    </div>
+                        <!-- Скрытые поля Django формы -->
+                        <div class="django-fields" style="display: none;">
+                            {{ inline_admin_form.form }}
+                        </div>
 
-                    <!-- Превью изображения -->
-                    <div class="image-preview-wrapper">
-                        {% with inline_admin_form.original as image_obj %}
-                            {% if image_obj and image_obj.file %}
-                                <div class="image-thumbnail" data-image-id="{{ image_obj.id }}">
-                                    <a href="{{ image_obj.file.url }}" target="_blank" class="image-link">
-                                        <div class="image-container">
-                                            {% if image_obj.file_thumb %}
-                                                {# Используем thumb.html для превью #}
-                                                {% with image_obj.file as thumb %}
-                                                    {% include "exhibition/thumb.html" %}
-                                                {% endwith %}
-                                            {% else %}
-                                                <img class="lazyloaded"
-                                                     src="{{ image_obj.file.url }}"
-                                                     loading="lazy"
-                                                     alt="{{ image_obj.title|default:'Изображение' }}">
-                                            {% endif %}
-                                        </div>
-                                    </a>
-                                    <div class="image-title">
-                                        {% if image_obj.title %}
-                                            {{ image_obj.title|truncatechars:20 }}
-                                        {% elif image_obj.file %}
-                                            <!-- Показываем имя файла в нижнем регистре -->
-                                            {{ image_obj.file.name|filename|lower }}
-                                        {% else %}
-                                            <span class="no-title">новое фото</span>
-                                        {% endif %}
-                                    </div>
-                                    <!-- Input file для существующих фото -->
-                                    <input type="file"
-                                           accept="image/*"
-                                           name="{{ inline_admin_form.form.file.html_name }}"
-                                           style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; z-index: 1;">
-                                </div>
-                            {% else %}
-                                <div class="image-thumbnail empty-thumbnail">
-                                    <div class="image-container no-image">
-                                        <i class="fas fa-plus"></i>
-                                        <div class="drag-drop-hint">Или перетащите файл</div>
-                                    </div>
-                                    <div class="image-title">Новое фото</div>
-
-                                    <!-- 1. Django field (скрытый или стилизованный) -->
-                                    {{ inline_admin_form.form.file }}
-
-                                    <!-- 2. Наш кастомный trigger (перекрывает Django field) -->
-                                    <input type="file"
-                                           accept="image/*"
-                                           class="custom-file-trigger"
-                                           style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; z-index: 2;"
-                                    >
-                                </div>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-
-                    <!-- Скрытые поля формы -->
-                    <div class="image-form-fields" style="display: none;">
-                        {% for fieldset in inline_admin_form %}
-                            {% for line in fieldset %}
-                                {% for field in line %}
-                                    {% if not field.is_readonly %}
-                                        {{ field.field }}
+                        <!-- Превью изображения -->
+                        {% if image_obj and image_obj.file %}
+                            <div class="image-thumbnail" data-image-id="{{ image_obj.id }}">
+                                <a href="{{ image_obj.file.url }}" target="_blank" class="image-container image-link">
+                                    {% if image_obj.file_thumb %}
+                                        {# Используем thumb.html для превью #}
+                                        {% with image_obj.file as thumb %}
+                                            {% include "exhibition/thumb.html" %}
+                                        {% endwith %}
+                                    {% else %}
+                                        <img class="lazyloaded"
+                                             src="{{ image_obj.file.url }}"
+                                             loading="lazy"
+                                             alt="{{ image_obj.title|default:'Изображение' }}">
                                     {% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                        {% endfor %}
-                    </div>
+                                </a>
+                                <div class="image-title">
+                                    {% if image_obj.title %}
+                                        {{ image_obj.title|truncatechars:20 }}
+                                    {% elif image_obj.file %}
+                                        <!-- Показываем имя файла в нижнем регистре -->
+                                        {{ image_obj.file.name|filename|lower }}
+                                    {% else %}
+                                        <span class="no-title">новое фото</span>
+                                    {% endif %}
+                                </div>
+                                <!-- Input file для существующих фото -->
+                                <input type="file"
+                                       accept="image/*"
+                                       name="{{ inline_admin_form.form.file.html_name }}"
+                                       data-sort="{{ image_obj.sort }}"
+                                       style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; z-index: 1;"
+                                >
+                            </div>
 
-                    <!-- Действия -->
-                    <div class="image-actions">
-                        {% if inline_admin_form.original %}
-                            <a href="{% url inline_admin_form.model_admin.opts|admin_urlname:'change' inline_admin_form.original.pk|admin_urlquote %}"
-                               class="button edit-button" title="Изменить">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                        {% else %}
 
-                            {% if inline_admin_formset.formset.can_delete and inline_admin_formset.has_delete_permission %}
-                                <label class="delete-checkbox" title="Удалить">
-                                    {{ inline_admin_form.deletion_field.field }}
-                                    <span class="delete-icon"><i class="fas fa-trash"></i></span>
-                                </label>
+                            <div class="image-thumbnail empty-thumbnail">
+                                <div class="image-container no-image">
+                                    <i class="fas fa-plus"></i>
+                                    <div class="drag-drop-hint">Или перетащите файл</div>
+                                </div>
+                                <div class="image-title">Новое фото</div>
+
+                                {{ inline_admin_form.form.file }}
+                            </div>
+
+                        {% endif %}
+
+                        <!-- Действия -->
+                        <div class="image-actions">
+                            {% if image_obj %}
+                                <a href="{% url inline_admin_form.model_admin.opts|admin_urlname:'change' image_obj.pk|admin_urlquote %}"
+                                   class="button edit-button" title="Изменить">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                {% if inline_admin_formset.formset.can_delete and inline_admin_formset.has_delete_permission %}
+                                    <label class="delete-checkbox" title="Удалить">
+                                        {{ inline_admin_form.deletion_field.field }}
+                                        <span class="delete-icon"><i class="fas fa-trash"></i></span>
+                                    </label>
+                                {% endif %}
                             {% endif %}
+                        </div>
+
+                        <!-- Индикатор сортировки (только для существующих фото) -->
+                        {% if image_obj %}
+                            <div class="sort-indicator">
+                                <i class="fas fa-arrows-alt"></i>
+                            </div>
                         {% endif %}
                     </div>
-
-                    <!-- Индикатор сортировки (только для существующих фото) -->
-                    {% if inline_admin_form.original %}
-                        <div class="sort-indicator">
-                            <i class="fas fa-arrows-alt"></i>
-                        </div>
-                    {% endif %}
-                </div>
+                {% endwith %}
             {% endfor %}
         </div>
 
@@ -132,17 +116,15 @@
                             {{ empty_form }}
                         </div>
 
-                        <div class="image-preview-wrapper">
-                            <div class="image-thumbnail empty-thumbnail">
-                                <div class="image-container no-image">
-                                    <i class="fas fa-plus"></i>
-                                    <div class="drag-drop-hint">Или перетащите файл</div>
-                                </div>
-                                <div class="image-title">Новое фото</div>
-
-                                {# ВАЖНО: используем django input #}
-                                {{ empty_form.file }}
+                        <div class="image-thumbnail empty-thumbnail">
+                            <div class="image-container no-image">
+                                <i class="fas fa-plus"></i>
+                                <div class="drag-drop-hint">Или перетащите файл</div>
                             </div>
+                            <div class="image-title">Новое фото</div>
+
+                            {# ВАЖНО: используем django input #}
+                            {{ empty_form.file }}
                         </div>
 
                         <div class="image-actions"></div>
@@ -156,11 +138,8 @@
 
 <!-- Кнопки управления всеми элементами -->
 <div class="image-management-buttons">
-    <button type="button" class="btn btn-select-all" id="selectAllImages">
-        <i class="fas fa-check-square me-1"></i> Выбрать все
-    </button>
-    <button type="button" class="btn btn-deselect-all" id="deselectAllImages">
-        <i class="fas fa-square me-1"></i> Снять выделение
+    <button type="button" class="btn btn-toggle-selection" id="toggleSelection">
+        <i class="fas fa-check-square me-1"></i> <span class="btn-text">Выбрать все</span>
     </button>
 </div>
 
@@ -172,7 +151,7 @@
         <li>Нажмите на фото для замены изображения</li>
         <li>Используйте кнопку <i class="fas fa-edit"></i> для редактирования названия и сортировки</li>
         <li>Используйте кнопку <i class="fas fa-trash"></i> для удаления фото</li>
-        <li>Можно выбрать несколько фото для удаления</li>
+        <li>Кнопка "Выбрать все" переключает выделение всех фото</li>
         <li>Перетаскивайте фото для изменения порядка</li>
         <li>Перетащите файл на элемент "Новое фото" для загрузки</li>
     </ul>

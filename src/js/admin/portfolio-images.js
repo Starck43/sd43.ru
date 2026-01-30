@@ -1,6 +1,57 @@
 // Глобальные переменные
 let gridContainer = null;
 
+// Функция для обновления состояния кнопки
+function updateToggleButton() {
+    const toggleBtn = document.getElementById('toggleSelection');
+    if (!toggleBtn) return;
+
+    const checkboxes = document.querySelectorAll('.delete-checkbox input[name*="-DELETE"]:not([disabled])');
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const totalCount = checkboxes.length;
+
+    // Снимаем все классы
+    toggleBtn.classList.remove('none-selected', 'some-selected', 'all-selected');
+
+    if (checkedCount === 0) {
+        // Ничего не выбрано
+        toggleBtn.classList.add('none-selected');
+        toggleBtn.querySelector('.btn-text').textContent = 'Выбрать все';
+    } else if (checkedCount === totalCount) {
+        // Выбраны все
+        toggleBtn.classList.add('all-selected');
+        toggleBtn.querySelector('.btn-text').textContent = 'Снять все';
+    } else {
+        // Выбрана часть
+        toggleBtn.classList.add('some-selected');
+        toggleBtn.querySelector('.btn-text').textContent = `Выбрано ${checkedCount}`;
+    }
+}
+
+// Функция переключения выбора всех
+function toggleAllSelection() {
+    const checkboxes = document.querySelectorAll('.delete-checkbox input[name*="-DELETE"]:not([disabled])');
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+    // Если выбраны не все - выбираем все, иначе снимаем все
+    const selectAll = checkedCount !== checkboxes.length;
+
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll;
+        const deleteCheckbox = checkbox.closest('.delete-checkbox');
+        const gridItem = checkbox.closest('.image-grid-item');
+
+        if (deleteCheckbox) {
+            deleteCheckbox.classList.toggle('checked', selectAll);
+        }
+        if (gridItem) {
+            gridItem.classList.toggle('deleting', selectAll);
+        }
+    });
+
+    updateToggleButton();
+}
+
 function initImagesGrid() {
     gridContainer = document.querySelector('.images-grid-container');
     if (!gridContainer) return;
@@ -36,28 +87,26 @@ function initImagesGrid() {
     });
 
     gridContainer.addEventListener('change', function (e) {
-        if (e.target.matches('input[type="file"]')) {
-            const fileInput = e.target;
-            const gridItem = fileInput.closest('.image-grid-item');
+        if (!e.target.matches('input[type="file"][name^="images-"]')) return;
 
-            if (fileInput.files && fileInput.files[0]) {
-                const file = fileInput.files[0];
+        const file = e.target.files[0];
+        if (!file) return;
 
-                // 1. Обновляем оригинальный Django input
-                updateDjangoFileInput(gridItem, file);
+        // если это __prefix__
+        if (e.target.name.includes('__prefix__')) {
+            const realItem = activatePrefixForm(e.target);
+            const realInput = realItem.querySelector('input[type="file"][name*="-file"]');
 
-                // 2. Обновляем превью
-                updateImagePreview(fileInput);
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            realInput.files = dt.files;
 
-                // 3. Если это был пустой элемент, создаем новый
-                const wasEmpty = gridItem.querySelector('.empty-thumbnail');
-                if (wasEmpty) {
-                    wasEmpty.classList.remove('empty-thumbnail');
-                    gridItem.classList.remove('empty-item');
-                    setTimeout(() => addNewEmptyPhotoItem(), 300);
-                }
-            }
+            updateImagePreview(realInput);
+            addNewEmptyPhotoItem();
+            return;
         }
+
+        updateImagePreview(e.target);
     });
 
     // Отметка для удаления
@@ -75,50 +124,31 @@ function initImagesGrid() {
         if (djangoCheckbox.checked) {
             deleteCheckbox.classList.add('checked');
             gridItem.classList.add('deleting');
-
         } else {
             deleteCheckbox.classList.remove('checked');
             gridItem.classList.remove('deleting');
-
-            gridItem.querySelectorAll('[data-original-required]').forEach(input => {
-                input.required = true;
-                delete input.dataset.originalRequired;
-            });
         }
+
+        updateToggleButton();
 
         e.preventDefault();
         e.stopPropagation();
     });
 
-    // Кнопки управления
-    const selectAllBtn = document.getElementById('selectAllImages');
-    const deselectAllBtn = document.getElementById('deselectAllImages');
-
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', function () {
-            const checkboxes = document.querySelectorAll('.delete-checkbox input[name*="-DELETE"]:not([disabled])');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = true;
-                const deleteCheckbox = checkbox.closest('.delete-checkbox');
-                const gridItem = checkbox.closest('.image-grid-item');
-                if (deleteCheckbox) deleteCheckbox.classList.add('checked');
-                if (gridItem) gridItem.classList.add('deleting');
-            });
-        });
+    const toggleBtn = document.getElementById('toggleSelection');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleAllSelection);
     }
 
-    if (deselectAllBtn) {
-        deselectAllBtn.addEventListener('click', function () {
-            const checkboxes = document.querySelectorAll('.delete-checkbox input[name*="-DELETE"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-                const deleteCheckbox = checkbox.closest('.delete-checkbox');
-                const gridItem = checkbox.closest('.image-grid-item');
-                if (deleteCheckbox) deleteCheckbox.classList.remove('checked');
-                if (gridItem) gridItem.classList.remove('deleting');
-            });
-        });
-    }
+    // Обновляем состояние кнопки при изменении чекбоксов
+    gridContainer.addEventListener('change', function (e) {
+        if (e.target.matches('input[name*="-DELETE"]')) {
+            setTimeout(updateToggleButton, 0); // На след тик event loop
+        }
+    });
+
+    // Инициализируем кнопку при загрузке
+    setTimeout(updateToggleButton, 100);
 
     // Инициализация атрибута после загрузки
     gridContainer.dataset.initialized = 'true';
@@ -128,18 +158,7 @@ function initImagesGrid() {
     initSortableGrid();
 }
 
-function disableEmptyFormsBeforeSubmit() {
-    document.querySelectorAll('.image-grid-item').forEach(item => {
-        const isEmpty = item.querySelector('.empty-thumbnail');
-        if (!isEmpty) return;
-
-        item.querySelectorAll('input, textarea, select').forEach(el => {
-            el.disabled = true;
-        });
-    });
-}
-
-// Функция для инициализации lazy loading только в grid
+// Функция для инициализации lazy loading
 function lazyloadInit() {
     const gridImages = document.querySelectorAll('.images-grid-container img.lazyload:not(.lazyloaded)');
 
@@ -237,11 +256,10 @@ function initSortableGrid() {
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
-            filter: '.empty-thumbnail, .deleting',
-            onEnd: function (evt) {
-                updateSortOrder();
-            }
+            filter: '.empty-item, .deleting',
+            onEnd: updateSortOrder
         });
+
     } else {
         // Fallback без Sortable.js
         console.log('Sortable.js не загружен, используем упрощенный drag & drop');
@@ -250,57 +268,69 @@ function initSortableGrid() {
 
 // Обновление порядка сортировки
 function updateSortOrder() {
-    const gridItems = document.querySelectorAll('.image-grid-item:not(.deleting)');
+    const order = [];
 
-    gridItems.forEach((item, index) => {
-        // Ищем поле сортировки по name или id
-        const sortInput = item.querySelector('input[name*="-sort"], input[id*="-sort"]');
-        if (sortInput) {
-            sortInput.value = index + 1;
-        }
+    document.querySelectorAll(
+        '.image-grid-item[data-image-id]'
+    ).forEach(item => {
+        order.push(item.dataset.imageId);
     });
+
+    const input = document.getElementById('images-order');
+    if (input) {
+        input.value = order.join(',');
+    }
 }
 
-// Функция инициализации событий для нового элемента
-function initGridItemEvents(element) {
-    const fileInput = element.querySelector('.image-file-input');
-    if (fileInput) {
-        fileInput.addEventListener('change', function (e) {
-            updateImagePreview(this);
+function activatePrefixForm(prefixInput) {
+    const gridItem = prefixInput.closest('.image-grid-item');
+    const totalForms = document.querySelector('#id_images-TOTAL_FORMS');
 
-            // Если это был пустой элемент, добавляем новый
-            const emptyThumb = this.closest('.empty-thumbnail');
-            if (emptyThumb) {
-                setTimeout(() => addNewEmptyPhotoItem(), 300);
+    const index = parseInt(totalForms.value, 10);
+
+    gridItem.querySelectorAll('[name]').forEach(el => {
+        el.name = el.name.replace('__prefix__', index);
+    });
+
+    gridItem.querySelectorAll('[id]').forEach(el => {
+        el.id = el.id.replace('__prefix__', index);
+    });
+
+    totalForms.value = index + 1;
+
+    // Устанавливаем sort для новой формы
+    const sortInput = gridItem.querySelector('input[name*="-sort"]');
+    if (sortInput) {
+        // Находим максимальный sort
+        let maxSort = 0;
+        const allSortInputs = document.querySelectorAll('input[name*="-sort"]');
+        allSortInputs.forEach(input => {
+            if (input !== sortInput) { // не считаем текущий
+                const val = parseInt(input.value) || 0;
+                if (val > maxSort) maxSort = val;
             }
         });
+        sortInput.value = maxSort + 1;
     }
+
+    gridItem.classList.remove('empty-item');
+    return gridItem;
 }
 
 // Добавление нового пустого элемента для фото
 function addNewEmptyPhotoItem() {
     const grid = document.querySelector('.images-grid-container');
     const template = document.querySelector('.empty-form-template');
-    const totalForms = document.querySelector('#id_images-TOTAL_FORMS');
 
-    if (!grid || !template || !totalForms) return;
+    if (!grid || !template) return;
 
-    // если empty уже есть — не добавляем
-    if (grid.querySelector('.empty-thumbnail')) return;
-
-    const index = parseInt(totalForms.value, 10);
-    const html = template.innerHTML.replace(/__prefix__/g, index).trim();
+    if (grid.querySelector('.image-grid-item.empty-item')) return;
 
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
+    wrapper.innerHTML = template.innerHTML.trim();
 
-    const newItem = wrapper.querySelector('.image-grid-item');
-    if (!newItem) return;
-
-    grid.appendChild(newItem);
-    totalForms.value = index + 1;
+    grid.appendChild(wrapper.firstElementChild);
 }
-
 
 // Инициализация Drag & Drop для загрузки файлов
 function initDragAndDrop() {
@@ -329,11 +359,11 @@ function preventDefaults(e) {
     e.stopPropagation();
 }
 
-function highlight(e) {
+function highlight() {
     gridContainer.classList.add('drag-over');
 }
 
-function unhighlight(e) {
+function unhighlight() {
     gridContainer.classList.remove('drag-over');
 }
 
@@ -391,6 +421,13 @@ function updateImagePreview(fileInput) {
         // Показываем индикатор загрузки
         previewContainer.classList.add('loading');
 
+        // Убираем классы для пустого элемента
+        const imageThumbnail = gridItem.querySelector('.image-thumbnail');
+        if (imageThumbnail) {
+            imageThumbnail.classList.remove('empty-thumbnail');
+            previewContainer?.classList.remove('no-image');
+        }
+
         const reader = new FileReader();
 
         reader.onload = function (e) {
@@ -400,8 +437,8 @@ function updateImagePreview(fileInput) {
             // Создаем новое изображение
             const img = document.createElement('img');
             img.src = e.target.result;
-            img.className = 'lazyloaded'; // Сразу ставим lazyloaded
-            img.alt = 'Preview';
+            img.className = 'lazyloaded';
+            img.alt = 'Превью загружаемого изображения';
 
             // Очищаем контейнер
             previewContainer.innerHTML = '';
@@ -411,7 +448,7 @@ function updateImagePreview(fileInput) {
             const fileName = file.name;
             if (titleElement) {
                 const shortName = fileName.length > 20
-                    ? fileName.substring(0, 17) + '...'
+                    ? fileName.substring(0, 19) + '...'
                     : fileName;
                 titleElement.textContent = shortName.toLowerCase();
 
@@ -454,20 +491,6 @@ function updateImagePreview(fileInput) {
     }
 }
 
-// Функция для обновления скрытого Django input
-function updateDjangoFileInput(gridItem, file) {
-    // Находим ОРИГИНАЛЬНЫЙ Django input
-    const djangoFileInput = gridItem.querySelector('input[type="file"][name*="-file"]');
-    if (!djangoFileInput) return;
-
-    // Создаем новый FileList с файлом
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    djangoFileInput.files = dataTransfer.files;
-
-    console.log('Django input обновлен:', djangoFileInput.name, file.name);
-}
-
 // Инициализация
 document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => {
@@ -475,14 +498,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // Инициализируем сетку
         initImagesGrid();
 
-        // Обновляем порядок сортировки перед сохранением
-        const form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function (e) {
-                // disableEmptyFormsBeforeSubmit();
-                updateSortOrder();
-            });
-        }
     }, 100);
 });
 
