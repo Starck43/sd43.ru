@@ -1,0 +1,142 @@
+:root
+    --main-color-light: color-mix(in srgb, var(--main-color) 85%, white)
+    --main-color-lighter: color-mix(in srgb, var(--main-color) 70%, white)
+    --main-color-dark: color-mix(in srgb, var(--main-color) 90%, black)
+    --main-color-alpha-10: color-mix(in srgb, var(--main-color) 10%, transparent)
+    --main-color-alpha-20: color-mix(in srgb, var(--main-color) 20%, transparent)
+    --main-color-alpha-50: color-mix(in srgb, var(--main-color) 50%, transparent)
+    --gradient-primary: linear-gradient(135deg, var(--main-color), var(--main-color-dark))
+    --gradient-light: linear-gradient(135deg, var(--main-color-light), var(--main-color))
+    --gradient-overlay: linear-gradient(to bottom, var(--main-color-alpha-20), var(--main-color-alpha-10))
+
+    // Дополнительные цвета для статусов
+    --success-color: #4CAF50
+    --warning-color: #FF9800
+    --success-alpha-10: color-mix(in srgb, var(--success-color) 10%, transparent)
+    --warning-alpha-10: color-mix(in srgb, var(--warning-color) 10%, transparent)
+
+
+.error-container
+    min-height: 70vh
+    display: grid
+    place-items: center
+    padding: 2rem
+    p
+        margin-top: 0
+
+.error-card
+    max-width: 800px
+    width: 100%
+    background: white
+    border-radius: 1rem
+    overflow: hidden
+    box-shadow: 0 10px 30px var(--main-color-alpha-10)
+
+.error-header
+    background: var(--gradient-primary)
+    color: white
+    padding: 2rem
+    text-align: center
+
+    h1
+        color: white
+        font-size: 2.5rem
+        margin: 0 0 0.5rem
+        font-weight: bold
+
+    p
+        opacity: 0.9
+        margin: 0
+
+.error-body
+    padding: 2rem
+
+.project-info
+    margin-bottom: 2rem
+    padding-bottom: 2rem
+    border-bottom: 2px solid var(--main-color-alpha-10)
+
+    h3
+        color: var(--main-color)
+        margin: 0 0 1rem
+        font-size: 1.25rem
+
+    .exhibition-info
+        background: var(--main-color-alpha-10)
+        padding: 1rem
+        border-radius: 0.5rem
+        margin-top: 1rem
+
+        .badge
+            background: var(--gradient-light)
+            color: white
+            padding: 0.25rem 0.75rem
+            border-radius: 1rem
+            font-size: 0.875rem
+            display: inline-block
+
+.availability-info
+    padding: 1.5rem
+    border-radius: 0.5rem
+    margin-bottom: 2rem
+
+    &.future
+        background: var(--success-alpha-10)
+        border-left: 4px solid var(--success-color)
+
+    &.active
+        background: var(--warning-alpha-10)
+        border-left: 4px solid var(--warning-color)
+
+    h4
+        margin: 0 0 0.5rem
+        color: var(--main-color)
+
+    .countdown-card
+        background: white
+        padding: 1rem
+        border-radius: 0.5rem
+        margin-top: 1rem
+        border: 1px solid var(--main-color-alpha-10)
+
+        h3
+            color: var(--success-color)
+            margin: 0
+            font-size: 1.5rem
+
+.navigation-buttons
+    display: flex
+    gap: 1rem
+    flex-wrap: wrap
+    justify-content: center
+    margin-top: 2rem
+    padding-top: 2rem
+    border-top: 1px solid var(--main-color-alpha-10)
+    >*
+        flex: 1
+
+.error-footer
+    text-align: center
+    padding: 1.5rem
+    background: var(--main-color-alpha-10)
+    color: var(--main-color)
+    font-size: 0.875rem
+
+    a
+        color: var(--main-color)
+        font-weight: 500
+
+@media (max-width: 640px)
+    .error-header
+        padding: 1.5rem
+
+        h1
+            font-size: 2rem
+
+    .error-body
+        padding: 1.5rem
+
+
+    .navigation-buttons
+        flex-direction: column
+

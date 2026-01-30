@@ -2,6 +2,7 @@ import re
 import unicodedata
 import hashlib
 import threading
+import locale
 
 from os import path
 from django.conf import settings
@@ -168,3 +169,45 @@ def get_image_html(file, size="100px"):
 		return mark_safe(
 			f'<img src="{file.url}" style="max-width: {size}; max-height: {size};" />'
 		)
+
+
+@register.filter
+def date_with_declension(value):
+	"""Дата с правильным падежом для 'до'"""
+	if not value:
+		return ""
+
+	try:
+		# Устанавливаем русскую локаль
+		locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+	except locale.Error:
+		try:
+			locale.setlocale(locale.LC_TIME, 'ru_RU')
+		except locale.Error:
+			# Если не удалось установить русскую локаль
+			return f"{value.day}.{value.month}.{value.year}"
+
+	# Форматируем дату (месяц будет на русском)
+	date_str = value.strftime("%d %B %Y")
+
+	replacements = {
+		'январь': 'января',
+		'февраль': 'февраля',
+		'март': 'марта',
+		'апрель': 'апреля',
+		'май': 'мая',
+		'июнь': 'июня',
+		'июль': 'июля',
+		'август': 'августа',
+		'сентябрь': 'сентября',
+		'октябрь': 'октября',
+		'ноябрь': 'ноября',
+		'декабрь': 'декабря',
+	}
+
+	for nom, gen in replacements.items():
+		if nom in date_str:
+			date_str = date_str.replace(nom, gen)
+			break
+
+	return date_str

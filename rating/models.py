@@ -79,12 +79,7 @@ class Rating(models.Model):
 		if not portfolio.exhibition:
 			return False, "Работа не участвует в выставке"
 
-		# Жюри могут оценивать до 00:00 за день до окончания выставки
-		rating_deadline = portfolio.exhibition.date_end - timedelta(days=1)
-		if now().date() > rating_deadline:
-			return False, "Срок выставления оценок жюри истек"
-
-		return True, "Можно оценивать"
+		return portfolio.exhibition.is_jury_voting_active, "Можно оценивать"
 
 	def calculate(self):
 		"""Обновление атрибутов экземпляра рейтинга"""

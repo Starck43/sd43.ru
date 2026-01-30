@@ -8,27 +8,29 @@
         justify-content: flex-end
         align-items: center
 
+    // Блокировка взаимодействия ТОЛЬКО когда форма disabled
     &.disabled .rating label
         pointer-events: none
         cursor: not-allowed
 
-    // Общие стили для активной и неактивной формы
+    // Общие стили для рейтинга
     .rating
         position: relative
         flex-direction: row-reverse
+        padding-bottom: 2px
+        margin-right: -5px
         background-color: white
-        padding-bottom: 3px
         overflow: hidden
 
         > input
-            position: absolute
             opacity: 0
-            margin-left: -20px
+            margin: 0 0 0 -23px
 
         > label
             position: relative
             float: right
             cursor: pointer
+            margin-left: 1px
 
             .rect
                 fill: vars.$star-off-color
@@ -48,7 +50,7 @@
                 opacity: 0
                 transition: background-color 0.2s linear
 
-    // Стили для активной формы
+    // Стили для АКТИВНОЙ формы (можно голосовать)
     &:not(.disabled) .rating
         > label:hover:before,
         > label:hover ~ label:before,
@@ -58,8 +60,8 @@
             background-color: vars.$star-on-color
             mix-blend-mode: color
 
-    // Стили для disabled формы (кроме жюри)
-    &.disabled:not([data-is-jury="true"]) .rating
+    // Стили для DISABLED формы (нельзя голосовать)
+    &.disabled .rating
         > label:hover:before,
         > label:hover ~ label:before,
         &:not(:hover) > :checked ~ label:before,
@@ -74,3 +76,4 @@
 .comment-block-datetime
     font-size: 0.8em
     font-weight: bold
+

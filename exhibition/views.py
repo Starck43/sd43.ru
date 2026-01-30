@@ -1,6 +1,6 @@
 import math
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime
 from os import SEEK_END
 
 from allauth.account.models import EmailAddress
@@ -33,11 +33,10 @@ from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
-
-from .utils import is_exhibitor_of_exhibition, is_jury_member
 from .logic import send_email, send_email_async, set_user_group
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
+from .utils import is_exhibitor_of_exhibition, is_jury_member
 
 
 def success_message(request):
@@ -640,21 +639,21 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 	model = Portfolio
 	context_object_name = 'portfolio'
 	template_name = 'exhibition/portfolio_detail.html'
+
 	# slug_url_kwarg = 'slug'
 
 	def get_object(self, queryset=None):
-		obj = None
 		if self.kwargs.get('owner') and self.kwargs.get('project_id'):
 			try:
 				base_queryset = Portfolio.objects.get_visible_projects(self.request.user)
-				obj = base_queryset.get(
+				return base_queryset.get(
 					project_id=self.kwargs['project_id'],
 					owner__slug=self.kwargs['owner']
 				)
 			except (self.model.DoesNotExist, Portfolio.DoesNotExist):
-				pass
+				raise Http404("Проект не найден")
 
-		return obj
+		raise Http404("Проект не найден")
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
@@ -697,41 +696,71 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 			context['user_score'] = None
 
 		context['is_jury'] = is_jury_member(self.request.user)
-		context['jury_can_rate'] = False
 		context['jury_avg'] = round(jury_avg, 2)
 		context['jury_count'] = jury_count
 
-		if self.object and self.object.exhibition and context['is_jury']:
-			can_jury_rate, _ = Rating.can_jury_rate_now(self.object)
-			context['jury_can_rate'] = can_jury_rate
+		# Определяем возможность голосования и дедлайны
+		if self.object and self.object.exhibition:
+			context['exhibition_ended'] = self.object.exhibition.is_exhibition_ended
 
+			# Используем свойства модели
+			context['rating_deadline'] = self.object.exhibition.rating_deadline
+			context['jury_deadline'] = self.object.exhibition.jury_deadline
+
+			# Жюри могут голосовать только в период голосования жюри
+			if context['is_jury']:
+				context['jury_can_rate'] = self.object.exhibition.is_jury_voting_active
+			else:
+				context['jury_can_rate'] = False
+		else:
+			context['jury_can_rate'] = False
+			context['rating_deadline'] = now().date()
+			context['jury_deadline'] = now().date()
+
+		# Определяем, может ли пользователь голосовать
 		context['user_can_rate'] = False
 		if self.request.user.is_authenticated:
 			if context['is_jury']:
+				# Жюри могут голосовать только в период голосования жюри
 				context['user_can_rate'] = context['jury_can_rate']
 			else:
-				# Обычные пользователи И staff могут оценивать только после выставки
-				can_rate = not context['user_score']
-				if self.object and self.object.exhibition:
-					rating_deadline = self.object.exhibition.date_end - timedelta(days=1)
-					can_rate = can_rate and (now().date() > rating_deadline)
+				# Обычные пользователи (включая staff)
+				# НЕ может голосовать если уже голосовал
+				if context['user_score']:
+					context['user_can_rate'] = False
+				elif self.object and self.object.exhibition:
+					# Может голосовать если выставка завершена
+					# Это ОСНОВНАЯ ЛОГИКА для прошедших выставок!
+					context['user_can_rate'] = self.object.exhibition.is_exhibition_ended
+				else:
+					# Если нет выставки - можно голосовать
+					context['user_can_rate'] = True
 
-				context['user_can_rate'] = can_rate
-
-		# Ключевое изменение: для жюри используем их личную оценку, вместо средней
-		if context['is_jury'] and user_rating:
-			# Жюри видят только свою оценку
-			display_rate = user_rating.star
-			context['round_rate'] = display_rate
-			context['extra_rate_percent'] = 0  # Полные звезды
-		else:
-			# Обычные пользователи видят средний рейтинг
+		# Определяем, какую оценку показывать
+		# Staff всегда видят среднюю оценку
+		if self.request.user.is_staff:
 			display_rate = rate
 			context['round_rate'] = math.ceil(rate)
 			context['extra_rate_percent'] = int((rate - int(rate)) * 100)
+			context['show_average'] = True
+
+		# Жюри видят свою оценку если могут еще голосовать, иначе видят среднюю
+		elif context['is_jury'] and user_rating and context['jury_can_rate']:
+			display_rate = user_rating.star
+			context['round_rate'] = display_rate
+			context['extra_rate_percent'] = 0
+			context['show_average'] = False
+
+		else:
+			# Все остальные видят среднюю оценку
+			display_rate = rate
+			context['round_rate'] = math.ceil(rate)
+			context['extra_rate_percent'] = int((rate - int(rate)) * 100)
+			context['show_average'] = True
 
 		context['average_rate'] = round(display_rate, 2)
 
+		# Форма рейтинга
 		context['rating_form'] = RatingForm(
 			initial={'star': int(display_rate) if display_rate else 0},
 			user=self.request.user,
@@ -1252,3 +1281,73 @@ class HealthCheckView(View):
 			"database": db_status,
 			"service": "sferadesign"
 		}, status=200 if db_status == "connected" else 503)
+
+
+def __404__(request, exception):
+	"""Кастомный обработчик 404"""
+	from django.http import HttpResponseNotFound
+	from django.shortcuts import render
+	from django.utils.timezone import now
+	from datetime import timedelta
+
+	# Для статики - простой 404
+	if request.path.startswith('/static/') or request.path.startswith('/media/'):
+		return HttpResponseNotFound()
+
+	try:
+		context = {
+			'title': '404 - Страница не найдена',
+			'message': 'Запрашиваемая страница не существует или недоступна.',
+		}
+
+		# Для авторизованных пользователей - ссылка на их профиль
+		if request.user.is_authenticated:
+			try:
+				exhibitor = Exhibitors.objects.get(user=request.user)
+				context['user_profile_url'] = exhibitor.get_absolute_url()
+				context['has_user_profile'] = True
+			except Exhibitors.DoesNotExist:
+				context['has_user_profile'] = False
+
+		# Только для путей проектов
+		if request.path.startswith('/projects/'):
+			try:
+				parts = request.path.strip('/').split('/')
+				if len(parts) >= 3:
+					project = Portfolio.objects.get(
+						owner__slug=parts[1],
+						project_id=parts[2].replace('project-', '')
+					)
+					context['project'] = project
+					context['exhibitions_url'] = '/exhibitions/'
+
+					# URL автора проекта
+					context['author_profile_url'] = project.owner.get_absolute_url()
+
+					if project.exhibition:
+						context['exhibitions_url'] = project.exhibition.get_absolute_url()
+						today = now().date()
+						if today < project.exhibition.date_start:
+							context['title'] = 'Проект временно закрыт для публичного доступа'
+							context['message'] = f'Проект участвует в будущей выставке "{project.exhibition.title}".'
+							context['reason'] = 'future_exhibition'
+							context['available_date'] = project.exhibition.date_start
+
+						elif today <= project.exhibition.rating_deadline:
+							context['title'] = 'Доступ ограничен'
+							context['message'] = f'Проект участвует в выставке "{project.exhibition.title}".'
+							context['reason'] = 'active_exhibition'
+							context['available_date'] = project.exhibition.rating_deadline + timedelta(days=1)
+			except (Portfolio.DoesNotExist, ValueError):
+				pass
+
+		return render(request, '404.html', context, status=404)
+
+	except Exception as e:
+		# Простой fallback
+		import logging
+		logger = logging.getLogger(__name__)
+		logger.error(f"Ошибка в __404__: {e}")
+
+		return HttpResponseNotFound("404 - Страница не найдена")
+

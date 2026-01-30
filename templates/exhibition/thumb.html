@@ -2,9 +2,13 @@
 {% load thumbnail %}
 
 {% thumbnail thumb "320" as img %}
-	<img class="lazyload"
-		src="{{ img.url }}"
-		loading="lazy" title="{{ obj.title }}">
+    <img
+            class="lazyload"
+            src="{{ img.url }}"
+            data-src="{{ img.url }}"
+            loading="lazy"
+            alt="{{ obj.title }}"
+    >
 {% empty %}
-	<img src="{% get_media_prefix %}site/no-image.png">
+    <img src="{% get_media_prefix %}site/no-image.png" alt="">
 {% endthumbnail %}

@@ -1,23 +1,39 @@
 {% load l10n %}
+{% load custom_tags %}
 
-<form class="rating-form flex-content {% if not user_can_rate %}disabled{% endif %}"
+<form class="rating-form flex-content
+             {% if not user_can_rate and not exhibition_ended %}disabled{% endif %}
+             {% if exhibition_ended %}show-rating{% endif %}"
       method="{% if user_can_rate %}post{% else %}get{% endif %}"
       action="{% url 'rating:add-rating' %}"
-      value="{% if user_score %}{{ user_score|floatformat:0 }}{% endif %}" average="{{ average_rate }}"
-      name="rating" data-is-jury="{{ is_jury|yesno:'true,false' }}">
+      value="{% if user_score %}{{ user_score|floatformat:0 }}{% endif %}"
+      name="rating"
+      data-is-jury="{{ is_jury|yesno:'true,false' }}"
+      data-user-authenticated="{{ user.is_authenticated|yesno:'true,false' }}"
+      data-user-can-rate="{{ user_can_rate|yesno:'true,false' }}"
+      data-exhibition-ended="{{ exhibition_ended|yesno:'true,false' }}"
+>
 
+    {# ОДНО сообщение о причине невозможности голосования #}
     {% if not user_can_rate %}
         <div class="mb-2">
             <small class="text-muted">
                 {% if not user.is_authenticated %}
-                    Войдите в систему, чтобы участвовать в оценке работ
-                    
+                    Войдите в систему, чтобы участвовать в оценке проектов
                 {% elif is_owner %}
-                    Вы не можете голосовать за себя
+                    Вы не можете оценивать свои работы
                 {% elif is_jury %}
-                    Срок оценки истек
+                    {% if exhibition_ended %}
+                        Голосование жюри завершено
+                    {% else %}
+                        Срок голосования жюри истек
+                    {% endif %}
                 {% else %}
-                    {% if user_score %}Вы уже оценили эту работу{% else %}Оценка доступна после завершения выставки{% endif %}
+                    {% if user_score %}
+                        Вы уже оценили эту работу
+                    {% else %}
+                        Оценка доступна после завершения выставки
+                    {% endif %}
                 {% endif %}
             </small>
         </div>
@@ -26,67 +42,76 @@
     {% csrf_token %}
     <input type="hidden" value="{{ portfolio.id }}" name="portfolio">
 
-    {% if is_jury %}
-        <div class="rating-header d-flex align-center">
+    {# Заголовок для жюри ТОЛЬКО когда они могут голосовать #}
+    {% if is_jury and jury_can_rate %}
+        <div class="rating-header d-flex align-center mb-2">
             <div class="jury-badge btn-sm ratio">
                 <svg class="icon jury-icon">
                     <use xlink:href="#award-icon"></use>
                 </svg>
             </div>
-            <h3 class="m-0">Вы оцениваете как член жюри</h3>
+            <h4 class="m-0">Вы оцениваете как член жюри</h4>
         </div>
-        <div class="mb-4">
-            {% if not jury_can_rate %}
-                <span class="text-warning">(срок оценки истек)</span>
-            {% else %}
-                <span class="text-muted">* Вы можете менять оценку до последнего дня выставки</span>
-            {% endif %}
+        <div class="mb-3">
+            <small class="text-muted">
+                * Вы можете менять оценку до {{ jury_deadline|date_with_declension }}
+            </small>
         </div>
     {% endif %}
 
-    {% if jury_can_rate or not is_jury %}
-        <div class="total-rating-block d-flex">
-            <span>{% if not is_jury %}Рейтинг{% else %}Выберите оценку{% endif %}:</span>
-            <span class="rating centered">
-                {% for choice in rating_form.star %}
-                    {{ choice.tag }}
-                    <label for="{{ choice.id_for_label }}" class="centered">
-                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                             width="22" height="22" viewBox="2 2 20 20" fill="white" stroke="#000"
-                             stroke-linecap="butt" stroke-linejoin="round">
-                            <defs>
-                                <mask id="mask-white">
-                                    <polygon fill="#fff"
-                                             points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                                    ></polygon>
-                                </mask>
-                            </defs>
-                            <rect class="rect" width="100%" height="100%" mask="url(#mask-white)"></rect>
-                        </svg>
-                        {% if forloop.revcounter == round_rate and extra_rate_percent > 0 %}
-                            <span style="width: {{ extra_rate_percent|unlocalize }}%"></span>
-                        {% endif %}
-                    </label>
-                {% endfor %}
-            </span>
-
-            {# Числовое значение: staff всегда видит, остальные - только после выставки #}
-            {% if not is_jury %}
-                <span class="summary-score">
-                    {% if user.is_staff or not portfolio.exhibition or today > portfolio.exhibition.date_end %}
-                        {% if average_rate > 0 %}{{ average_rate|unlocalize }}{% endif %}
-                    {% endif %}
-                </span>
+    <div class="total-rating-block d-flex align-items-center">
+        <span class="me-2">
+            {% if is_jury and jury_can_rate %}
+                Выберите оценку:
+            {% else %}
+                Рейтинг:
             {% endif %}
-        </div>
+        </span>
 
-        {% if user_score %}
-            <div class="personal-rating-block d-flex">
-                <span>Ваша текущая оценка:</span>
-                <b>{{ user_score }}.0</b>
-            </div>
+        <span class="rating centered"
+              data-average="{{ average_rate }}"
+              data-round-rate="{{ round_rate }}"
+              data-extra-percent="{{ extra_rate_percent }}">
+            {% for choice in rating_form.star %}
+                {{ choice.tag }}
+                <label for="{{ choice.id_for_label }}" class="centered">
+                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                         width="22" height="22" viewBox="2 2 20 20" fill="white" stroke="#000"
+                         stroke-linecap="butt" stroke-linejoin="round">
+                        <defs>
+                            <mask id="mask-white-{{ forloop.counter0 }}">
+                                <polygon fill="#fff"
+                                         points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </mask>
+                        </defs>
+                        <rect class="rect" width="100%" height="100%"
+                              mask="url(#mask-white-{{ forloop.counter0 }})"></rect>
+                    </svg>
+
+                    {% if forloop.revcounter == round_rate and extra_rate_percent > 0 %}
+                        <span class="partial-fill" style="width: {{ extra_rate_percent|unlocalize }}%"></span>
+                    {% elif forloop.revcounter < round_rate %}
+                        {# Полностью заполненные звезды #}
+                        <span class="full-fill"></span>
+                    {% endif %}
+
+                </label>
+            {% endfor %}
+        </span>
+
+        {# Средняя оценка #}
+        {% if show_average and average_rate > 0 %}
+            <span class="summary-score ms-2">
+                {{ average_rate|unlocalize }}
+            </span>
         {% endif %}
-    {% else %}
-        <p class="text-warning">Срок выставления оценок жюри завершен.</p>
+    </div>
+
+    {# Личная оценка пользователя #}
+    {% if user_score %}
+        <div class="personal-rating-block d-flex align-items-center mt-2">
+            <span class="me-2">Ваша оценка:</span>
+            <b>{{ user_score }}.0</b>
+        </div>
     {% endif %}
 </form>

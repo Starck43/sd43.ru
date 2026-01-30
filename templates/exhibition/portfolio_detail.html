@@ -13,8 +13,10 @@
     {% endif %}
 {% endblock %}
 
-{% block meta_og_title %}{% if meta.title %}{{ meta.title }}{% else %}Дизайн-проект {{ object.title }}
-{% endif %}{% endblock %}
+{% block meta_og_title %}
+    {% if meta.title %}{{ meta.title }}{% else %}Дизайн-проект {{ object.title }}{% endif %}
+{% endblock %}
+
 {% block meta_og_description %}
     {% if meta.description %}
         {{ meta.description }}
@@ -25,8 +27,9 @@
 
 {% block meta_og_image %}{{ site_url }}{% get_media_prefix %}{{ portfolio.images.0.file }}{% endblock %}
 
-{% block title %}{{ block.super }} {{ separator }} Портфолио {% if object.title %}"{{ object.title }}"
-{% endif %}{% endblock %}
+{% block title %}
+    {{ block.super }} {{ separator }} Портфолио {% if object.title %}"{{ object.title }}"{% endif %}
+{% endblock %}
 
 {% block styles %}
     <link href="{% md5url 'css/portfolio.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>

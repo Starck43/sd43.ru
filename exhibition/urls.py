@@ -2,7 +2,6 @@ from django.urls import path, re_path
 from . import views
 
 app_name = 'exhibition'
-
 urlpatterns = [
 	path('', views.index, name='index'),
 
@@ -36,7 +35,7 @@ urlpatterns = [
 
 	# path('exhibition/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
 	# path('exhibition/<exh_year>/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
-	path('contacts/', views.contacts, name='contacts-url'),
+	# path('contacts/', views.contacts, name='contacts-url'),
 	path('policy/', views.registration_policy, name='policy-url'),
 
 	re_path(r'^search/', views.SearchSite.as_view(), name='search-results'),

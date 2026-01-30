@@ -7,13 +7,13 @@ from django import forms
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Max
 from django.db.models.expressions import F
-from django.forms import FileInput, ClearableFileInput
+from django.forms import FileInput, ClearableFileInput, BaseInlineFormSet
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
-from .logic import set_user_group
+from .logic import set_user_group, is_image_file
 from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations
 
 
@@ -548,16 +548,129 @@ class ImageForm(forms.ModelForm):
 		widgets = {
 			'file': MultipleFileInput(attrs={
 				'class': 'form-control',
-				'accept': 'image/*'
+				'accept': 'image/*',
 			})
 		}
-
-	# exclude = ('portfolio',)
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.fields['description'].widget = forms.Textarea(
 			attrs={'class': 'form-control', 'rows': 6, 'placeholder': 'Описание'})
+
+
+class ImageInlineForm(forms.ModelForm):
+	class Meta:
+		widgets = {
+			'file': forms.FileInput(attrs={
+				'accept': 'image/*',
+				'required': False,
+			}),
+			'sort': forms.HiddenInput(),
+		}
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		# Автоматически устанавливаем сортировку для новых форм
+		# if not self.instance.pk and not self.initial.get('sort'):
+		# 	# Устанавливаем максимальное значение + 1
+		# 	if 'portfolio' in self.initial:
+		# 		portfolio_id = self.initial['portfolio']
+		# 		max_sort = Image.objects.filter(portfolio_id=portfolio_id).aggregate(
+		# 			Max('sort')
+		# 		)['sort__max']
+		# 		self.initial['sort'] = (max_sort or 0) + 1
+		# 	else:
+		# 		self.initial['sort'] = 1
+
+	def clean_file(self):
+		file = self.cleaned_data.get('file')
+
+		print(f"clean_file called: file={file}, instance.pk={self.instance.pk if self.instance else None}")
+
+		# Если это новая форма (без pk) и файла нет - ошибка
+		if not file and not self.instance.pk:
+			# Проверяем, есть ли файл в request.FILES
+			file_field_name = self.add_prefix('file')
+			if file_field_name in self.files:
+				file = self.files[file_field_name]
+				print(f"Найден файл в request.FILES: {file}")
+			else:
+				print(f"Файл не найден ни в cleaned_data, ни в request.FILES")
+				raise ValidationError("Обязательное поле.")
+
+		# Если файл есть, проводим валидацию
+		if file:
+			if not is_image_file(file.name):
+				raise ValidationError(
+					"Поддерживаются только файлы изображений: JPG, JPEG, PNG, GIF, WebP"
+				)
+
+			if file.size > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
+				max_size_mb = settings.FILE_UPLOAD_MAX_MEMORY_SIZE / 1024 / 1024
+				raise ValidationError(
+					f"Размер файла не должен превышать {max_size_mb} MB"
+				)
+
+		return file
+
+
+class ImageInlineFormSet(forms.BaseInlineFormSet):
+	def clean(self):
+		super().clean()
+
+		print(f"\n=== FormSet Validation ===")
+		print(f"Total forms: {len(self.forms)}")
+
+		# Фильтруем только реально заполненные формы
+		valid_forms = []
+		for i, form in enumerate(self.forms):
+			print(f"\nForm #{i}:")
+			print(f"  Instance: {form.instance.pk if form.instance else 'NEW'}")
+			print(f"  Has file: {'file' in form.cleaned_data and form.cleaned_data['file']}")
+			print(f"  Has changed: {form.has_changed()}")
+			print(f"  Errors: {form.errors}")
+
+			# Если форма имеет файл ИЛИ это существующая запись
+			if ('file' in form.cleaned_data and form.cleaned_data['file']) or form.instance.pk:
+				valid_forms.append(form)
+			elif form.has_changed():
+				# Если форма изменена, но без файла - ошибка
+				if not form.instance.pk and 'file' not in form.errors:
+					form.add_error('file', 'Для новой записи файл обязателен.')
+				valid_forms.append(form)
+
+		print(f"\nValid forms after filtering: {len(valid_forms)}")
+
+		for i, form in enumerate(self.forms):
+			if form.errors:
+				print(f'INLINE FORM #{i} ERRORS:', form.errors)
+
+		# Убеждаемся, что все изображения имеют правильный порядок сортировки
+		valid_forms = [
+			form for form in self.forms
+			if form.has_changed() and not form.cleaned_data.get('DELETE', False)
+		]
+
+		# Обновляем сортировку для всех форм
+		for i, form in enumerate(valid_forms, start=1):
+			if form.cleaned_data:
+				form.cleaned_data['sort'] = i
+				form.instance.sort = i
+
+		# Проверка общего размера всех файлов (если нужно)
+		total_size = 0
+		for form in self.forms:
+			if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+				file = form.cleaned_data.get('file')
+				if file and hasattr(file, 'size'):
+					total_size += file.size
+
+		if hasattr(settings, 'MAX_UPLOAD_FILES_SIZE') and total_size > settings.MAX_UPLOAD_FILES_SIZE:
+			max_size_mb = settings.MAX_UPLOAD_FILES_SIZE / 1024 / 1024
+			raise ValidationError(
+				f"Общий размер всех файлов не должен превышать {max_size_mb} MB"
+			)
 
 
 class ImageFormHelper(FormHelper):

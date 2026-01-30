@@ -261,7 +261,7 @@ img[data-sizes=auto] {
 .show {
   opacity: 1 !important;
   visibility: visible !important;
-  pointer-events: auto;
+  pointer-events: auto !important;
 }
 .ratio {
   aspect-ratio: var(--aspect-ratio, 1/1);
@@ -1534,6 +1534,10 @@ form:not(.nav-search) > * {
 .btn-primary.disabled {
   color: rgba(255, 255, 255, 0.35);
   background-color: var(--main-color);
+}
+.btn-primary:hover {
+  color: var(--main-color);
+  background-color: white;
 }
 .btn-secondary {
   color: var(--main-color);

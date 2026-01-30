@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from os import path, rename, rmdir, listdir
 
 from ckeditor.fields import RichTextField
@@ -328,9 +329,6 @@ class Exhibitions(models.Model):
 		super().save(*args, **kwargs)
 		update_google_sitemap()  # обновим карту сайта Google
 
-	# def clean_slug(self):
-	# 	print(self.slug)
-
 	def __str__(self):
 		return self.title
 
@@ -340,6 +338,28 @@ class Exhibitions(models.Model):
 
 		today = now().date()
 		return 'upcoming' if today < self.date_start else 'active' if today <= self.date_end else 'finished'
+
+	@property
+	def rating_deadline(self):
+		"""Дедлайн для обычных пользователей (после выставки)"""
+		return self.date_end - timedelta(days=1)
+
+	@property
+	def jury_deadline(self):
+		"""Дедлайн для жюри (до начала выставки)"""
+		return self.date_start
+
+	@property
+	def is_jury_voting_active(self):
+		"""Активно ли голосование жюри (до начала выставки)"""
+		today = now().date()
+		return today < self.jury_deadline
+
+	@property
+	def is_exhibition_ended(self):
+		"""Завершилась ли выставка для обычных пользователей"""
+		today = now().date()
+		return today > self.rating_deadline
 
 	def exh_year(self):
 		return self.date_start.strftime('%Y')
@@ -504,7 +524,6 @@ class PortfolioManager(models.Manager):
 		"""Возвращает видимые проекты в зависимости от прав пользователя"""
 		queryset = self.get_queryset().filter(exhibition__isnull=False)
 		today = now().date()
-
 
 		if not user or not user.is_authenticated:
 			# Неавторизованные пользователи видят только:
@@ -770,7 +789,6 @@ class Image(models.Model):
 	)
 	sort = models.SmallIntegerField('Индекс сортировки', null=True, blank=True)
 
-	# Metadata
 	class Meta:
 		verbose_name = 'Фото'
 		verbose_name_plural = 'Фото проектов'

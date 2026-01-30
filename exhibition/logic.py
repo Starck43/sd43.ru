@@ -31,6 +31,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 DEFAULT_SIZE = getattr(settings, 'DJANGORESIZED_DEFAULT_SIZE', [1500, 1024])
 DEFAULT_QUALITY = getattr(settings, 'DJANGORESIZED_DEFAULT_QUALITY', 85)
 DEFAULT_KEEP_META = getattr(settings, 'DJANGORESIZED_DEFAULT_KEEP_META', False)
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
 
 
 def get_image_html(obj, width=50, height=None, css_class='', crop='center'):
@@ -244,13 +245,30 @@ def is_file_exist(obj):
 
 
 def is_image_file(obj, file_ext=None):
-	if not obj or not is_file_exist(obj):
+	if not obj:
 		return False
-	name = obj if isinstance(obj, str) else obj.file.name
+
+	# UploadedFile или строка
+	if hasattr(obj, 'content_type'):
+		content_type = getattr(obj, 'content_type', '')
+		return content_type.startswith('image/')
+	elif hasattr(obj, 'name'):
+		name = obj.name
+	elif isinstance(obj, str):
+		name = obj
+	else:
+		return False
+
 	_, ext = path.splitext(name.lower())
+	if not ext:
+		return False
+
+	ext = ext.lstrip('.')
+
 	if file_ext:
-		return ext == file_ext.lower()
-	return ext[1:] in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
+		return ext == file_ext.lower().lstrip('.')
+
+	return ext in ALLOWED_IMAGE_EXTENSIONS
 
 
 def limit_file_size(file):

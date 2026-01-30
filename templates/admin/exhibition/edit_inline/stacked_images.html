@@ -1,7 +1,7 @@
 {% load static %}
 {% load custom_tags %}
-
 {% load i18n admin_urls static %}
+
 <div class="js-inline-admin-formset inline-group portfolio-images-grid"
      id="{{ inline_admin_formset.formset.prefix }}-group"
      data-inline-type="stacked"
@@ -14,9 +14,9 @@
         {{ inline_admin_formset.formset.non_form_errors }}
 
         <!-- Grid контейнер -->
-        <div class="images-grid-container">
+        <div class="images-grid-container" data-is-draggable="true" data-initialized="false">
             {% for inline_admin_form in inline_admin_formset %}
-                <div class="image-grid-item{% if inline_admin_form.original or inline_admin_form.show_url %} has-original{% endif %}{% if forloop.last and inline_admin_formset.has_add_permission %} empty-form last-related{% endif %}"
+                <div class="image-grid-item{% if inline_admin_form.original or inline_admin_form.show_url %} has-original{% endif %}{% if forloop.last and inline_admin_formset.has_add_permission %} new-form last-related{% endif %}"
                      id="{{ inline_admin_formset.formset.prefix }}-
                              {% if not forloop.last %}{{ forloop.counter0 }}{% else %}empty{% endif %}">
 
@@ -38,8 +38,8 @@
                                                     {% include "exhibition/thumb.html" %}
                                                 {% endwith %}
                                             {% else %}
-                                                <img class="lazyload"
-                                                     data-src="{{ image_obj.file.url }}"
+                                                <img class="lazyloaded"
+                                                     src="{{ image_obj.file.url }}"
                                                      loading="lazy"
                                                      alt="{{ image_obj.title|default:'Изображение' }}">
                                             {% endif %}
@@ -55,13 +55,29 @@
                                             <span class="no-title">новое фото</span>
                                         {% endif %}
                                     </div>
+                                    <!-- Input file для существующих фото -->
+                                    <input type="file"
+                                           accept="image/*"
+                                           name="{{ inline_admin_form.form.file.html_name }}"
+                                           style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; z-index: 1;">
                                 </div>
                             {% else %}
                                 <div class="image-thumbnail empty-thumbnail">
                                     <div class="image-container no-image">
                                         <i class="fas fa-plus"></i>
+                                        <div class="drag-drop-hint">Или перетащите файл</div>
                                     </div>
                                     <div class="image-title">Новое фото</div>
+
+                                    <!-- 1. Django field (скрытый или стилизованный) -->
+                                    {{ inline_admin_form.form.file }}
+
+                                    <!-- 2. Наш кастомный trigger (перекрывает Django field) -->
+                                    <input type="file"
+                                           accept="image/*"
+                                           class="custom-file-trigger"
+                                           style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; z-index: 2;"
+                                    >
                                 </div>
                             {% endif %}
                         {% endwith %}
@@ -96,12 +112,45 @@
                             {% endif %}
                         {% endif %}
                     </div>
+
+                    <!-- Индикатор сортировки (только для существующих фото) -->
+                    {% if inline_admin_form.original %}
+                        <div class="sort-indicator">
+                            <i class="fas fa-arrows-alt"></i>
+                        </div>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
 
-        <!-- Пустая форма для добавления новых -->
-        <div class="empty-form-template" style="display: none;"></div>
+        {% if inline_admin_formset.has_add_permission %}
+            {% with inline_admin_formset.formset.empty_form as empty_form %}
+                <div class="empty-form-template" style="display:none">
+                    <div class="image-grid-item new-form empty-item">
+                        <!-- ВСЕ django-поля -->
+                        <div class="django-fields" style="display:none">
+                            {{ empty_form }}
+                        </div>
+
+                        <div class="image-preview-wrapper">
+                            <div class="image-thumbnail empty-thumbnail">
+                                <div class="image-container no-image">
+                                    <i class="fas fa-plus"></i>
+                                    <div class="drag-drop-hint">Или перетащите файл</div>
+                                </div>
+                                <div class="image-title">Новое фото</div>
+
+                                {# ВАЖНО: используем django input #}
+                                {{ empty_form.file }}
+                            </div>
+                        </div>
+
+                        <div class="image-actions"></div>
+                    </div>
+                </div>
+            {% endwith %}
+        {% endif %}
+
     </fieldset>
 </div>
 
@@ -124,5 +173,7 @@
         <li>Используйте кнопку <i class="fas fa-edit"></i> для редактирования названия и сортировки</li>
         <li>Используйте кнопку <i class="fas fa-trash"></i> для удаления фото</li>
         <li>Можно выбрать несколько фото для удаления</li>
+        <li>Перетаскивайте фото для изменения порядка</li>
+        <li>Перетащите файл на элемент "Новое фото" для загрузки</li>
     </ul>
 </div>

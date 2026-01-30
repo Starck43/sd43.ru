@@ -10,7 +10,8 @@ from sorl.thumbnail.admin import AdminImageMixin
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
 from .forms import (
-	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm
+	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm,
+	ImageInlineForm, ImageInlineFormSet
 )
 from .logic import delete_cached_fragment
 from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin
@@ -25,13 +26,19 @@ admin.site.unregister(User)  # чтобы снять с регистрации �
 
 class ImagesInline(admin.StackedInline):
 	model = Image
-	extra = 1
+	form = ImageInlineForm
+	formset = ImageInlineFormSet
+	extra = 0
 	template = 'admin/exhibition/edit_inline/stacked_images.html'
 	show_change_link = True
-	fields = ('file_thumb', 'file', 'title', 'sort', 'filename',)
-	list_display = ('file_thumb', 'title',)
-	readonly_fields = ('file_thumb', 'filename',)
-	list_editable = ['title', 'sort']
+
+	fields = ('file_thumb', 'file', 'sort', 'filename')
+	list_display = ('file_thumb', 'sort')
+	readonly_fields = ('file_thumb', 'filename')
+	# ordering = ['sort']
+
+	min_num = 0
+	max_num = 20  # Максимум 20 изображений
 
 	class Media:
 		css = {
@@ -42,6 +49,7 @@ class ImagesInline(admin.StackedInline):
 		}
 		js = (
 			# 'admin/js/vendor/jquery/jquery.js',
+			'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js',
 			'admin/js/portfolio-images.min.js',
 		)
 

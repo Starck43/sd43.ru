@@ -52,7 +52,7 @@
                         <div class="person-details-item">
                             <span class="card-text">{{ person.description|safe }}</span>
                         </div>
-                        {% if exhibitor %}
+                        {% if person == exhibitor and exhibitor %}
                             {% for name, label, value, link in person %}
                                 {% if value and label %}
                                     <div class="person-details-item">

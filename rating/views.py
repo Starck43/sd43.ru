@@ -21,6 +21,9 @@ class AddRating(View):
 			portfolio_id = int(request.POST.get("portfolio"))
 			portfolio = Portfolio.objects.get(id=portfolio_id)
 
+			# Проверяем, это тестовый запрос или реальный
+			is_test = request.POST.get("test") == "true"
+
 			# Проверяем базовые возможности оценки
 			can_rate, message = Rating.can_user_rate(request.user, portfolio)
 			if not can_rate:
@@ -28,26 +31,30 @@ class AddRating(View):
 
 			# Дополнительные проверки для выставки
 			if portfolio.exhibition:
-				# Проверяем сроки выставки
-				from django.utils.timezone import now
-				from datetime import timedelta
-
-				rating_deadline = portfolio.exhibition.date_end - timedelta(days=1)
 				is_jury = is_jury_member(request.user)
 
-				# Если выставка активна, оценивать могут только жюри
-				if now().date() <= rating_deadline and not is_jury:
-					return JsonResponse({
-						'status': 'error',
-						'message': 'Во время выставки оценивать могут только члены жюри'
-					}, status=403)
+				if is_jury:
+					# Жюри могут оценивать только в период голосования жюри
+					if not portfolio.exhibition.is_jury_voting_active:
+						return JsonResponse({
+							'status': 'error',
+							'message': 'Срок выставления оценок жюри завершен'
+						}, status=403)
+				else:
+					# Обычные пользователи могут оценивать только после выставки
+					if not portfolio.exhibition.is_exhibition_ended:
+						return JsonResponse({
+							'status': 'error',
+							'message': 'Оценивать можно только после завершения выставки'
+						}, status=403)
 
-				# Если срок оценки истек, никто не может оценивать
-				if now().date() > rating_deadline:
-					return JsonResponse({
-						'status': 'error',
-						'message': 'Срок выставления оценок завершен'
-					}, status=403)
+			# Если это тестовый запрос - только проверяем права, не сохраняем
+			if is_test:
+				return JsonResponse({
+					'status': 'success',
+					'message': 'Можно оценивать',
+					'test': True
+				})
 
 			# Создаем или обновляем оценку
 			is_jury = is_jury_member(request.user)

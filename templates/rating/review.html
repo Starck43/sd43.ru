@@ -32,7 +32,7 @@
                         data-target="#editCommentContainer"
                         title="Редактировать комментарий"
                 >
-                    <svg class="btn-xs">
+                    <svg class="btn-xs ratio">
                         <use xlink:href="#edit-icon"></use>
                     </svg>
                 </a>
@@ -44,7 +44,7 @@
                         data-target="#deleteCommentContainer"
                         title="Удалить комментарий"
                 >
-                    <svg class="btn-xs">
+                    <svg class="btn-xs ratio">
                         <use xlink:href="#trash-icon"></use>
                     </svg>
                 </a>
@@ -80,7 +80,7 @@
                     <a class="reply-link" data-id="{{ review.id }}" data-group="{{ review.id }}"
                        data-author="{{ review.fullname }}" title="Ответить {{ review.fullname }}"
                     >
-                        <svg class="btn-xs">
+                        <svg class="btn-xs ratio">
                             <use xlink:href="#reply-icon"></use>
                         </svg>
                         <span>Ответить</span>
@@ -94,7 +94,7 @@
                        data-target="#editCommentContainer"
                        title="Редактировать комментарий"
                     >
-                        <svg class="btn-xs">
+                        <svg class="btn-xs ratio">
                             <use xlink:href="#edit-icon"></use>
                         </svg>
                     </a>
@@ -106,7 +106,7 @@
                            data-target="#deleteCommentContainer"
                            title="Удалить комментарий"
                         >
-                            <svg class="btn-xs">
+                            <svg class="btn-xs ratio">
                                 <use xlink:href="#trash-icon"></use>
                             </svg>
                         </a>
@@ -130,7 +130,7 @@
                            data-parent="{% if subreview.parent_id %}{{ subreview.parent_id }}{% endif %}"
                            data-group="{{ review.id }}" data-author="{{ subreview.fullname }}"
                            title="Ответить {{ subreview.fullname }}">
-                            <svg class="btn-xs">
+                            <svg class="btn-xs ratio">
                                 <use xlink:href="#reply-icon"></use>
                             </svg>
                             <span>Ответить</span>
@@ -145,7 +145,7 @@
                            data-target="#editCommentContainer"
                            title="Редактировать комментарий"
                         >
-                            <svg class="btn-xs">
+                            <svg class="btn-xs ratio">
                                 <use xlink:href="#edit-icon"></use>
                             </svg>
                         </a>
@@ -157,7 +157,7 @@
                                data-target="#deleteCommentContainer"
                                title="Удалить комментарий"
                             >
-                                <svg class="btn-xs">
+                                <svg class="btn-xs ratio">
                                     <use xlink:href="#trash-icon"></use>
                                 </svg>
                             </a>

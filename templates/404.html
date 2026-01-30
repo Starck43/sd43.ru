@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_tags %}
+{% load i18n %}
+
+{% block styles %}
+    <link href="{% md5url 'css/error-pages.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
+{% endblock styles %}
+
+{% block title %}{{ title|default:"Страница не найдена" }}{% endblock %}
+
+{% block content %}
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-header">
+                <h1>{{ title|default:"Страница не найдена! Ошибка 404" }}</h1>
+            </div>
+
+            <div class="error-body">
+                {% if project %}
+
+                    <div class="availability-info {% if reason == 'future_exhibition' %}future{% elif reason == 'active_exhibition' %}active{% endif %}">
+                        <h4>
+                            {% if reason == 'future_exhibition' %}⏳{% endif %}
+                            {% if reason == 'active_exhibition' %}🔒{% endif %}
+                            {{ message }}
+                        </h4>
+
+                        <p>Автор: <b>{{ project.owner }}</b></p>
+
+                        {% if available_date %}
+                            <div class="countdown-card">
+                                <p>Доступ откроется:</p>
+                                <h3>{{ available_date|date:"d E Y" }}</h3>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <a href="{{ author_profile_url }}" class="btn">Посмотреть другие работы автора</a>
+
+                {% else %}
+                    <div style="text-align: center; padding: 2rem 0;">
+                        <p style="font-size: 1.25rem; margin-bottom: 2rem;">
+                            Страница не существует или была удалена.
+                        </p>
+                    </div>
+                {% endif %}
+
+                <div class="navigation-buttons">
+                    <a href="/" class="btn btn-primary">На главную</a>
+                    <a href="{{ exhibitions_url }}" class="btn btn-primary">
+                        {% if project.exhibition %}
+                            Выставка {{ project.exhibition.exh_year }}
+                        {% else %}
+                            Все выставки
+                        {% endif %}
+                    </a>
+
+                    {% if has_user_profile %}
+                        <a href="{{ user_profile_url }}" class="btn btn-primary">Личный профиль</a>
+                    {% elif request.user.is_authenticated %}
+                        <a href="/account/" class="btn btn-primary">Личный кабинет</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="error-footer">
+                <p>
+                    Нужна помощь?
+                    <a href="mailto:{{ CONTACT_EMAIL|default:'info@sd43.ru' }}">Свяжитесь с поддержкой</a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
