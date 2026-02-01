@@ -7,27 +7,49 @@ admin.site.site_title = 'Рейтинг портфолио'
 admin.site.site_header = 'Рейтинг'
 
 
+class RatingInline(admin.TabularInline):
+	model = Rating
+	fields = ('star', 'user', 'is_jury_rating', 'updated_at')
+	readonly_fields = ('star', 'user', 'updated_at')
+	verbose_name_plural = "Оценки проекта"
+
+	show_change_link = False
+	extra = 0
+
+
+class ReviewInline(admin.StackedInline):
+	model = Reviews
+	fields = ('fullname', 'portfolio', 'message', 'posted_date')
+	readonly_fields = ('user', 'group', 'parent', 'fullname', 'portfolio', 'message', 'posted_date')
+
+	show_change_link = False
+	extra = 0
+
+
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
-	list_display = ('get_exhibition', 'portfolio', 'star', 'fullname', 'is_jury_rating',)
+	list_display = ('star', 'portfolio', 'get_exhibition', 'get_fullname', 'created_at', 'is_jury_rating')
+	list_filter = ('star', 'is_jury_rating', 'portfolio__exhibition')
+	search_fields = ('user__username', 'user__first_name', 'user__last_name')
+	date_hierarchy = 'portfolio__exhibition__date_start'
 	readonly_fields = ('ip',)
-	list_filter = ('star',)
 
-	@admin.display(description='Выставка')
+	@admin.display(
+		description='Выставка',
+		empty_value='<Вневыставочный проект>',
+		ordering='-portfolio__exhibition__date_start'
+	)
 	def get_exhibition(self, obj):
-		return obj.portfolio.exhibition
+		if obj.portfolio and obj.portfolio.exhibition:
+			return obj.portfolio.exhibition.exh_year
+
+	@admin.display(description='Автор рейтинга', ordering='user__last_name')
+	def get_fullname(self, obj):
+		return obj.fullname
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
 		delete_cached_fragment('portfolio', obj.portfolio.id)
-
-
-class RatingInline(admin.TabularInline):
-	model = Rating
-	extra = 0
-	show_change_link = False
-	fields = ('user', 'star',)
-	readonly_fields = ('star', 'user')
 
 
 @admin.register(Reviews)
@@ -38,11 +60,3 @@ class ReviewAdmin(admin.ModelAdmin):
 	# 	super().save_model(request, obj, form, change)
 
 	# 	delete_cached_fragment('portfolio_review', obj.portfolio.id)
-
-
-class ReviewInline(admin.StackedInline):
-	model = Reviews
-	extra = 0
-	show_change_link = False
-	fields = ('fullname', 'portfolio', 'message', 'posted_date')
-	readonly_fields = ('user', 'group', 'parent', 'fullname', 'portfolio', 'message', 'posted_date')

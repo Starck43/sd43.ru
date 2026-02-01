@@ -22,8 +22,10 @@ Pillow
 psycopg[binary]
 redis
 sorl-thumbnail
+xlsxwriter
 Wand
 zipp
 requests
 gunicorn # only for production
+
 

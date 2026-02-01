@@ -31,10 +31,7 @@ class PersonAdminMixin(MediaWidgetMixin):
 		if not obj.user:
 			return None
 
-		if (not obj.user.first_name) and (not obj.user.last_name):
-			return obj.user.username
-		else:
-			return "%s %s" % (obj.user.first_name, obj.user.last_name)
+		return obj.user_name
 
 	def get_fieldsets(self, request, obj=None):
 		fieldsets = (

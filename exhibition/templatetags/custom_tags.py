@@ -211,3 +211,29 @@ def date_with_declension(value):
 			break
 
 	return date_str
+
+
+@register.filter
+def get_item(dictionary, key):
+	return dictionary.get(key)
+
+
+@register.filter
+def sum_total(items, field):
+	"""Суммирует значения поля в списке словарей"""
+	return sum(item.get(field, 0) for item in items)
+
+
+@register.filter
+def has_voted_winners(nominations):
+	return any(nomination.get('winners') for nomination in nominations)
+
+
+@register.filter
+def custom_pluralize(value):
+	if value % 10 == 1 and value % 100 != 11:
+		return ""
+	elif 2 <= value % 10 <= 4 and (value % 100 < 10 or value % 100 >= 20):
+		return "а"
+	else:
+		return "ов"

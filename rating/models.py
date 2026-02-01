@@ -1,8 +1,5 @@
-from datetime import timedelta
-
-from django.db import models
 from django.contrib.auth.models import User
-from django.utils.timezone import now
+from django.db import models
 
 from exhibition.models import Portfolio
 from exhibition.utils import is_jury_member
@@ -33,9 +30,9 @@ class Rating(models.Model):
 
 	class Meta:
 		verbose_name = "Рейтинг"
-		verbose_name_plural = "Рейтинги"
+		verbose_name_plural = "Оценки проектов"
 		unique_together = ('user', 'portfolio')
-		ordering = ['-portfolio__exhibition__date_end', '-updated_at']
+		ordering = ['-updated_at']
 
 	@property
 	def fullname(self):
@@ -117,8 +114,8 @@ class Reviews(models.Model):
 	posted_date = models.DateTimeField("Опубликовано", auto_now_add=True, blank=True)
 
 	class Meta:
-		verbose_name = "Комментарий"
-		verbose_name_plural = "Комментарии"
+		verbose_name = "Отзыв"
+		verbose_name_plural = "Отзывы"
 		ordering = ['-posted_date', 'group_id', 'parent_id']
 		unique_together = (('id', 'parent'), ('id', 'group'),)
 

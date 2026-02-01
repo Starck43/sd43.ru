@@ -1,0 +1,650 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static custom_tags %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/css/export.min.css' %}">
+    <style>
+		.export-header {
+			border-bottom: 1px solid #dee2e6;
+			padding-bottom: 15px;
+			margin-bottom: 20px;
+		}
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        › <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+        › <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+        › <a href="{% url opts|admin_urlname:'change' exhibition.pk %}">{{ exhibition.title|truncatechars:30 }}</a>
+        › {{ title }}
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="jury-export-compact">
+        <!-- Заголовок -->
+        <div class="export-header">
+            <h1>{{ title }}</h1>
+            <p class="text-muted">
+                {{ exhibition.date_start|date:"d.m.Y" }} – {{ exhibition.date_end|date:"d.m.Y" }}
+                {% if exhibition.location %} • {{ exhibition.location }}{% endif %}
+            </p>
+        </div>
+
+        <!-- Статистика -->
+        <div class="row stats-cards mb-4">
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value text-primary">{{ report_data.total_stats.total_jury }}</div>
+                    <div class="stat-label">Членов жюри</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value text-success">{{ report_data.total_stats.total_nominations }}</div>
+                    <div class="stat-label">Номинаций</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value text-warning">{{ report_data.total_stats.total_projects }}</div>
+                    <div class="stat-label">Проектов</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-value text-danger">{{ report_data.total_stats.total_ratings }}</div>
+                    <div class="stat-label">Оценок всего</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="export-actions mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-file-excel text-success me-2"></i>Экспорт в Excel</h5>
+                    <p class="card-text text-muted mb-3">
+                        Файл будет автоматически скачан в папку "Загрузки" вашего браузера.
+                    </p>
+
+                    <!-- ВАЖНО: форма должна иметь enctype для работы с файлами -->
+                    <form method="post" id="exportForm" class="row g-3 align-items-end">
+                        {% csrf_token %}
+                        <!-- Добавьте это скрытое поле -->
+                        <input type="hidden" name="export_excel" value="1">
+
+                        <div class="col-12 col-md-6">
+                            <label for="filenameInput" class="form-label">Имя файла:</label>
+                            <input type="text"
+                                   name="filename"
+                                   id="filenameInput"
+                                   class="form-control"
+                                   value="оценки_жюри_{{ exhibition.slug }}"
+                                   placeholder="Введите имя файла"
+                            >
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="exportBtn">
+                                <i class="fas fa-download me-2"></i> Скачать Excel файл
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Жюри, которые не проголосовали -->
+        {% if report_data.not_voted_jury %}
+            <div class="not-voted-list">
+                <h5 class="mb-3">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Жюри, которые не проголосовали за все проекты:
+                    <span class="badge bg-warning text-dark ms-2">
+                        {{ report_data.not_voted_jury|length }}
+                    </span>
+                </h5>
+
+                <div class="row">
+                    {% for jury_id, jury_data in report_data.not_voted_jury.items %}
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="card-title mb-0">
+                                            <i class="fas fa-user-circle text-warning me-2"></i>
+                                            {{ jury_data.jury.name }}
+                                        </h6>
+                                        <span class="badge bg-danger rounded-pill">
+                                            {{ jury_data.total_missing }}
+                                        </span>
+                                    </div>
+
+                                    <p class="card-text small text-muted mb-2">
+                                        Не оценил {{ jury_data.total_missing }}
+                                        проект{{ jury_data.total_missing|pluralize:"ов,а" }}
+                                    </p>
+
+                                    <!-- Изменяем data-атрибуты для чистого JS -->
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning w-100 collapse-btn"
+                                            data-toggle="collapse"
+                                            data-target="#juryDetails{{ jury_id }}"
+                                            aria-expanded="false"
+                                            aria-controls="juryDetails{{ jury_id }}">
+                                        <i class="fas fa-chevron-down me-1"></i>
+                                        <span class="btn-text">Показать детали</span>
+                                    </button>
+
+                                    <!-- Меняем класс с .collapse на .collapse-content -->
+                                    <div class="collapse-content mt-2" id="juryDetails{{ jury_id }}"
+                                         style="display: none;">
+                                        <div class="alert alert-light border">
+                                            <h6 class="alert-heading mb-2">Детали по номинациям:</h6>
+                                            {% for nom_data in jury_data.nominations %}
+                                                <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                                                    <div>
+                                                        <span class="fw-medium">{{ nom_data.nomination.title }}</span>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge {% if nom_data.missing > 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                                            {{ nom_data.voted }}/{{ nom_data.total }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+
+                                            <div class="mt-2 pt-2 border-top">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Всего должно быть
+                                                    оценено: {{ jury_data.nominations|sum_total:"total" }} проектов
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Таблица оценок -->
+        {% if report_data.nominations %}
+            <div class="table-responsive mb-5">
+                <table class="table-jury">
+                    <thead>
+                    <tr>
+                        <th style="text-align: left">
+                            <span>Проект</span>
+                            <!-- Управление количеством проектов -->
+                            <form method="get">
+                                <select name="limit"
+                                        id="limit"
+                                        onchange="this.form.submit()"
+                                >
+                                    <option value="3" {% if projects_per_nomination == 3 %}selected{% endif %}>
+                                        3
+                                    </option>
+                                    <option value="5" {% if projects_per_nomination == 5 %}selected{% endif %}>
+                                        5
+                                    </option>
+                                    <option value="10" {% if projects_per_nomination == 10 %}selected{% endif %}>
+                                        10
+                                    </option>
+                                    <option value="50" {% if projects_per_nomination == 50 %}selected{% endif %}>
+                                        Все
+                                    </option>
+                                </select>
+                            </form>
+                        </th>
+                        {% for jury in report_data.jury_list %}
+                            <th>
+                                {% with full_name=jury.name|default:jury.user_name %}
+                                    {% if " " in full_name %}
+                                        <!-- Если есть пробел, разделяем на две строки -->
+                                        {% with first=full_name.split.0 last=full_name.split.1 %}
+                                            {{ first }}<br>{{ last }}
+                                        {% endwith %}
+                                    {% else %}
+                                        <!-- Если нет пробела, показываем как есть -->
+                                        {{ full_name }}
+                                    {% endif %}
+                                {% endwith %}
+                            </th>
+                        {% endfor %}
+                        <th>Сумма баллов</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for nomination in report_data.nominations %}
+                        <!-- Заголовок номинации -->
+                        <tr>
+                            <td colspan="{{ report_data.jury_list|length|add:2 }}" class="nomination-header">
+                                <span class="nomination-title">{{ nomination.title }}</span>
+                                <span class="nomination-stats">
+                                    {{ nomination.all_projects }} проект{{ nomination.all_projects|custom_pluralize }}
+                                </span>
+                            </td>
+                        </tr>
+
+                        <!-- Топ проекты -->
+                        {% for project in nomination.top_projects %}
+                            <tr class="project-row">
+                                <td class="project-name">
+                                    <div class="project-info">
+                                        {% if forloop.first %}
+                                            <span class="medal-badge gold">1</span>
+                                        {% elif forloop.counter == 2 %}
+                                            <span class="medal-badge silver">2</span>
+                                        {% elif forloop.counter == 3 %}
+                                            <span class="medal-badge bronze">3</span>
+                                        {% endif %}
+                                        <div>
+                                            <div class="project-title">{{ project.portfolio }}</div>
+                                            <div class="project-author">{{ project.portfolio.owner.name }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                {% for jury in report_data.jury_list %}
+                                    {% with score=project.jury_scores|get_item:jury.id %}
+                                        <td class="jury-score {% if score %}positive{% else %}empty{% endif %}">
+                                            {{ score|default:'—' }}
+                                        </td>
+                                    {% endwith %}
+                                {% endfor %}
+
+                                <td class="total-score">{{ project.total_score|default:'—' }}</td>
+                            </tr>
+                        {% endfor %}
+
+                        <!-- Кнопка показать все -->
+                        {% if nomination.other_projects %}
+                            <tr>
+                                <td colspan="{{ report_data.jury_list|length|add:2 }}" class="text-center py-2">
+                                    <button type="button" class="show-all-btn"
+                                            onclick="toggleProjects('nomination-{{ forloop.counter }}')">
+                                        <i class="fas fa-chevron-down me-1"></i>
+                                        Показать все проекты (еще {{ nomination.other_projects|length }})
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Скрытые проекты -->
+                            <tbody id="nomination-{{ forloop.counter }}" class="hidden-projects">
+                            {% for project in nomination.other_projects %}
+                                <tr class="project-row">
+                                    <td class="project-name" style="padding-left: 25px;">
+                                        <div class="project-info">
+                                            <div style="width: 24px;"></div>
+                                            <div>
+                                                <div class="project-title">{{ project.portfolio }}</div>
+                                                <div class="project-author">{{ project.portfolio.owner.name }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {% for jury in report_data.jury_list %}
+                                        {% with score=project.jury_scores|get_item:jury.id %}
+                                            <td class="jury-score {% if score %}positive{% else %}empty{% endif %}">
+                                                {{ score|default:"—" }}
+                                            </td>
+                                        {% endwith %}
+                                    {% endfor %}
+
+                                    <td class="total-score">{{ project.total_score|default:"—" }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        {% endif %}
+
+                        <tr>
+                            <td colspan="{{ report_data.jury_list|length|add:2 }}" style="height: 20px;"></td>
+                        </tr>
+                    {% endfor %}
+
+                    <!-- Итоговая строка -->
+                    <tr>
+                        <td style="text-align: left" class="grand-total"><span>ВСЕГО ОЦЕНОК:</span></td>
+                        {% for jury in report_data.jury_list %}
+                            {% with stats=report_data.jury_stats|get_item:jury.id %}
+                                <td class="grand-total">
+                                    {{ stats.ratings_count }}
+                                </td>
+                            {% endwith %}
+                        {% endfor %}
+                        <td class="grand-total"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Таблица победителей -->
+            {% with has_winners=report_data.nominations|has_voted_winners %}
+                {% if has_winners %}
+                    <div class="mb-5">
+                        <h4 class="mb-3"><i class="fas fa-trophy text-warning me-2"></i>Победители по номинациям</h4>
+                        <div class="table-responsive">
+                            <table class="winners-table">
+                                <thead>
+                                <tr>
+                                    <th style="width: 30%;">Номинация</th>
+                                    <th style="width: 50%;">Победитель</th>
+                                    <th style="width: 20%;">Баллы</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for nomination in report_data.nominations %}
+                                    {% if nomination.winners %}
+                                        <tr>
+                                            <td><strong>{{ nomination.title }}</strong></td>
+                                            <td>
+                                                {% for winner in nomination.winners %}
+                                                    <div class="winner-info {% if not forloop.first %}mt-3{% endif %}">
+                                                        <span class="winner-medal {{ winner.medal }}">🏆</span>
+                                                        <div>
+                                                            <div><strong>{{ winner.portfolio.title }}</strong></div>
+                                                            <div class="text-muted small">{{ winner.portfolio.owner.name }}</div>
+                                                            {% if nomination.winners|length > 1 %}
+                                                                <div class="text-warning small mt-1">
+                                                                    <i class="fas fa-equals me-1"></i>Еще {{ nomination.winners|length|add:"-1" }}
+                                                                    проект{{ nomination.winners|length|add:"-1"|pluralize:"ов,а" }}
+                                                                    с таким же баллом
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                {% for winner in nomination.winners %}
+                                                    <div class="winner-score {% if not forloop.first %}mt-3{% endif %}">
+                                                        {{ winner.score }}
+                                                        {% if nomination.winners|length > 1 %}
+                                                            <div class="text-muted small">(равные)</div>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+        {% else %}
+            <!-- Нет данных -->
+            <div class="alert alert-info">
+                <h5 class="alert-heading"><i class="fas fa-info-circle mr-1"></i>Нет данных для отображения</h5>
+                <p>Для формирования отчета необходимо:</p>
+                <ul class="mb-0">
+                    <li>Назначить жюри для выставки</li>
+                    <li>Добавить проекты в выставку и привязать их к номинациям</li>
+                    <li>Жюри должны проставить оценки проектам</li>
+                </ul>
+            </div>
+        {% endif %}
+
+        <!-- Информационная панель -->
+        <div class="info-panel">
+            <div class="info-title"><i class="fas fa-info-circle mr-1"></i>Информация по отчету:</div>
+            <div class="info-text">
+                • Отображаются только проекты с оценками жюри<br>
+                • Оценки считаются только от жюри, участвующих в этой выставке<br>
+                • По умолчанию показываются топ-{{ projects_per_nomination }} проекта в каждой номинации<br>
+                • Используйте селектор выше для изменения количества отображаемых проектов
+            </div>
+        </div>
+
+        <!-- Назад -->
+        <div class="mt-4 text-center">
+            <a href="{% url opts|admin_urlname:'change' exhibition.pk %}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-arrow-left me-2"></i> Вернуться к выставке
+            </a>
+            <a href="{% url opts|admin_urlname:'changelist' %}" class="btn btn-link text-muted">
+                К списку всех выставок
+            </a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrajs %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Обработка кнопки экспорта
+            const exportBtn = document.getElementById('exportBtn');
+            const exportForm = document.getElementById('exportForm');
+
+            if (exportBtn && exportForm) {
+                exportForm.addEventListener('submit', function (e) {
+                    // Показываем уведомление о начале скачивания
+                    showDownloadNotification();
+
+                    // Блокируем кнопку на время формирования файла
+                    const originalHTML = exportBtn.innerHTML;
+                    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> генерация файла...';
+                    exportBtn.disabled = true;
+
+                    // Автоматическое восстановление через 6 секунд
+                    setTimeout(() => {
+                        exportBtn.innerHTML = originalHTML;
+                        exportBtn.disabled = false;
+                    }, 6000);
+                });
+            }
+
+            // Показать уведомление о скачивании
+            function showDownloadNotification() {
+                // Создаем простое уведомление
+                const notification = document.createElement('div');
+                notification.className = 'download-notification';
+                notification.innerHTML = `
+                    <div class="notification-content">
+                        <div class="notification-title d-flex align-center">
+                            <i class="fas fa-info-circle text-primary mr-2"></i>Начато скачивание файла
+                        </div>
+                        <div class="notification-message mt-3 ml-1">
+                            Проверьте папку "Загрузки" в вашем браузере.<br>
+                            Если скачивание не началось, проверьте настройки браузера.
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(notification);
+
+                // Показываем с анимацией
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 10);
+
+                // Автоматически скрываем через 5 секунд
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 5000);
+            }
+
+            // Функция для toggle collapse
+            function toggleCollapse(button) {
+                const targetId = button.getAttribute('data-target').replace('#', '');
+                const content = document.getElementById(targetId);
+                const icon = button.querySelector('i');
+                const textSpan = button.querySelector('.btn-text');
+
+                if (!content) return;
+
+                // Запрещаем повторные клики во время анимации
+                if (button.classList.contains('animating')) return;
+                button.classList.add('animating');
+
+                const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+                if (isExpanded) {
+                    // Скрываем контент
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    // Принудительный reflow для запуска анимации
+                    void content.offsetHeight;
+
+                    content.style.maxHeight = '0';
+                    content.style.opacity = '0';
+
+                    if (icon) {
+                        icon.classList.remove('rotated');
+                    }
+                    if (textSpan) {
+                        textSpan.textContent = 'Показать детали';
+                    }
+                    button.setAttribute('aria-expanded', 'false');
+
+                    setTimeout(() => {
+                        content.classList.remove('show');
+                        button.classList.remove('animating');
+                    }, 300);
+                } else {
+                    // Показываем контент
+                    content.style.display = 'block';
+                    content.style.maxHeight = '0';
+                    content.style.opacity = '0';
+                    content.classList.add('show');
+
+                    // Принудительный reflow
+                    void content.offsetHeight;
+
+                    const fullHeight = content.scrollHeight;
+                    content.style.maxHeight = fullHeight + 'px';
+                    content.style.opacity = '1';
+
+                    if (icon) {
+                        icon.classList.add('rotated');
+                    }
+                    if (textSpan) {
+                        textSpan.textContent = 'Скрыть детали';
+                    }
+                    button.setAttribute('aria-expanded', 'true');
+
+                    setTimeout(() => {
+                        // Убираем фиксированную высоту после анимации
+                        if (content.style.maxHeight !== 'none') {
+                            content.style.maxHeight = 'none';
+                        }
+                        button.classList.remove('animating');
+                    }, 300);
+                }
+            }
+
+            // Инициализация всех collapse-кнопок
+            document.querySelectorAll('.collapse-btn').forEach(button => {
+                const targetId = button.getAttribute('data-target').replace('#', '');
+                const content = document.getElementById(targetId);
+
+                if (content) {
+                    // Инициализируем начальное состояние
+                    content.style.display = 'none';
+                    content.style.overflow = 'hidden';
+                    button.setAttribute('aria-expanded', 'false');
+
+                    // Добавляем обработчик клика
+                    button.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleCollapse(this);
+                    });
+                }
+            });
+
+
+            // Обработка изменения размера окна (на случай изменения контента)
+            let resizeTimer;
+            window.addEventListener('resize', function () {
+                // Закрываем все открытые collapse при ресайзе
+                document.querySelectorAll('.collapse-content.show').forEach(content => {
+                    const button = document.querySelector(`[data-target="#${content.id}"]`);
+                    if (button) {
+                        // Сбрасываем max-height при ресайзе
+                        if (content.style.maxHeight !== 'none') {
+                            content.style.maxHeight = content.scrollHeight + 'px';
+                        }
+                    }
+                });
+
+                // Debounce ресайза
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    document.querySelectorAll('.collapse-content.show').forEach(content => {
+                        if (content.style.maxHeight !== 'none') {
+                            content.style.maxHeight = 'none';
+                        }
+                    });
+                }, 250);
+            });
+
+            const previewBtn = document.getElementById('previewBtn');
+            const previewInfo = document.getElementById('previewInfo');
+
+            // бработка кнопки предпросмотра
+            if (previewBtn && previewInfo) {
+                previewBtn.addEventListener('click', function () {
+                    if (previewInfo.style.display === 'none') {
+                        previewInfo.style.display = 'block';
+                        this.innerHTML = '<i class="fas fa-eye-slash me-2"></i> Скрыть предпросмотр';
+                    } else {
+                        previewInfo.style.display = 'none';
+                        this.innerHTML = '<i class="fas fa-eye me-2"></i> Предпросмотр';
+                    }
+                });
+            }
+
+            //  Подсветка ячеек с оценками
+            document.querySelectorAll('.jury-score.positive').forEach(cell => {
+                const score = parseInt(cell.textContent);
+                if (score >= 4) {
+                    cell.classList.add('score-high');
+                } else if (score >= 3) {
+                    cell.classList.add('score-medium');
+                }
+            });
+
+            // Функция для показа/скрытия всех проектов
+            function toggleProjects(nominationId) {
+                const hiddenSection = document.getElementById(nominationId);
+                const button = hiddenSection.previousElementSibling.querySelector('.show-all-btn');
+                const icon = button.querySelector('i');
+
+                if (hiddenSection.classList.contains('visible')) {
+                    // Скрываем
+                    hiddenSection.classList.remove('visible');
+                    if (icon) {
+                        icon.className = 'fas fa-chevron-down me-1';
+                    }
+                    button.innerHTML = button.innerHTML.replace('Скрыть', 'Показать');
+                } else {
+                    // Показываем
+                    hiddenSection.classList.add('visible');
+                    if (icon) {
+                        icon.className = 'fas fa-chevron-up me-1';
+                    }
+                    button.innerHTML = button.innerHTML.replace('Показать', 'Скрыть');
+                }
+            }
+
+            // Экспортируем функцию глобально для onclick
+            window.toggleProjects = toggleProjects;
+        });
+    </script>
+{% endblock %}

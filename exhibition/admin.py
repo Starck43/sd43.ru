@@ -9,6 +9,7 @@ from sorl.thumbnail.admin import AdminImageMixin
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
+from .exports import ExportExhibitionAdmin
 from .forms import (
 	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm,
 	ImageInlineForm, ImageInlineFormSet
@@ -28,16 +29,16 @@ class ImagesInline(admin.StackedInline):
 	model = Image
 	form = ImageInlineForm
 	formset = ImageInlineFormSet
-	extra = 0
 	template = 'admin/exhibition/edit_inline/stacked_images.html'
-	show_change_link = True
+	verbose_name_plural = 'Фото'
 
 	fields = ('file_thumb', 'file', 'sort', 'filename')
-	list_display = ('file_thumb', 'sort')
 	readonly_fields = ('file_thumb', 'filename')
 
+	show_change_link = True
 	min_num = 0
 	max_num = 20  # Максимум 20 изображений
+	extra = 0
 
 	class Media:
 		css = {
@@ -213,13 +214,14 @@ class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, adm
 
 
 @admin.register(Exhibitions)
-class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, ExportExhibitionAdmin):
 	form = ExhibitionsForm
-	list_display = ('title', 'date_start', 'date_end',)
+	list_display = ('banner_thumb', 'title', 'date_start', 'date_end', )
 	list_display_links = ('title',)
 	search_fields = ('title',)
 	date_hierarchy = 'date_start'
-	filter_horizontal = ('nominations', 'exhibitors',)
+	filter_horizontal = ('nominations', 'jury', 'partners', 'exhibitors',)
+
 	# list_select_related = ('events',)
 	# prepopulated_fields = {"slug": ('date_start',)} # adding name to slug field but not only DateFields
 	list_per_page = 20
@@ -230,11 +232,11 @@ class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 		("Общая информация", {
 			'fields': ('title', 'slug', 'banner', 'description', 'date_start', 'date_end', 'location',)
 		}),
-		("Участники", {
-			'fields': ('exhibitors',)
-		}),
 		("Номинации", {
 			'fields': ('nominations',)
+		}),
+		("Участники", {
+			'fields': ('exhibitors',)
 		}),
 		("Жюри", {
 			'fields': ('jury',)
@@ -245,11 +247,9 @@ class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 		("Фото с выставки", {
 			'fields': ('files',)
 		}),
-		("СЕО Настройки", {
-			'fields': MetaSeoFieldsAdmin.meta_fields
-		}),
 	)
-	filter_horizontal = ('nominations', 'jury', 'partners', 'exhibitors',)
+
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
 	def get_search_results(self, request, queryset, search_term):
 		queryset, use_distinct = super().get_search_results(
@@ -325,8 +325,9 @@ class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	)
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
-	list_display = ('category', 'title', 'description_html',)
+	list_display = ('title', 'category', 'description_html',)
 	list_display_links = ('title',)
+
 	list_per_page = 20
 	empty_value_display = '<пусто>'
 
@@ -343,33 +344,6 @@ class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 			delete_cached_fragment('portfolio_list', item.owner.slug, item.project_id, False)
 
 
-@admin.register(Events)
-class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
-	fieldsets = (
-		(None, {
-			'classes': ('user-block',),
-			'fields': (
-				'exhibition', 'title', 'date_event', 'time_start', 'time_end', 'location', 'hoster',
-				'lector', 'description',
-			),
-		}),
-	)
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
-
-	list_display = ('title', 'date_event', 'time_event', 'hoster', 'exhibition',)
-	search_fields = ('title', 'description', 'hoster', 'lector',)
-	list_filter = ('exhibition__date_start', 'date_event',)
-	date_hierarchy = 'exhibition__date_start'
-	list_per_page = 20
-	save_as = True
-	ordering = ('-exhibition__slug', 'date_event', 'time_start',)
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-
-		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
-
-
 @admin.register(Winners)
 class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	fieldsets = (
@@ -380,8 +354,8 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	)
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
-	list_display = ('exhibitor', 'exh_year', 'nomination', 'portfolio')
-	list_display_links = ('exhibitor',)
+	list_display = ('get_exhibition', 'exhibitor', 'nomination', 'portfolio')
+	list_display_links = ('get_exhibition', 'exhibitor',)
 	# search_fields = ('nomination__title', 'exhibitor__name',)
 	list_filter = ('exhibition__date_start', 'nomination', 'exhibitor')
 	date_hierarchy = 'exhibition__date_start'
@@ -390,6 +364,15 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	list_per_page = 20
 	save_as = True
 	save_on_top = True  # adding the Save button on top bar
+
+	@admin.display(
+		description='Название выставки',
+		empty_value='<Вневыставочный проект>',
+		ordering='exhibition'
+	)
+	def get_exhibition(self, obj):
+		if obj.exhibition:
+			return obj.exhibition
 
 	def formfield_for_foreignkey(self, db_field, request, **kwargs):
 		if db_field.name == "exhibitor":
@@ -407,6 +390,34 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 		delete_cached_fragment('exhibition_content', obj.exhibition.slug)
 		delete_cached_fragment('participant_detail', obj.portfolio.id)
+
+
+@admin.register(Events)
+class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+	fieldsets = (
+		(None, {
+			'classes': ('user-block',),
+			'fields': (
+				'exhibition', 'title', 'date_event', 'time_start', 'time_end', 'location', 'hoster',
+				'lector', 'description',
+			),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
+	list_display = ('title', 'date_event', 'time_event', 'hoster', 'exhibition',)
+	list_filter = ('exhibition__date_start', 'date_event',)
+	date_hierarchy = 'exhibition__date_start'
+	search_fields = ('title', 'description', 'hoster', 'lector',)
+	ordering = ('-exhibition__slug', 'date_event', 'time_start',)
+
+	list_per_page = 20
+	save_as = True
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+
+		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
 
 
 @admin.register(Portfolio)
@@ -435,12 +446,14 @@ class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	)
 	date_hierarchy = 'exhibition__date_start'
 	# autocomplete_fields = ('owner', 'exhibition')
-	jazzmin_section_order = ("Основная информация", "Фото проектов", "Рейтинги", "Комментарии", "СЕО Настройки", )
+
+	jazzmin_section_order = ("Основная информация", "Фото", "Оценки проекта", "Отзывы", "СЕО Настройки", )
 
 	list_per_page = 50
 	save_on_top = True
 	save_as = True
 	view_on_site = True
+
 	inlines = [ImagesInline, RatingInline, ReviewInline]
 
 	class Media:

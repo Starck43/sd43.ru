@@ -1,0 +1,11 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if show_export_button and original %}
+        <a href="{{ export_url }}" class="btn btn-primary btn-sm mt-3">
+            📊 Экспорт оценок жюри
+        </a>
+    {% endif %}
+{% endblock %}

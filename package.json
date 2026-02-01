@@ -1,7 +1,7 @@
 {
   "name": "sferadesign",
   "description": "Designers' exhibitions portfolio project",
-  "version": "4.1",
+  "version": "4.1.1",
   "private": true,
   "type": "module",
   "main": "index.js",

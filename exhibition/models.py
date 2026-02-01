@@ -264,7 +264,7 @@ class Nominations(models.Model):
 
 	# Metadata
 	class Meta:
-		ordering = ['sort', 'title']  # '-' for DESC ordering
+		ordering = ['sort', 'title']
 		verbose_name = 'Номинация'
 		verbose_name_plural = 'Номинации'
 		db_table = 'nominations'
@@ -361,15 +361,14 @@ class Exhibitions(models.Model):
 		today = now().date()
 		return today > self.rating_deadline
 
+	@property
 	def exh_year(self):
 		return self.date_start.strftime('%Y')
-
-	exh_year.short_description = 'Выставка'
 
 	def banner_thumb(self):
 		return get_image_html(self.banner)
 
-	banner_thumb.short_description = 'Логотип'
+	banner_thumb.short_description = 'Баннер'
 
 	def get_absolute_url(self):
 		return reverse('exhibition:exhibition-detail-url', kwargs={'exh_year': self.slug})
@@ -378,8 +377,11 @@ class Exhibitions(models.Model):
 class Winners(models.Model):
 	""" Таблица Победителей """
 	exhibition = models.ForeignKey(
-		Exhibitions, related_name='exhibition_for_winner', on_delete=models.CASCADE,
-		null=True, verbose_name='Выставка'
+		Exhibitions,
+		related_name='exhibition_for_winner',
+		on_delete=models.CASCADE,
+		null=True,
+		verbose_name='Выставка'
 	)
 	nomination = ChainedForeignKey(
 		Nominations,
@@ -415,7 +417,7 @@ class Winners(models.Model):
 	)
 
 	class Meta:
-		ordering = ['-exhibition__slug']
+		ordering = ['-exhibition']
 		verbose_name = 'Победитель выставки'
 		verbose_name_plural = 'Победители'
 		db_table = 'winners'
@@ -427,12 +429,6 @@ class Winners(models.Model):
 
 	def __str__(self):
 		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
-
-	def exh_year(self):
-		# return only Exhibition's year from date_start
-		return self.exhibition.date_start.strftime('%Y')
-
-	exh_year.short_description = 'Выставка'
 
 	def name(self):
 		return self.exhibitor.name

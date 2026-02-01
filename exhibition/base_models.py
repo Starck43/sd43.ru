@@ -18,6 +18,13 @@ class UserModel(models.Model):
 	class Meta:
 		abstract = True
 
+	@property
+	def user_name(self):
+		if (not self.user.first_name) and (not self.user.last_name):
+			return self.user.username
+		else:
+			return self.user.get_full_name() or f"{self.user.first_name or ''} {self.user.last_name or ''}".strip()
+
 	@staticmethod
 	def _generate_username(base_username):
 		"""
