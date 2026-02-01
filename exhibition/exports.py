@@ -1,11 +1,5 @@
 # exhibition/exports.py
-from io import BytesIO
-from urllib.parse import quote
-
-import xlsxwriter
 from django.contrib import admin
-from django.db.models import Sum
-from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import path, reverse
 
@@ -42,27 +36,29 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 
 	def export_jury_ratings(self, request, object_id):
 		"""Страница экспорта оценок жюри"""
-
 		exhibition = get_object_or_404(Exhibitions, pk=object_id)
 
-		# Получаем параметр количества проектов для отображения
+		# Получаем параметр количества проектов
 		projects_per_nom = request.GET.get('limit', self.DEFAULT_PROJECTS_PER_NOMINATION)
 		try:
 			projects_per_nom = int(projects_per_nom)
+			# Ограничиваем для отображения страницы
+			projects_per_nom = min(projects_per_nom, 10)  # Максимум 10 для отображения
 		except:
-			projects_per_nom = self.DEFAULT_PROJECTS_PER_NOMINATION
+			projects_per_nom = min(self.DEFAULT_PROJECTS_PER_NOMINATION, 10)
 
+		# Если это POST запрос для экспорта
 		if request.method == 'POST':
 			filename = request.POST.get('filename', '').strip()
 			if not filename:
 				filename = f"оценки_жюри_{exhibition.slug}"
 
-			# Получаем ВСЕ данные для Excel
-			report_data = self._get_report_data(exhibition, 1000)
-			return self._generate_excel_report(exhibition, filename, report_data)
+			# Для экспорта используем легковесную функцию
+			return self._lightweight_export(exhibition, filename)
 
-		# GET запрос - отображаем страницу
-		report_data = self._get_report_data(exhibition, projects_per_nom)
+		# GET запрос - отображаем страницу с ограниченными данными
+		# for_export=False - получаем только данные для отображения
+		report_data = self._get_report_data(exhibition, projects_per_nom, for_export=False)
 
 		context = {
 			**self.admin_site.each_context(request),
@@ -76,79 +72,112 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 		return render(request, 'admin/exhibition/jury_ratings_export.html', context)
 
 	@staticmethod
-	def _get_report_data(exhibition, projects_per_nomination):
+	def _get_report_data(exhibition, projects_per_nomination, for_export=False):
 		"""Получаем все данные для отчета"""
-		# Жюри, участвующие в этой выставке
-		jury_list = exhibition.jury.all()
 
-		# Собираем общую статистику
+		# Жюри, участвующие в этой выставке
+		jury_list = exhibition.jury.all().only('id', 'name', 'user_id')
+
+		# Для экспорта загружаем только необходимые поля
+		if for_export:
+			jury_list = list(jury_list.values('id', 'name', 'user_id'))
+
 		report_data = {
 			'jury_list': jury_list,
 			'nominations': [],
 			'jury_stats': {},
-			'not_voted_jury': {},  # Изменяем структуру
+			'not_voted_jury': {},
 			'total_stats': {
-				'total_jury': jury_list.count(),
+				'total_jury': len(jury_list),
 				'total_nominations': exhibition.nominations.count(),
 				'total_projects': 0,
 				'total_ratings': 0,
 			}
 		}
 
-		# Статистика по каждому жюри
-		for jury in jury_list:
-			# Количество оценок этого жюри для проектов выставки
-			ratings_count = Rating.objects.filter(
-				user=jury.user,
-				is_jury_rating=True,
-				portfolio__exhibition=exhibition
-			).count()
-
-			# Общая сумма оценок этого жюри
-			ratings_sum = Rating.objects.filter(
-				user=jury.user,
-				is_jury_rating=True,
-				portfolio__exhibition=exhibition
-			).aggregate(Sum('star'))['star__sum'] or 0
-
-			report_data['jury_stats'][jury.id] = {
-				'name': jury.name or jury.user_name,
-				'ratings_count': ratings_count,
-				'ratings_sum': ratings_sum,
-			}
-			report_data['total_stats']['total_ratings'] += ratings_count
-
 		# Инициализируем структуру для не проголосовавших жюри
 		for jury in jury_list:
-			report_data['not_voted_jury'][jury.id] = {
+			jury_id = jury['id'] if for_export else jury.id
+			report_data['not_voted_jury'][jury_id] = {
 				'jury': jury,
 				'nominations': [],
 				'total_missing': 0
 			}
 
+		# Статистика по каждому жюри - оптимизированный запрос
+		from django.db.models import Count, Sum
+		for jury in jury_list:
+			if for_export:
+				jury_id = jury['id']
+				user_id = jury['user_id']
+				jury_name = jury['name']
+			else:
+				jury_id = jury.id
+				user_id = jury.user_id
+				jury_name = jury.name
+
+			# Используем агрегацию, вместо загрузки всех объектов
+			ratings_info = Rating.objects.filter(
+				user_id=user_id,
+				is_jury_rating=True,
+				portfolio__exhibition=exhibition
+			).aggregate(
+				count=Count('id'),
+				sum=Sum('star')
+			)
+
+			report_data['jury_stats'][jury_id] = {
+				'name': jury_name,
+				'ratings_count': ratings_info['count'] or 0,
+				'ratings_sum': ratings_info['sum'] or 0,
+			}
+			report_data['total_stats']['total_ratings'] += ratings_info['count'] or 0
+
 		# Обрабатываем каждую номинацию
-		for nomination in exhibition.nominations.all():
-			# Проекты в этой номинации, участвующие в выставке
-			# Важно: один и тот же проект может быть в нескольких номинациях
+		nominations = exhibition.nominations.all().only('id', 'title')
+
+		for nomination in nominations:
+			# Оптимизированный запрос для портфолио
 			portfolios = Portfolio.objects.filter(
 				exhibition=exhibition,
 				nominations=nomination
-			).prefetch_related(
-				'ratings__user',
-				'ratings',
-				'owner'
-			).distinct()
+			).only('id', 'title', 'owner_id', 'project_id')
+
+			# Оптимизация: получаем только ID портфолио
+			portfolio_ids = list(portfolios.values_list('id', flat=True))
+
+			if not portfolio_ids:
+				# Пропускаем пустые номинации
+				continue
+
+			# Получаем оценки для этих портфолио одним запросом
+			ratings_data = Rating.objects.filter(
+				portfolio_id__in=portfolio_ids,
+				is_jury_rating=True
+			).values('portfolio_id', 'user_id').annotate(
+				star_sum=Sum('star')
+			)
+
+			# Создаем словарь для быстрого доступа
+			ratings_dict = {}
+			for rd in ratings_data:
+				key = (rd['portfolio_id'], rd['user_id'])
+				ratings_dict[key] = rd['star_sum']
 
 			# Собираем данные по проектам
 			projects_data = []
-			voted_projects_count = 0
 			nomination_total_score = 0
+			nomination_jury_totals = {}
+			nomination_jury_counts = {}
 
-			# Агрегация по жюри для этой номинации
-			nomination_jury_totals = {jury.id: 0 for jury in jury_list}
-			nomination_jury_counts = {jury.id: 0 for jury in jury_list}
+			# Инициализируем словари для статистики по жюри
+			for jury in jury_list:
+				jury_id = jury['id'] if for_export else jury.id
+				nomination_jury_totals[jury_id] = 0
+				nomination_jury_counts[jury_id] = 0
 
 			for portfolio in portfolios:
+				portfolio_id = portfolio.id
 				project = {
 					'portfolio': portfolio,
 					'jury_scores': {},
@@ -156,42 +185,31 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 					'has_ratings': False
 				}
 
-				# Собираем оценки жюри этой выставки ТОЛЬКО для этой номинации
-				for jury in jury_list:
-					# Ищем оценку конкретно для этого проекта от этого жюри
-					rating = portfolio.ratings.filter(
-						user=jury.user,
-						is_jury_rating=True
-					).first()
+				# Для экспорта загружаем дополнительные данные
+				if for_export:
+					portfolio_full = Portfolio.objects.filter(id=portfolio_id).select_related('owner').first()
+					if portfolio_full:
+						project['portfolio'] = portfolio_full
 
-					score = rating.star if rating else None
-					project['jury_scores'][jury.id] = score
+				# Собираем оценки жюри
+				for jury in jury_list:
+					if for_export:
+						jury_id = jury['id']
+						user_id = jury['user_id']
+					else:
+						jury_id = jury.id
+						user_id = jury.user_id
+
+					key = (portfolio_id, user_id)
+					score = ratings_dict.get(key)
+
+					project['jury_scores'][jury_id] = score
 
 					if score:
-						voted_projects_count += 1
 						project['total_score'] += score
 						project['has_ratings'] = True
-						nomination_jury_totals[jury.id] += score
-						nomination_jury_counts[jury.id] += 1
-
-				# Обновляем статистику по жюри для не проголосовавших
-				for jury in jury_list:
-					if jury.id not in project['jury_scores'] or project['jury_scores'][jury.id] is None:
-						# Жюри не оценил этот проект
-						if not any(
-								n['nomination'] == nomination
-								for n in report_data['not_voted_jury'][jury.id]['nominations']
-						):
-							# Добавляем номинацию если её ещё нет
-							report_data['not_voted_jury'][jury.id]['nominations'].append({
-								'nomination': nomination,
-								'voted': nomination_jury_counts[jury.id],
-								'total': portfolios.count(),
-								'missing': portfolios.count() - nomination_jury_counts[jury.id]
-							})
-							report_data['not_voted_jury'][jury.id]['total_missing'] += (
-									portfolios.count() - nomination_jury_counts[jury.id]
-							)
+						nomination_jury_totals[jury_id] += score
+						nomination_jury_counts[jury_id] += 1
 
 				projects_data.append(project)
 				nomination_total_score += project['total_score']
@@ -205,20 +223,59 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 
 			# Определяем победителей (может быть несколько при равенстве баллов)
 			winners = []
-			if projects_data and len(jury_list) * portfolios.count() == voted_projects_count:
-				# Все жюри оценили все проекты в номинации
-				max_score = projects_data[0]['total_score']
+			if projects_data:
+				# Исправляем подсчет voted_projects_count
+				voted_projects_count = 0
+				for project in projects_data:
+					# Считаем сколько жюри оценили этот проект
+					rated_jury_count = sum(1 for score in project['jury_scores'].values() if score is not None)
+					if rated_jury_count == len(jury_list):  # Все жюри оценили проект
+						voted_projects_count += 1
 
-				# Находим все проекты с максимальным баллом
-				top_scorers = [p for p in projects_data if p['total_score'] == max_score]
+				total_possible_votes = len(jury_list) * len(projects_data)
+				actual_votes = sum(nomination_jury_counts.values())  # Общее количество выставленных оценок
 
-				for project in top_scorers:
-					winners.append({
-						'portfolio': project['portfolio'],
-						'score': project['total_score'],
-						'medal': 'gold',
-						'position': 1
-					})
+				# Условие для определения победителей: все жюри оценили все проекты
+				if actual_votes == total_possible_votes:
+					# Все жюри оценили все проекты в номинации
+					max_score = projects_data[0]['total_score']
+
+					# Находим все проекты с максимальным баллом
+					top_scorers = [p for p in projects_data if p['total_score'] == max_score]
+
+					for project in top_scorers:
+						winners.append({
+							'portfolio': project['portfolio'],
+							'score': project['total_score'],
+							'medal': 'gold',
+							'position': 1
+						})
+
+			# Обновляем статистику по жюри для не проголосовавших
+			for jury in jury_list:
+				if for_export:
+					jury_id = jury['id']
+				else:
+					jury_id = jury.id
+
+				expected_count = len(projects_data)
+				actual_count = nomination_jury_counts.get(jury_id, 0)
+
+				if actual_count < expected_count:
+					missing_nomination = None
+					for nom in report_data['not_voted_jury'][jury_id]['nominations']:
+						if nom['nomination'].id == nomination.id:
+							missing_nomination = nom
+							break
+
+					if not missing_nomination:
+						report_data['not_voted_jury'][jury_id]['nominations'].append({
+							'nomination': nomination,
+							'voted': actual_count,
+							'total': expected_count,
+							'missing': expected_count - actual_count
+						})
+						report_data['not_voted_jury'][jury_id]['total_missing'] += (expected_count - actual_count)
 
 			nomination_data = {
 				'title': nomination.title,
@@ -235,7 +292,7 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 			report_data['nominations'].append(nomination_data)
 			report_data['total_stats']['total_projects'] += len(projects_data)
 
-		# Жюри, которые не проголосовали полностью: корректировка
+		# Удаляем жюри, которые проголосовали за все проекты
 		report_data['not_voted_jury'] = {
 			jury_id: data for jury_id, data in report_data['not_voted_jury'].items()
 			if data['total_missing'] > 0
@@ -243,152 +300,99 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 
 		return report_data
 
-	def _generate_excel_report(self, exhibition, custom_filename=None, report_data=None):
-		"""Генерация Excel отчета"""
-		if report_data is None:
-			report_data = self._get_report_data(exhibition, 1000)  # Все проекты
+	def _lightweight_export(self, exhibition, filename):
+		"""Оптимизированный экспорт для больших данных"""
+
+		from django.db import connection
+		import xlsxwriter
+		from io import BytesIO
+		from django.http import HttpResponse, HttpResponseServerError
 
 		try:
+			# Используем существующий метод для получения данных
+			# for_export=True - получаем данные в легковесном формате
+			report_data = self._get_report_data(exhibition, 200, for_export=True)
+
+			# Проверяем есть ли данные
+			if not report_data['nominations']:
+				return HttpResponseServerError("Нет данных для экспорта")
+
+			# Генерируем Excel
 			output = BytesIO()
-			workbook = xlsxwriter.Workbook(output)
+			workbook = xlsxwriter.Workbook(output, {'in_memory': True})
 
 			# Форматы
-			header_format = workbook.add_format({
-				'bold': True,
-				'align': 'center',
-				'bg_color': '#D9E1F2',
-				'border': 1
-			})
+			header_format = workbook.add_format({'bold': True, 'align': 'center'})
 
-			title_format = workbook.add_format({
-				'bold': True,
-				'font_size': 16,
-				'align': 'center'
-			})
-
-			nomination_format = workbook.add_format({
-				'bold': True,
-				'bg_color': '#F2F2F2',
-				'border': 1
-			})
-
-			total_format = workbook.add_format({
-				'bold': True,
-				'bg_color': '#FCE4D6',
-				'border': 1
-			})
-
-			winner_format = workbook.add_format({
-				'bold': True,
-				'font_color': '#C65911',
-				'border': 1
-			})
-
-			# Лист 1: Оценки по номинациям
-			worksheet = workbook.add_worksheet('Оценки жюри')
+			# Лист 1: Оценки
+			worksheet = workbook.add_worksheet('Оценки')
 
 			row = 0
-			col = 0
-
-			# Заголовок
-			worksheet.merge_range(row, col, row, len(report_data['jury_list']) + 1,
-			                      f'Протокол оценок жюри: {exhibition.title}',
-			                      title_format)
+			worksheet.write(row, 0, f'Протокол оценок жюри: {exhibition.title}')
 			row += 2
 
-			# Данные по номинациям
 			for nomination in report_data['nominations']:
-				# Заголовок номинации
-				worksheet.merge_range(row, col, row, len(report_data['jury_list']) + 1,
-				                      nomination['title'],
-				                      nomination_format)
+				worksheet.write(row, 0, nomination['title'])
 				row += 1
 
-				# Заголовки колонок
-				worksheet.write(row, col, '№', header_format)
-				worksheet.write(row, col + 1, 'Проект', header_format)
-				col_idx = 2
+				# Заголовки
+				worksheet.write(row, 0, 'Проект', header_format)
+				col = 1
 
 				for jury in report_data['jury_list']:
-					# Сокращаем имя жюри для заголовка
-					jury_name = jury.name if jury.name else jury.user_name
-					if len(jury_name) > 15:
-						jury_name = jury_name[:12] + '...'
-					worksheet.write(row, col_idx, jury_name, header_format)
-					col_idx += 1
+					if isinstance(jury, dict):
+						jury_name = jury['name']
+					else:
+						jury_name = jury.name
+					worksheet.write(row, col, jury_name[:20] if jury_name else '', header_format)
+					col += 1
 
-				worksheet.write(row, col_idx, 'Сумма баллов', header_format)
+				worksheet.write(row, col, 'Сумма', header_format)
 				row += 1
 
 				# Данные проектов
-				project_num = 1
 				all_projects = nomination['top_projects'] + nomination['other_projects']
-
 				for project in all_projects:
-					# Проверяем, является ли проект победителем
-					is_winner = any(
-						w['portfolio'].id == project['portfolio'].id
-						for w in nomination['winners']
-					)
+					portfolio_obj = project['portfolio']
+					if hasattr(portfolio_obj, 'title'):
+						project_name = portfolio_obj.title
+					else:
+						project_name = str(portfolio_obj)
 
-					current_format = winner_format if is_winner else None
+					worksheet.write(row, 0, project_name)
 
-					worksheet.write(row, col, project_num, current_format)
-					worksheet.write(row, col + 1, str(project['portfolio']), current_format)
-
-					col_idx = 2
+					col = 1
 					for jury in report_data['jury_list']:
-						score = project['jury_scores'].get(jury.id)
-						worksheet.write(row, col_idx, score if score else '', current_format)
-						col_idx += 1
+						if isinstance(jury, dict):
+							jury_id = jury['id']
+						else:
+							jury_id = jury.id
 
-					worksheet.write(row, col_idx, project['total_score'], total_format)
+						score = project['jury_scores'].get(jury_id)
+						worksheet.write(row, col, score if score else '')
+						col += 1
 
+					worksheet.write(row, col, project['total_score'])
 					row += 1
-					project_num += 1
 
-				# Пустая строка между номинациями
-				row += 2
-				col_idx = 0
+				row += 1  # Пустая строка
 
 			# Лист 2: Победители
 			winners_worksheet = workbook.add_worksheet('Победители')
-
 			row = 0
-			col = 0
-
-			# Заголовок
-			winners_worksheet.merge_range(row, col, row, 3,
-			                              f'Победители выставки: {exhibition.title}',
-			                              title_format)
-			row += 2
-
-			# Заголовки таблицы
-			winners_worksheet.write(row, col, 'Номинация', header_format)
-			winners_worksheet.write(row, col + 1, 'Проект', header_format)
-			winners_worksheet.write(row, col + 2, 'Участник', header_format)
-			winners_worksheet.write(row, col + 3, 'Сумма баллов', header_format)
+			winners_worksheet.write(row, 0, 'Номинация', header_format)
+			winners_worksheet.write(row, 1, 'Проект', header_format)
+			winners_worksheet.write(row, 2, 'Автор', header_format)
+			winners_worksheet.write(row, 3, 'Баллы', header_format)
 			row += 1
 
-			# Данные победителей
 			for nomination in report_data['nominations']:
-				if nomination['winners']:
-					for winner in nomination['winners']:
-						winners_worksheet.write(row, col, nomination['title'])
-						winners_worksheet.write(row, col + 1, winner['portfolio'].title)
-						winners_worksheet.write(row, col + 2, winner['portfolio'].owner.name)
-						winners_worksheet.write(row, col + 3, winner['score'])
-						row += 1
-				else:
-					winners_worksheet.write(row, col, nomination['title'])
-					winners_worksheet.write(row, col + 1, 'Победитель не определен')
-					winners_worksheet.write(row, col + 2, '-')
-					winners_worksheet.write(row, col + 3, '-')
+				for winner in nomination['winners']:
+					winners_worksheet.write(row, 0, nomination['title'])
+					winners_worksheet.write(row, 1, winner['portfolio'].title)
+					winners_worksheet.write(row, 2, winner['portfolio'].owner.name)
+					winners_worksheet.write(row, 3, winner['score'])
 					row += 1
-
-			# Автоматическая ширина колонок
-			worksheet.autofit()
-			winners_worksheet.autofit()
 
 			workbook.close()
 			output.seek(0)
@@ -398,15 +402,96 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 				content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 			)
 
-			# Формируем имя файла
-			if custom_filename and custom_filename.strip():
-				filename = f"{custom_filename.strip()}.xlsx"
-			else:
-				filename = f"sd43_vote_{exhibition.slug}.xlsx"
+			if not filename.lower().endswith('.xlsx'):
+				filename = f"{filename}.xlsx"
 
-			# Кодируем для безопасной работы с русскими символами
-			encoded_filename = quote(filename)
-			response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
+			#response['Content-Disposition'] = f'attachment; filename="{filename}"'
+			from urllib import parse
+			encoded_filename = parse.quote(filename)
+
+			response['Content-Disposition'] = (
+				f'attachment; filename="{parse.quote(filename)}"; '
+				f'filename*=UTF-8\'\'{encoded_filename}'
+			)
+
+			# Дополнительные заголовки для лучшей совместимости
+			response['Content-Length'] = len(output.getvalue())
+			response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+			response['Pragma'] = 'no-cache'
+			response['Expires'] = '0'
+
+			return response
+
+		except Exception as e:
+			import traceback
+			print(f"ERROR in lightweight export: {str(e)}")
+			traceback.print_exc()
+			return HttpResponseServerError(f"Ошибка экспорта: {str(e)}")
+
+
+	def _generate_excel_report(self, exhibition, custom_filename=None, report_data=None):
+		"""Генерация Excel отчета с оптимизацией памяти"""
+		try:
+			import xlsxwriter
+			from io import BytesIO
+
+			output = BytesIO()
+			workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+
+			# Упрощенные форматы для экономии памяти
+			header_format = workbook.add_format({'bold': True, 'align': 'center'})
+
+			# Лист 1: Оценки по номинациям
+			worksheet = workbook.add_worksheet('Оценки жюри')
+
+			# Пишем данные порционно
+			row = 0
+			worksheet.write(row, 0, f'Протокол оценок жюри: {exhibition.title}')
+			row += 2
+
+			for nomination in report_data['nominations']:
+				worksheet.write(row, 0, nomination['title'])
+				row += 1
+
+				# Заголовки
+				worksheet.write(row, 0, 'Проект', header_format)
+				col = 1
+				for jury in report_data['jury_list']:
+					jury_name = jury.name if hasattr(jury, 'name') else jury['name']
+					worksheet.write(row, col, jury_name[:20], header_format)
+					col += 1
+				worksheet.write(row, col, 'Сумма', header_format)
+				row += 1
+
+				# Данные проектов - пишем порционно
+				all_projects = nomination['top_projects'] + nomination['other_projects']
+				for project in all_projects:
+					worksheet.write(row, 0, str(project['portfolio']))
+
+					col = 1
+					for jury in report_data['jury_list']:
+						jury_id = jury.id if hasattr(jury, 'id') else jury['id']
+						score = project['jury_scores'].get(jury_id)
+						worksheet.write(row, col, score if score else '')
+						col += 1
+
+					worksheet.write(row, col, project['total_score'])
+					row += 1
+
+				row += 1  # Пустая строка
+
+			workbook.close()
+			output.seek(0)
+
+			# Формируем ответ
+			filename = f"{custom_filename.strip()}.xlsx" if custom_filename else f"оценки_жюри_{exhibition.slug}.xlsx"
+
+			from django.http import HttpResponse
+			response = HttpResponse(
+				output.getvalue(),
+				content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+			)
+			response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
 			return response
 
@@ -414,6 +499,4 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 			print(f"ERROR in _generate_excel_report: {str(e)}")
 			import traceback
 			traceback.print_exc()
-			# Возвращаем ошибку пользователю
-			from django.http import HttpResponseBadRequest
-			return HttpResponseBadRequest(f"Ошибка при формировании файла: {str(e)}")
+			raise
