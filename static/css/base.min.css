@@ -755,35 +755,6 @@ form:not(.nav-search) > * {
   color: #fff;
   background-color: #160D32;
 }
-.grid.partners-list,
-.grid.organizers-list {
-  -ms-grid-columns: (1fr)[2];
-  grid-template-columns: repeat(2, 1fr);
-}
-@media (min-width: 576px) {
-  .grid.partners-list,
-  .grid.organizers-list {
-    -ms-grid-columns: (1fr)[3];
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-@media (min-width: 768px) {
-  .grid.partners-list,
-  .grid.organizers-list {
-    -ms-grid-columns: (1fr)[4];
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-.partner-item,
-.organizer-item {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-}
 .navbar {
   position: relative;
   display: -webkit-box;
@@ -1828,12 +1799,17 @@ form:not(.nav-search) > * {
   position: relative;
   display: -ms-grid;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 2vw;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1vw;
   width: 100%;
   height: -webkit-max-content;
   height: -moz-max-content;
   height: max-content;
+}
+@media (max-width: 575.99px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(48%, 1fr)) !important;
+  }
 }
 .grid.exhibitions-grid .exh-title {
   width: auto;
@@ -1845,9 +1821,10 @@ form:not(.nav-search) > * {
 .grid.categories-grid .grid-cell {
   border: var(--border-thickness) solid var(--main-color);
 }
-@media (max-width: 575.99px) {
+@media (max-width: 1199.99px) {
   .grid.categories-grid {
-    grid-template-columns: repeat(auto-fill, minmax(48%, 1fr));
+    -ms-grid-columns: (1fr)[3];
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 .grid.exhibitions-grid .grid-cell,
@@ -1874,9 +1851,23 @@ form:not(.nav-search) > * {
   grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
   gap: 0.5em;
 }
-@media (max-width: 575.99px) {
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(48%, 1fr)) !important;
+.grid.partners-list,
+.grid.organizers-list {
+  -ms-grid-columns: (1fr)[2];
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 576px) {
+  .grid.partners-list,
+  .grid.organizers-list {
+    -ms-grid-columns: (1fr)[3];
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 768px) {
+  .grid.partners-list,
+  .grid.organizers-list {
+    -ms-grid-columns: (1fr)[4];
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 .grid.partners-list img {

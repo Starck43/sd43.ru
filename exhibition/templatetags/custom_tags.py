@@ -13,6 +13,11 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.simple_tag
+def site_version():
+	return getattr(settings, 'VERSION', '1.0.0')
+
+
 @register.filter
 def verbose_name(obj):
 	return obj._meta.verbose_name

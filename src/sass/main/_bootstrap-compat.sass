@@ -132,17 +132,3 @@
 	&.btn-primary
 		color: #fff
 		background-color: $main-color
-
-
-.grid.partners-list,
-.grid.organizers-list
-	grid-template-columns: repeat(2, 1fr)
-	+mixins.media-min(sm)
-		grid-template-columns: repeat(3, 1fr)
-	+mixins.media-min(md)
-		grid-template-columns: repeat(4, 1fr)
-
-.partner-item,
-.organizer-item
-	display: flex
-	flex-direction: column

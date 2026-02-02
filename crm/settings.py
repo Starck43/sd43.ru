@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import dj_database_url
 from pathlib import Path
 
+from .project import *
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
@@ -10,6 +12,7 @@ load_dotenv()
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+DOMAIN_URL = 'http://localhost:9000' if DEBUG else f'https://{ALLOWED_HOSTS[0]}'
 
 # Application definition
 INSTALLED_APPS = [
@@ -208,8 +211,8 @@ JAZZMIN_SETTINGS = {
 	"site_icon": "admin/img/brand/sd-logo.jpg",
 	"login_logo": "admin/img/brand/sd-logo-default.png",
 	# "login_logo_dark": "admin/img/brand/sd-logo-dark.png",
-	"welcome_sign": "Администрирование сайта Сфера Дизайна.\n Введите email/login и пароль",
-	"copyright": "© Компании Арт-Сервис",
+	"welcome_sign": "Администрирование сайта Сфера Дизайна.\n Введите логин и пароль",
+	"copyright": f"Компании Арт-Сервис",
 	"hide_models": [],
 	"order_with_respect_to": [
 		'exhibition',
@@ -236,7 +239,10 @@ JAZZMIN_SETTINGS = {
 	"related_modal_active": True,
 	# "custom_js": "admin/js/custom.js",
 	"topmenu_links": [
-		{"name": "Перейти на сайт", "url": "https://sd43.ru", "new_window": True, "permissions": ["auth.view_user"]},
+		{"name": "Перейти на сайт", "url": DOMAIN_URL, "new_window": True, "permissions": ["auth.view_user"]},
+	],
+	"usermenu_links": [
+		{"name": "Активность", "url": "/account", "new_window": False},
 	],
 	"icons": {
 		"exhibition.Categories": "fas fa-layer-group",

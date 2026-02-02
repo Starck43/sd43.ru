@@ -1,6 +1,23 @@
 {% extends "admin/base.html" %}
-{% load static %}
+{% load static i18n custom_tags %}
+
 {% block extrahead %}
-	{{ block.super }}
-	<link  rel="stylesheet" href="{% static 'admin/css/admin-style.min.css' %}" type="text/css"/>
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/css/admin-style.min.css' %}" type="text/css"/>
+{% endblock %}
+
+{% block footer %}
+    {% if not is_popup %}
+        <footer class="main-footer {{ jazzmin_ui.footer_classes }}">
+            <div class="float-right d-none d-sm-inline">
+                <b>Версия:</b> {% site_version %}
+            </div>
+            {% autoescape off %}
+                <strong>{% trans 'Copyright' %} &copy; {% now 'Y' %} {{ jazzmin_settings.copyright }}.</strong> {% trans 'All rights reserved.' %}
+            {% endautoescape %}
+        </footer>
+        {% if jazzmin_settings.show_ui_builder %}
+            {% include 'jazzmin/includes/ui_builder_panel.html' %}
+        {% endif %}
+    {% endif %}
 {% endblock %}

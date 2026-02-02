@@ -143,10 +143,14 @@
 </div>
 
 <div id="site-footer">
-    <div id="copyright" class="centered">
+    <div id="copyright" class="centered justify-between text-muted">
         {% now "Y" as current_year %}
-        <small>{% blocktranslate %}2008-{{ current_year }} © Права принадлежат компании
-            Арт-Сервис{% endblocktranslate %}</small>
+        <small>
+            2008-{{ current_year }} © Права принадлежат компании Арт-Сервис
+        </small>
+        <small class="text-muted">
+            {% site_version %}
+        </small>
     </div>
     <div id="back2top" class="disable">
         <button class="top-link d-flex-column align-center">

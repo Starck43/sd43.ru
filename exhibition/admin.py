@@ -3,15 +3,13 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import ImageField
 from django.utils.html import format_html
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
 from .exports import ExportExhibitionAdmin
 from .forms import (
-	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm,
-	ImageInlineForm, ImageInlineFormSet
+	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, PortfolioAdminForm
 )
 from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin, ImagePreviewMixin, ImagesInlineAdminMixin
 from .models import (

@@ -2,14 +2,16 @@
 @use "mixins"
 @use "vars" as *
 
-
 .grid
 	position: relative
 	display: grid
-	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr) )
-	gap: 2vw
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr) )
+	gap: 1vw
 	width: 100%
 	height: max-content
+
+	+mixins.media-max(sm)
+		grid-template-columns: repeat(auto-fill, minmax(48%, 1fr) ) !important
 
 	&.exhibitions-grid
 		.exh-title
@@ -22,8 +24,8 @@
 		.grid-cell
 			border: var(--border-thickness) solid var(--main-color)
 
-		+mixins.media-max(sm)
-			grid-template-columns: repeat(auto-fill, minmax(48%, 1fr) )
+		+mixins.media-max(xl)
+			grid-template-columns: repeat(3, 1fr)
 
 	&.exhibitions-grid, &.categories-grid
 		.grid-cell
@@ -49,12 +51,17 @@
 		grid-template-columns: repeat(auto-fill, minmax(105px, 1fr) )
 		gap: 0.5em
 
-	+mixins.media-max(sm)
-		grid-template-columns: repeat(auto-fill, minmax(48%, 1fr) ) !important
+	&.partners-list,
+	&.organizers-list
+		grid-template-columns: repeat(2, 1fr)
+		+mixins.media-min(sm)
+			grid-template-columns: repeat(3, 1fr)
+		+mixins.media-min(md)
+			grid-template-columns: repeat(4, 1fr)
 
 	&.partners-list img
 		object-fit: contain !important
-	
+
 	.grid-cell
 		position: relative
 		color: $cell-text-color
@@ -127,5 +134,4 @@
 
 			img
 				transform: scale(1.03)
-
 
