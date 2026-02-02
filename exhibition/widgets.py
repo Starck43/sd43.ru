@@ -5,6 +5,7 @@ from exhibition.logic import get_image_url
 
 
 class MediaWidget(AdminFileWidget):
+
 	def __init__(self, attrs=None, field=None):
 		super().__init__(attrs)
 		self.field = field  # Сохраняем переданное поле

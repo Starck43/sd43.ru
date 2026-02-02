@@ -1,6 +1,5 @@
 import math
 from collections import defaultdict
-from datetime import datetime
 from os import SEEK_END
 
 from allauth.account.models import EmailAddress
@@ -33,10 +32,10 @@ from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
-from .logic import send_email, send_email_async, set_user_group
+from .logic import send_email, send_email_async
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
-from .utils import is_exhibitor_of_exhibition, is_jury_member
+from .utils import is_exhibitor_of_exhibition, is_jury_member, set_user_group
 
 
 def success_message(request):
@@ -153,6 +152,7 @@ class ExhibitionsList(MetaSeoMixin, BannersMixin, ListView):
 		context = super().get_context_data(**kwargs)
 		context['html_classes'] = ['exhibitions', ]
 		context['page_title'] = self.model._meta.verbose_name_plural
+		context['cache_timeout'] = 2592000
 
 		return context
 

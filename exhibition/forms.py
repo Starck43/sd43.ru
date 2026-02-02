@@ -13,7 +13,8 @@ from django.forms import FileInput, ClearableFileInput, BaseInlineFormSet
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
-from .logic import set_user_group, is_image_file
+from .logic import is_image_file
+from .utils import set_user_group
 from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations
 
 
@@ -267,7 +268,7 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 	files = MultipleFileField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
-			'class': 'form-control',
+			'class': 'form-control multiple-files-control',
 			'accept': 'image/*',
 		}),
 		required=False,

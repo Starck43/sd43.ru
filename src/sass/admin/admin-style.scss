@@ -8,22 +8,31 @@ label {
 }
 
 .btn {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	flex-wrap: wrap !important;
 	line-height: 1.2 !important;
 	border-radius: 3px;
 }
 
 .btn-group {
 	flex-wrap: wrap;
+	&[class*='-hierarchy'] {
+	    display: flex;
+	    width: 100%;
+	    gap: 2px;
+		>* {
+			flex: 0 1 auto;
+			padding: 0.3rem 1rem;
+			font-size: 12px !important;
+		}
+	}
 }
 
 .form-group .btn {
-	display: inline-flex !important;
-	align-items: center !important;
-	justify-content: center !important;
-	flex-wrap: wrap !important;
 	height: auto !important;
 	min-height: 32px !important;
-	padding: 0.4rem 1.2rem;
 
 	font-size: 10px !important;
 	text-align: center !important;
@@ -36,8 +45,17 @@ label {
 
 }
 
+.actions .btn, #jazzy-actions .btn {
+	font-size: 10px !important;
+}
+
+.btn-block {
+	min-height: 32px;
+}
+
 .btn-primary {
 	background-color: #6f42c1;
+	border: 2px solid #6f42c1;
 }
 
 .empty-form {
@@ -91,6 +109,10 @@ label {
 	> * {
 		flex: 1;
 	}
+}
+
+.table td, .table th {
+	padding: 1.2rem;
 }
 
 .related-widget-wrapper-link img {

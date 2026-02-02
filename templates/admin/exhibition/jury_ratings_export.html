@@ -200,7 +200,7 @@
                         </th>
                         {% for jury in report_data.jury_list %}
                             <th>
-                                {% with full_name=jury.name|default:jury.user_name %}
+                                {% with full_name=jury.name %}
                                     {% if " " in full_name %}
                                         <!-- Если есть пробел, разделяем на две строки -->
                                         {% with first=full_name.split.0 last=full_name.split.1 %}
@@ -304,19 +304,6 @@
                             <td colspan="{{ report_data.jury_list|length|add:2 }}" style="height: 20px;"></td>
                         </tr>
                     {% endfor %}
-
-                    <!-- Итоговая строка -->
-                    <tr>
-                        <td style="text-align: left" class="grand-total"><span>ВСЕГО ОЦЕНОК:</span></td>
-                        {% for jury in report_data.jury_list %}
-                            {% with stats=report_data.jury_stats|get_item:jury.id %}
-                                <td class="grand-total">
-                                    {{ stats.ratings_count }}
-                                </td>
-                            {% endwith %}
-                        {% endfor %}
-                        <td class="grand-total"></td>
-                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -347,13 +334,6 @@
                                                         <div>
                                                             <div><strong>{{ winner.portfolio.title }}</strong></div>
                                                             <div class="text-muted small">{{ winner.portfolio.owner.name }}</div>
-                                                            {% if nomination.winners|length > 1 %}
-                                                                <div class="text-warning small mt-1">
-                                                                    <i class="fas fa-equals me-1"></i>Еще {{ nomination.winners|length|add:"-1" }}
-                                                                    проект{{ nomination.winners|length|add:"-1"|pluralize:"ов,а" }}
-                                                                    с таким же баллом
-                                                                </div>
-                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                 {% endfor %}

@@ -1,21 +1,24 @@
 {% load static %}
 
 {% if not is_mobile and ads_banners %}
-	{% for banner in ads_banners %}
-	{% if banner.file_200 %}
-		{% if banner.page != 'article' or not banner.article %}
-		{% with banner.owner as person %}
-		<a class="banner-link" href="{% if person.site %}{{person.site }}{% else %}{{person.get_absolute_url}}{% endif %}" target="_blank">
-			<figure id="banner-{{banner.id}}" class="ads-banner ratio ratio-1x1">
-				<img class="lazyload"
-					src="{% get_media_prefix %}{{ banner.file_200 }}"
-					loading="lazy"
-				/>
-			</figure>
-		</a>
-		{% endwith %}
-		{% endif %}
-	{% endif %}
-	{% endfor %}
+    {% for banner in ads_banners %}
+        {% if banner.file and banner.ratio == 1 %}
+            {% if banner.page != 'article' or not banner.article %}
+                {% with banner.owner as person %}
+                    <a class="banner-link"
+                       href="{% if person.site %}{{ person.site }}{% else %}{{ person.get_absolute_url }}{% endif %}"
+                       target="_blank">
+                        <figure id="banner-{{ banner.id }}" class="ads-banner ratio">
+                            <img class="lazyload"
+                                 src="{% get_media_prefix %}{{ banner.file }}"
+                                 loading="lazy"
+                                 alt="{{ banner.title }}"
+                            />
+                        </figure>
+                    </a>
+                {% endwith %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
 
 {% endif %}

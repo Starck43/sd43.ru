@@ -1,3 +1,5 @@
+from django.contrib.auth.models import Group
+
 from exhibition.models import Jury, Exhibitors
 
 
@@ -29,3 +31,22 @@ def get_exhibitor_for_user(user):
 		return Exhibitors.objects.get(user=user)
 	except Exhibitors.DoesNotExist:
 		return None
+
+
+def set_user_group(request, user):
+	""" Set User group on SignupForm via account/social account"""
+
+	is_exhibitor = request.POST.get('exhibitor', False)
+	if is_exhibitor == 'on':
+		group_name = "Exhibitors"
+	else:
+		group_name = "Members"
+
+	try:
+		group = Group.objects.get(name=group_name)
+		user.groups.add(group)
+		user.save()
+	except Group.DoesNotExist:
+		pass
+
+	return user

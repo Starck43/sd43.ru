@@ -34,7 +34,7 @@
                         {% if image_obj and image_obj.file %}
                             <div class="image-thumbnail" data-image-id="{{ image_obj.id }}">
                                 <a href="{{ image_obj.file.url }}" target="_blank" class="image-container image-link">
-                                    {% if image_obj.file_thumb %}
+                                    {% if image_obj.file %}
                                         {# Используем thumb.html для превью #}
                                         {% with image_obj.file as thumb %}
                                             {% include "exhibition/thumb.html" %}

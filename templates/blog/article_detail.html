@@ -45,7 +45,7 @@
     </div>
 {% endblock link %}
 
-{% block sidebar %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar %}
+{% block sidebar_secondary %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar_secondary %}
 
 {% block content %}
 
@@ -64,7 +64,7 @@
 
             <div class="article-ads-block">
                 {% for banner in ads_banners %}
-                    {% if banner.article.id == article_id and banner.file_1000 %}
+                    {% if banner.file and banner.article.id == article_id and banner.ratio == 0 %}
                         {% include "ads/banner_horizontal.html" %}
                     {% endif %}
                 {% endfor %}

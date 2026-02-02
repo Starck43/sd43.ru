@@ -1,9 +1,65 @@
-from django.contrib import admin
+from django.conf import settings
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ImageField, FileField
 
-from .models import MetaSEO
 from ads.models import Banner
+from .forms import ImageInlineForm, ImageInlineFormSet
+from .models import MetaSEO
 from .widgets import MediaWidget
+
+from django.contrib import admin
+from django.utils.html import format_html
+
+
+class ImagePreviewMixin:
+	"""
+	Base admin для отображения image preview.
+	"""
+
+	PREVIEW_FIELDS = ()
+	THUMB_SIZE = getattr(settings, 'ADMIN_THUMBNAIL_SIZE', [80, 80])
+
+	def _render_preview(self, obj, field_name):
+		field = getattr(obj, field_name, None)
+
+		if not field or not field.name:
+			return format_html(
+				'<img src="/media/site/no-image.png" style="width:{}px;height:{}px;">',
+				self.THUMB_SIZE[0],
+				self.THUMB_SIZE[1],
+			)
+
+		return format_html(
+			'<img src="{}" style="width:{}px; height:auto; object-fit:contain;">',
+			field.url,
+			self.THUMB_SIZE[0]
+		)
+
+	def get_list_display(self, request):
+		display = list(super().get_list_display(request))
+
+		for field in self.PREVIEW_FIELDS:
+			method_name = f'{field}_preview'
+
+			if not hasattr(self, method_name):
+
+				try:
+					# Получаем поле из модели
+					model_field = self.model._meta.get_field(field)
+					field_verbose_name = model_field.verbose_name
+				except (FieldDoesNotExist, AttributeError):
+					# Если не нашли или нет verbose_name, используем fallback
+					field_verbose_name = field.replace('_', ' ').title()
+
+				def _fn(obj, f=field):
+					return self._render_preview(obj, f)
+
+				_fn.short_description = field_verbose_name
+				setattr(self, method_name, _fn)
+
+			display.insert(0, method_name)
+
+		return tuple(display)
 
 
 class MediaWidgetMixin:
@@ -17,12 +73,41 @@ class MediaWidgetMixin:
 		return super().formfield_for_dbfield(db_field, request, **kwargs)
 
 
-class PersonAdminMixin(MediaWidgetMixin):
+class ImagesInlineAdminMixin(admin.StackedInline):
+	form = ImageInlineForm
+	formset = ImageInlineFormSet
+	template = 'admin/exhibition/edit_inline/stacked_images.html'
+
+	fields = ('file', 'title', 'filename')
+	readonly_fields = ('filename',)
+
+	show_change_link = True
+	min_num = 0
+	max_num = 20  # Максимум 20 изображений
+	extra = 0
+
+	class Media:
+		css = {
+			'all': (
+				'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+				'admin/css/portfolio-images.min.css',
+			)
+		}
+		js = (
+			# 'admin/js/vendor/jquery/jquery.js',
+			'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js',
+			'admin/js/portfolio-images.min.js',
+		)
+
+
+class PersonAdminMixin(ImagePreviewMixin, MediaWidgetMixin):
 	"""Mixin для добавления полей Person в админку"""
 
+	PREVIEW_FIELDS = ('logo',)
+
 	prepopulated_fields = {"slug": ('name',)}
-	list_display = ('logo_thumb', 'user_name', 'name',)
-	list_display_links = ('logo_thumb', 'user_name', 'name',)
+	list_display = ('user_name', 'name',)
+	list_display_links = ('user_name', 'name',)
 	list_per_page = 20
 	search_fields = ('name', 'slug', 'user__first_name', 'user__last_name', 'description',)
 

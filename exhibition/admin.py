@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ImageField
 from django.utils.html import format_html
-from sorl.thumbnail.admin import AdminImageMixin
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
@@ -14,70 +13,37 @@ from .forms import (
 	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, CustomClearableFileInput, PortfolioAdminForm,
 	ImageInlineForm, ImageInlineFormSet
 )
-from .logic import delete_cached_fragment
-from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin
+from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin, ImagePreviewMixin, ImagesInlineAdminMixin
 from .models import (
 	Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
 )
-
+from .services import delete_cached_fragment
 
 admin.site.unregister(User)  # чтобы снять с регистрации модель User
 
 
-class ImagesInline(admin.StackedInline):
+class ImagesInline(ImagesInlineAdminMixin):
 	model = Image
-	form = ImageInlineForm
-	formset = ImageInlineFormSet
-	template = 'admin/exhibition/edit_inline/stacked_images.html'
+
+	fields = ('file', 'sort', 'filename')
 	verbose_name_plural = 'Фото'
 
-	fields = ('file_thumb', 'file', 'sort', 'filename')
-	readonly_fields = ('file_thumb', 'filename')
 
-	show_change_link = True
-	min_num = 0
-	max_num = 20  # Максимум 20 изображений
-	extra = 0
-
-	class Media:
-		css = {
-			'all': (
-				'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-				'admin/css/portfolio-images.min.css',
-			)
-		}
-		js = (
-			# 'admin/js/vendor/jquery/jquery.js',
-			'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js',
-			'admin/js/portfolio-images.min.js',
-		)
-
-
-class GalleryInlineAdmin(admin.StackedInline):
+class GalleryInlineAdmin(ImagesInlineAdminMixin):
 	model = Gallery
-	template = 'admin/exhibition/edit_inline/stacked.html'
-	extra = 1  # new blank record count
-	show_change_link = True
-	fields = ('file_thumb', 'file', 'title', 'filename',)
-	list_display = ('file_thumb', 'title',)
-	readonly_fields = ('file_thumb', 'filename',)
-	list_editable = ['title']
-	classes = ['gallery-inline-tab', ]
-	verbose_name_plural = "Загруженные фотографии"
-	list_per_page = 30
+	verbose_name_plural = "Фото с выставки"
 
-	formfield_overrides = {
-		ImageField: {'widget': CustomClearableFileInput()},
-	}
+	max_num = 30  # Максимум 30 изображений
 
 
 class EventsInlineAdmin(admin.StackedInline):
 	model = Events
-	extra = 1  # new blank record count
+
 	fields = ('title', 'date_event', 'time_start', 'time_end', 'lector',)
 	classes = ['events-inline-tab', ]
 	verbose_name_plural = "Мероприятия"
+	extra = 1
 
 
 @admin.register(User)
@@ -186,7 +152,7 @@ class JuryAdmin(PersonAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 @admin.register(Organizer)
 class OrganizerAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	list_display = ('logo_thumb', 'name', 'description_html',)
+	list_display = ('name', 'description_html',)
 	ordering = ('sort',)
 
 	@admin.display(description='Описание для главной страницы', empty_value='')
@@ -214,9 +180,11 @@ class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, adm
 
 
 @admin.register(Exhibitions)
-class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, ExportExhibitionAdmin):
+class ExhibitionsAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ExportExhibitionAdmin):
+	PREVIEW_FIELDS = ('banner',)
+
 	form = ExhibitionsForm
-	list_display = ('banner_thumb', 'title', 'date_start', 'date_end', )
+	list_display = ('title', 'date_start', 'date_end', )
 	list_display_links = ('title',)
 	search_fields = ('title',)
 	date_hierarchy = 'date_start'
@@ -268,9 +236,6 @@ class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, ExportExhibitionAdm
 			kwargs["queryset"] = Exhibitors.objects.order_by('name')
 		return super().formfield_for_manytomany(db_field, request, **kwargs)
 
-	# def formfield_for_foreignkey(self, db_field, request, **kwargs):
-	# 	return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
 
@@ -293,9 +258,11 @@ class ExhibitionsAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, ExportExhibitionAdm
 
 
 @admin.register(Categories)
-class CategoriesAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	list_display = ('logo_thumb', 'title', 'nominations_list', 'description')
-	list_display_links = ('logo_thumb', 'title')
+class CategoriesAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('logo',)
+
+	list_display = ('title', 'nominations_list', 'description')
+	list_display_links = ('title',)
 
 	fieldsets = (
 		(None, {
@@ -421,21 +388,10 @@ class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 
 @admin.register(Portfolio)
-class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('cover',)
+
 	form = PortfolioAdminForm
-
-	fieldsets = (
-		('Основная информация', {
-			'classes': ('portfolio-block',),
-			'fields': (
-				'owner', 'exhibition', 'categories', 'nominations',
-				'title', 'description', 'cover', 'files',
-				'attributes', 'status', 'order'
-			),
-		}),
-	)
-
-	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
 	list_display = ('id', 'owner', '__str__', 'exhibition', 'nominations_list', 'status')
 	list_display_links = ('owner', '__str__')
@@ -447,12 +403,24 @@ class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	date_hierarchy = 'exhibition__date_start'
 	# autocomplete_fields = ('owner', 'exhibition')
 
+	fieldsets = (
+		('Основная информация', {
+			'classes': ('portfolio-block',),
+			'fields': (
+				'owner', 'exhibition', 'categories', 'nominations',
+				'title', 'description', 'cover', 'files',
+				'attributes', 'status', 'order'
+			),
+		}),
+	)
+	fieldsets += MetaSeoFieldsAdmin.fieldsets
+
 	jazzmin_section_order = ("Основная информация", "Фото", "Оценки проекта", "Отзывы", "СЕО Настройки", )
 
-	list_per_page = 50
 	save_on_top = True
 	save_as = True
 	view_on_site = True
+	list_per_page = 50
 
 	inlines = [ImagesInline, RatingInline, ReviewInline]
 
@@ -519,17 +487,18 @@ class PortfolioAdmin(MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 
 @admin.register(Gallery)
-class GalleryAdmin(MediaWidgetMixin, admin.ModelAdmin):
-	fields = ('exhibition', 'title', 'file',)
-	list_display = ('file_thumb', 'exhibition', 'title',)
+class GalleryAdmin(ImagePreviewMixin, MediaWidgetMixin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('file',)
+
+	fields = ('exhibition', 'title', 'file', 'sort')
+	list_display = ('exhibition', 'title',)
 	list_display_links = list_display
 	search_fields = ('title', 'exhibition__title', 'exhibition__slug',)
 	list_filter = ('exhibition__date_start',)
 	date_hierarchy = 'exhibition__date_start'
-	list_per_page = 30
 
-	readonly_fields = ('file_thumb',)
 	save_on_top = True
+	list_per_page = 30
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
@@ -539,19 +508,20 @@ class GalleryAdmin(MediaWidgetMixin, admin.ModelAdmin):
 
 
 @admin.register(Image)
-class ImageAdmin(MediaWidgetMixin, admin.ModelAdmin):
+class ImageAdmin(ImagePreviewMixin, MediaWidgetMixin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('file',)
+
 	form = ImageForm
 	fields = ('portfolio', 'title', 'description', 'file', 'sort')
-	readonly_fields = ('file_thumb',)
-	list_display = ('file_thumb', 'portfolio', 'title', 'author', 'sort',)
-	list_display_links = ('file_thumb', 'portfolio', 'title',)
+	list_display = ('portfolio', 'title', 'author', 'sort',)
+	list_display_links = ('portfolio', 'title',)
 	list_filter = ('portfolio__owner', 'portfolio',)
 	search_fields = (
 		'title', 'file', 'portfolio__title', 'portfolio__owner__slug', 'portfolio__owner__name',
 		'portfolio__owner__user__first_name', 'portfolio__owner__user__last_name',
 	)
 
-	list_per_page = 30
+	list_per_page = 50
 
 	# def save_model(self, request, obj, form, change):
 	# 	obj.save()
@@ -568,9 +538,9 @@ class ImageAdmin(MediaWidgetMixin, admin.ModelAdmin):
 
 @admin.register(PortfolioAttributes)
 class PortfolioAttributesAdmin(admin.ModelAdmin):
-	prepopulated_fields = {"slug": ('name',)}  # adding name to slug field
+	prepopulated_fields = {"slug": ('name',)}
 	search_fields = ('name',)
-	list_per_page = 30
+	list_per_page = 20
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)

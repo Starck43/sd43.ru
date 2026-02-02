@@ -1,5 +1,5 @@
 from exhibition.apps import ExhibitionConfig
-from exhibition.logic import is_mobile
+from exhibition.services import is_mobile
 from exhibition.models import Exhibitions
 
 

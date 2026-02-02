@@ -1,6 +1,6 @@
 import logging
-import re
-import unicodedata
+from dataclasses import dataclass
+from glob import glob
 
 from threading import Thread
 from PIL import ImageFile, Image as Im
@@ -10,6 +10,7 @@ from sys import getsizeof
 
 import PIL
 from PIL import Image as PILImage, ImageOps
+from django.core.files.base import ContentFile
 from django.db.models.fields.files import ImageFieldFile
 from django.http import HttpResponse
 from django.conf import settings
@@ -17,75 +18,203 @@ from django.core.mail import EmailMessage, BadHeaderError
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
-from django.core.cache import cache
-from django.core.cache.utils import make_template_fragment_key
 from django.template.loader import render_to_string
-from django.utils.html import format_html
-from django.contrib.auth.models import Group  # ,User
 
 from sorl.thumbnail import get_thumbnail
 from uuslug import slugify
+
+logger = logging.getLogger(__name__)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 DEFAULT_SIZE = getattr(settings, 'DJANGORESIZED_DEFAULT_SIZE', [1500, 1024])
 DEFAULT_QUALITY = getattr(settings, 'DJANGORESIZED_DEFAULT_QUALITY', 85)
 DEFAULT_KEEP_META = getattr(settings, 'DJANGORESIZED_DEFAULT_KEEP_META', False)
-ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'tiff', 'webp'}
+
+@dataclass
+class ProcessedImage:
+	buffer: BytesIO
+	format: str
+	extension: str
+	content_type: str
 
 
-def get_image_html(obj, width=50, height=None, css_class='', crop='center'):
-	if not obj or not obj.name:
-		return format_html('<img src="/media/site/no-image.png" width="{}" class="{}"/>', width, css_class)
+def process_image(
+		file,
+		*,
+		max_size=None,
+		quality=DEFAULT_QUALITY,
+		force_format='WEBP'
+) -> ProcessedImage:
+	"""
+	Функция оптимизации изображений.
+	- resize
+	- convert to webp
+	- strip alpha
+	"""
 
-	file_ext = path.splitext(obj.name)[1].lower()
+	if max_size is None:
+		max_size = DEFAULT_SIZE
 
-	# SVG файлы
-	if file_ext == '.svg':
-		style = f'width: {width}px; height: {height}px;' if height else f'width: {width}px; height: auto;'
-		return format_html(
-			'<div style="display: inline-block; border: 1px solid #ddd; border-radius: 4px; padding: 2px; background: white;">'
-			'<img src="{0}" style="{1}" class="{2}"/>'
-			'</div>',
-			obj.url, style, css_class
+	if force_format is None:
+		try:
+			img = PILImage.open(file)
+			original_format = img.format
+			img.close()
+
+			if original_format and original_format.upper() in ['JPEG', 'PNG', 'GIF']:
+				force_format = original_format.upper()
+			else:
+				force_format = 'JPEG'  # fallback
+		except:
+			force_format = 'JPEG'
+
+	image = PILImage.open(file)
+
+	width, height = image.size
+	max_width, max_height = max_size
+
+	if image.mode in ('RGBA', 'LA', 'P'):
+		image = ImageOps.exif_transpose(image)
+		background = PILImage.new('RGB', image.size, (255, 255, 255))
+		if image.mode == 'P':
+			image = image.convert('RGBA')
+		background.paste(image, mask=image.split()[-1])
+		image = background
+
+	# Если изображение МЕНЬШЕ max_size - НЕ изменяем размер
+	if width > max_width or height > max_height:
+		image = ImageOps.contain(
+			image,
+			max_size,
+			method=PILImage.Resampling.LANCZOS
 		)
 
-	# Обычные изображения
-	try:
-		if height:
-			thumb = get_thumbnail(obj, f'{width}x{height}', crop=crop, quality=85)
-			return format_html(
-				'<img src="{0}" width="{1}" height="{2}" class="{3}"/>',
-				thumb.url, width, height, css_class
-			)
-		else:
-			thumb = get_thumbnail(obj, f'{width}', quality=85)  # auto height
-			return format_html('<img src="{0}" width="{1}" class="{2}"/>', thumb.url, width, css_class)
+	output = BytesIO()
+	image.save(
+		output,
+		format=force_format,
+		quality=quality,
+		method=6,
+		optimize=True
+	)
+	output.seek(0)
 
-	except Exception:
-		# Fallback
-		if height:
-			return format_html(
-				'<img src="{0}" width="{1}" height="{2}" class="{3}"/>',
-				obj.url, width, height, css_class
-			)
-		else:
-			return format_html('<img src="{0}" width="{1}" class="{2}"/>', obj.url, width, css_class)
+	return ProcessedImage(
+		buffer=output,
+		format=force_format,
+		extension='.' + force_format.lower(),
+		content_type=f'image/{force_format.lower()}'
+	)
+
+
+def optimize_image_fields_async(instance, field_names, to_webp=True):
+	pk = instance.pk
+	model = instance.__class__
+
+	def worker():
+		obj = model.objects.get(pk=pk)
+
+		updated = False
+		for field_name in field_names:
+			field = getattr(obj, field_name, None)
+			if not field or not field.name:
+				continue
+
+			# Проверяем, что это изображение (не SVG и т.д.)
+			ext = path.splitext(field.name)[1].lower()
+			if ext not in ALLOWED_IMAGE_EXTENSIONS:
+				continue
+
+			try:
+				field.seek(0)  # перематываем на начало
+				result = process_image(
+					field,
+					force_format='WEBP' if to_webp else 'JPEG'
+				)
+
+				# Сохраняем обработанный файл в таблицу
+				new_name = field.name.rsplit('.', 1)[0] + result.extension
+				field.save(
+					new_name,
+					ContentFile(result.buffer.read()),
+					save=False
+				)
+				updated = True
+
+			except Exception as e:
+				logger.error(f"Error optimizing {field_name}: {e}")
+
+		if updated:
+			obj.save(update_fields=field_names)
+
+	Thread(target=worker, daemon=True).start()
 
 
 class MediaFileStorage(FileSystemStorage):
+	OPTIMIZE_ON_SAVE = True
 
-	def get_valid_name(self, name):
-		filename, ext = path.splitext(name)
-		name = slugify(filename) + ext.lower()
-		return super().get_valid_name(name)
+	def __init__(
+			self,
+			image_size=None,
+			quality=None,
+			file_format='WEBP',
+			base_url=None,
+			location=None,
+			**kwargs
+	):
+		super().__init__(location=location, base_url=base_url, **kwargs)
+		self.image_size = image_size or DEFAULT_SIZE
+		self.quality = quality or DEFAULT_QUALITY
+		self.file_format = file_format
 
-	def save(self, name, content, max_length=None):
-		if not self.exists(name):
-			return super().save(name, content, max_length)
-		else:
-			# prevent saving file on disk
-			return name
+	def get_available_name(self, name, max_length=None):
+		upload_folder, filename = path.split(name)
+		filename, extension = path.splitext(filename.lower())
+		ext = extension
+
+		filename = slugify(filename, separator='-', save_order=True)
+
+		# Проверяем, есть ли файл с таким именем
+		root_dir = self.path(upload_folder)
+		existing_files = glob(f"{filename}.*", root_dir=root_dir)
+		if existing_files:
+			# Если файл есть, добавляем индекс
+			index = 2
+			while glob(f"{filename}-{index}.*", root_dir=root_dir):
+				index += 1
+			filename = f"{filename}-{index}"
+
+		name = path.join(upload_folder, filename + ext)
+		return name
+
+	def _save(self, name, content):
+		if (
+				self.OPTIMIZE_ON_SAVE and
+				content.content_type.startswith('image/') and
+				content.content_type != 'image/svg+xml'
+		):
+
+			try:
+				content.seek(0)
+
+				# Обрабатываем изображение
+				result = process_image(
+					content,
+					max_size=self.image_size,
+					quality=self.quality,
+					force_format=self.file_format
+				)
+
+				content = ContentFile(result.buffer.read())
+				name = name.rsplit('.', 1)[0] + result.extension
+
+			except Exception as e:
+				logger.error(f"Error optimizing image in storage: {e}")
+				content.seek(0)
+
+		return super()._save(name, content)
 
 
 def designers_upload_to(instance, filename):
@@ -98,7 +227,7 @@ def designers_upload_to(instance, filename):
 
 
 def portfolio_upload_to(instance, filename):
-	""" portfolio files will be uploaded to MEDIA_ROOT/uploads/<author>/<exhibition>/<porfolio>/<filename> """
+	""" portfolio files will be uploaded to MEDIA_ROOT/uploads/<author>/<exhibition>/<portfolio>/<filename> """
 	exhibition_slug = instance.portfolio.exhibition.slug if instance.portfolio.exhibition else 'non-exhibition'
 	return '{0}{1}/{2}/{3}/{4}'.format(
 		settings.FILES_UPLOAD_FOLDER,
@@ -358,69 +487,3 @@ def portfolio_upload_confirmation(images, request, obj):
 			'uploaded_images': uploaded_images,
 		})
 		send_email_async(subject, template, [obj.owner.user.email])
-
-
-def set_user_group(request, user):
-	""" Set User group on SignupForm via account/social account"""
-
-	is_exhibitor = request.POST.get('exhibitor', False)
-	if is_exhibitor == 'on':
-		group_name = "Exhibitors"
-	else:
-		group_name = "Members"
-
-	try:
-		group = Group.objects.get(name=group_name)
-		user.groups.add(group)
-		user.save()
-	except Group.DoesNotExist:
-		pass
-
-	return user
-
-
-def is_mobile(request):
-	""" Return True if the request comes from a mobile device """
-	import re
-
-	agent = re.compile(r".*(iphone|mobile|androidtouch)", re.IGNORECASE)
-
-	if agent.match(request.META['HTTP_USER_AGENT']):
-		return True
-	else:
-		return False
-
-
-def delete_cached_fragment(fragment_name, *args):
-	""" Reset cache """
-	key = make_template_fragment_key(fragment_name, args or None)
-	cache.delete(key)
-	return key
-
-
-def unicode_emoji(data, direction='encode'):
-	""" Encoding/decoding emoji in string data """
-	if data:
-		if direction == 'encode':
-			emoji_pattern = re.compile(
-				u"["
-				u"\u2600-\u26FF"  # Unicode Block 'Miscellaneous Symbols'
-				u"\U0001F600-\U0001F64F"  # emoticons
-				u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-				u"\U0001F680-\U0001F6FF"  # transport & map symbols
-				u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-				"]",
-				flags=re.UNICODE
-			)
-
-			return re.sub(emoji_pattern, lambda y: ':' + unicodedata.name(y.group(0)) + ':', data)
-		elif direction == 'decode':
-			return re.sub(r':([^a-z]+?):', lambda y: unicodedata.lookup(y.group(1)), data)
-		else:
-			return data
-	else:
-		return ''
-
-
-def update_google_sitemap():
-	...

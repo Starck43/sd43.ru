@@ -115,3 +115,77 @@ class UserModel(models.Model):
 		self._get_or_create_user()
 		super().save(*clean_args, **kwargs)
 
+
+class BaseImageModel(models.Model):
+	IMAGE_FIELDS = ()
+	IMAGE_OPTIMIZE_ASYNC = True
+	IMAGE_TO_WEBP = True
+
+	class Meta:
+		abstract = True
+
+	def save(self, *args, **kwargs):
+		is_new = self.pk is None
+
+		super().save(*args, **kwargs)
+
+		if not self.IMAGE_FIELDS:
+			return
+
+		from .logic import optimize_image_fields_async, process_image
+
+		# ✔ оптимизируем только если:
+		#  - объект новый
+		#  - или явно менялись image-поля
+		update_fields = kwargs.get('update_fields')
+		should_optimize = is_new or (
+				update_fields and any(f in update_fields for f in self.IMAGE_FIELDS)
+		)
+
+		if not should_optimize:
+			return
+
+		if self.IMAGE_OPTIMIZE_ASYNC:
+			optimize_image_fields_async(
+				self,
+				self.IMAGE_FIELDS,
+				to_webp=self.IMAGE_TO_WEBP
+			)
+
+		else:
+			from django.core.files.base import ContentFile
+
+			updated = False
+			for field in self.IMAGE_FIELDS:
+				file = getattr(self, field)
+				if not file:
+					continue
+
+				try:
+					file.seek(0)  # перематываем на начало
+					result = process_image(
+						file,
+						force_format='WEBP' if self.IMAGE_TO_WEBP else 'JPEG'
+					)
+
+					file.save(
+						file.name.rsplit('.', 1)[0] + result.extension,
+						ContentFile(result.buffer.read()),
+						save=False
+					)
+					updated = True
+
+				except Exception as e:
+					import logging
+					logger = logging.getLogger(__name__)
+					logger.error(f"Error optimizing {field}: {e}")
+
+			if updated:
+				super().save(update_fields=self.IMAGE_FIELDS)
+
+	@staticmethod
+	def delete_current_file_cache(new_file:models.ImageField, current_file: models.ImageField = None):
+		# Удаляем все кэшированные файлы для этого файла у 'sorl-thumbnails'
+		if current_file and current_file != new_file:
+			from sorl.thumbnail import delete
+			delete(current_file)

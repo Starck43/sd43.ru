@@ -296,10 +296,10 @@ THUMBNAIL_UPSCALE = False
 THUMBNAIL_FILTER_WIDTH = 600
 
 ADMIN_THUMBNAIL_QUALITY = 75
-ADMIN_THUMBNAIL_SIZE = [100, 100]
+ADMIN_THUMBNAIL_SIZE = [60, 60]
 
-DJANGORESIZED_DEFAULT_QUALITY = 90
-DJANGORESIZED_DEFAULT_SIZE = [1500, 1080]
+DJANGORESIZED_DEFAULT_QUALITY = 80
+DJANGORESIZED_DEFAULT_SIZE = [1200, 900]
 DJANGORESIZED_DEFAULT_KEEP_META = False
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -412,5 +412,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # It uses in exhibition.views.projects_list as parameter for queryset
 PORTFOLIO_COUNT_PER_PAGE = 20
-# It uses in blog.views.article_list as parameter for queryset
+# It uses in blog.views.ArticleList as parameter for queryset
 ARTICLES_COUNT_PER_PAGE = 10

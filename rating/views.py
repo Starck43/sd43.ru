@@ -9,6 +9,7 @@ from django.views.generic.base import View
 from exhibition.models import Portfolio
 from .models import Rating, Reviews
 from exhibition.utils import is_jury_member
+from exhibition.services import delete_cached_fragment
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -88,7 +89,6 @@ class AddRating(View):
 
 	def _build_success_response(self, portfolio, score, is_jury, created):
 		"""Формирует успешный ответ"""
-		from exhibition.logic import delete_cached_fragment
 		delete_cached_fragment('portfolio', portfolio.id)
 		delete_cached_fragment('project', portfolio.id)
 

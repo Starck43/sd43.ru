@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from exhibition.logic import delete_cached_fragment
+from exhibition.services import delete_cached_fragment
 from .models import Rating, Reviews
 
 admin.site.site_title = 'Рейтинг портфолио'

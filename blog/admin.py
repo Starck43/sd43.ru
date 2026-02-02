@@ -4,8 +4,7 @@ from django.contrib.auth.models import User
 from .models import Category, Article
 from exhibition.models import Exhibitors
 
-from exhibition.logic import delete_cached_fragment
-
+from exhibition.services import delete_cached_fragment
 
 admin.site.site_title = 'Статьи'
 admin.site.site_header = 'Статьи'

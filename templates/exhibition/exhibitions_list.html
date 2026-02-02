@@ -17,15 +17,11 @@
 
 {% endblock site_title %}
 
-
-
-{% block sidebar %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar %}
-
-
+{% block sidebar_secondary %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar_secondary %}
 
 {% block content %}
 
-    {% cache 2592000 exhibitions_list %}
+    {% cache cache_timeout exhibitions_list %}
 
         <div class="grid exhibitions-grid">
             {% for obj in object_list %}

@@ -65,8 +65,6 @@
     </div>
 {% endblock link %}
 
-{% block sidebar_secondary %}{% endblock sidebar_secondary %}
-
 {% block sidebar %}
 
     {% cache cache_timeout sidebar absolute_url %}
@@ -100,12 +98,11 @@
             </div>
         {% endif %}
 
-        {% include "ads/sidebar_banners_list.html" %}
-
     {% endcache %}
 
 {% endblock sidebar %}
 
+{% block sidebar_secondary %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar_secondary %}
 
 {% block content %}
 

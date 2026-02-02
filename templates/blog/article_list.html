@@ -6,103 +6,112 @@
 
 {% block meta_og_type %}article{% endblock %}
 
-{% block title %}{{ block.super }} {{separator}} Статьи по ремонту{% endblock %}
+{% block title %}{{ block.super }} {{ separator }} Статьи по ремонту{% endblock %}
 
 
 {% block script %}
-{{ block.super }}
-<script type="text/javascript" src="{% md5url 'js/articles.min.js' %}"></script>
+    {{ block.super }}
+    <script type="text/javascript" src="{% md5url 'js/articles.min.js' %}"></script>
 {% endblock script %}
 
 
 {% block site_title %}
-{{ block.super }}
-<h1>{{page_title}}</h1>
+    {{ block.super }}
+    <h1>{{ page_title }}</h1>
 {% endblock site_title %}
 
 
 {% block sidebar %}
 
-{% cache cache_timeout sidebar articles %}
+    {% cache cache_timeout sidebar articles %}
 
-{% if filter_attributes %}
-<div id="articleFilter" class="sidebar-inner">
-	<h3 class="sidebar-title">темы</h3>
+        {% if filter_attributes %}
+            <div id="articleFilter" class="sidebar-inner">
+                <h3 class="sidebar-title">темы</h3>
 
-	<form class="article-categories" action="{% url 'blog:article-list-url' %}" method="get" name="articles-filter">
-		{% for item in filter_attributes %}
-		<div class="category-item nav-item">
-			<input class="btn-check" id="category-{{item.id}}_id" type="radio" name="article-category" value="{{item.id}}" autocomplete="off">
-			<label class="form-label nav-title" for="category-{{item.id}}_id">{{ item.name }}</label>
-			<span class="badge counter btn-primary">{{item.count}}</span>
-		</div>
-		{% endfor %}
-		<div class="category-item nav-item">
-			<input class="btn-check" id="all-category_id" type="radio" name="article-category" value="all" autocomplete="off" checked>
-			<label class="form-label nav-title" for="all-category_id">все статьи</label>
-		</div>
-	</form>
-</div>
-{% endif %}
+                <form class="article-categories" action="{% url 'blog:article-list-url' %}" method="get"
+                      name="articles-filter">
+                    {% for item in filter_attributes %}
+                        <div class="category-item nav-item">
+                            <input class="btn-check" id="category-{{ item.id }}_id" type="radio" name="article-category"
+                                   value="{{ item.id }}" autocomplete="off">
+                            <label class="form-label nav-title" for="category-{{ item.id }}_id">{{ item.name }}</label>
+                            <span class="badge counter btn-primary">{{ item.count }}</span>
+                        </div>
+                    {% endfor %}
+                    <div class="category-item nav-item">
+                        <input class="btn-check" id="all-category_id" type="radio" name="article-category" value="all"
+                               autocomplete="off" checked>
+                        <label class="form-label nav-title" for="all-category_id">все статьи</label>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
 
-{% endcache %}
-
-{% include "ads/sidebar_banners_list.html" %}
+    {% endcache %}
 
 {% endblock sidebar %}
 
+{% block sidebar_secondary %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar_secondary %}
 
 {% block content %}
 
-{% cache cache_timeout articles %}
+    {% cache cache_timeout articles %}
 
-	{% if general_banner %}
-	{% with general_banner as banner %}
-		{% include "ads/banner_horizontal.html" %}
-	{% endwith %}
-	{% endif %}
+        {% if general_banner %}
+            {% with general_banner as banner %}
+                {% include "ads/banner_horizontal.html" %}
+            {% endwith %}
+        {% endif %}
 
-	<div id="articleList">
-		{% for article in article_list %}
-		{% with article.id as article_id %}
+        <div id="articleList">
+            {% for article in article_list %}
+                {% with article.id as article_id %}
 
-		<article id="article-{{article_id}}" class="article-content">
-			<h2 class="article-title ">
-				<a href="{% url 'blog:article-detail-url' article_id %}">{{ article.title }}</a>
-			</h2>
+                    <article id="article-{{ article_id }}" class="article-content">
+                        <h2 class="article-title ">
+                            <a href="{% url 'blog:article-detail-url' article_id %}">{{ article.title }}</a>
+                        </h2>
 
-			{% with article.person as person %}
-			{% if person %}
-			<span>автор: </span><a class="article-author" href="{{person.get_absolute_url}}"><i><b>{{ person.name }}</b></i></a>
-			{% endif %}
-			{% endwith %}
+                        {% with article.person as person %}
+                            {% if person %}
+                                <span>автор: </span>
+                                <a class="article-author" href="{{ person.get_absolute_url }}">
+                                    <i><b>{{ person.name }}</b></i>
+                                </a>
+                            {% endif %}
+                        {% endwith %}
 
-			<div class="modified-date">{{article.modified_date|date:"d.m.Y"}}</div>
-			<div class="article-text">
-				{{article.content|safe|truncatechars_html:350}}
-				<span class="d-flex">[<u><i><a href="{% url 'blog:article-detail-url' article_id %}" class="link-dark">читать полностью</a></i></u>]</span>
-			</div>
-			<div class="article-ads-block">
-				{% for banner in ads_banners %}
-					{% if banner.article.id == article_id and banner.file_1000 %}
-						{% include "ads/banner_horizontal.html" %}
-					{% endif %}
-				{% endfor %}
-			</div>
-		</article>
-		{% endwith %}
-		{% endfor %}
+                        <div class="modified-date">{{ article.modified_date|date:"d.m.Y" }}</div>
+                        <div class="article-text">
+                            {{ article.content|safe|truncatechars_html:350 }}
+                            <span class="d-flex">[<u>
+                                <i><a href="{% url 'blog:article-detail-url' article_id %}"
+                                      class="link-dark">читать полностью</a></i></u>]
+                            </span>
+                        </div>
+                        <div class="article-ads-block">
+                            {% for banner in ads_banners %}
+                                {% if banner.file and banner.article.id == article_id and banner.ratio == 0 %}
+                                    {% include "ads/banner_horizontal.html" %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </article>
+                {% endwith %}
+            {% endfor %}
 
-		<a id="preloader" class="centered fade {% if next_page %}show{% endif %}" href="{% url 'blog:article-list-url' %}">
-			<div class="dot"></div>
-			<div class="dot"></div>
-			<div class="dot"></div>
-			<div class="dot"></div>
-			<div class="dot"></div>
-		</a>
-	</div>
+            <a id="preloader" class="centered fade {% if next_page %}show{% endif %}"
+               href="{% url 'blog:article-list-url' %}">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </a>
+        </div>
 
-{% endcache %}
+    {% endcache %}
 
 {% endblock content %}
 

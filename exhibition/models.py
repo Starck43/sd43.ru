@@ -8,86 +8,60 @@ from django.conf import settings
 from django.contrib.auth.models import User, UserManager
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import RegexValidator
+from django.db import transaction
 from django.db.models import F
 from django.db.models.functions import Coalesce
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 # from django.utils.text import slugify
 from django.urls import reverse  # Used to generate URLs by reversing the URL patterns
-from django.utils.safestring import mark_safe
 from django.utils.timezone import now
-from smart_selects.db_fields import ChainedForeignKey, ChainedManyToManyField
+from smart_selects.db_fields import ChainedForeignKey
 # from django.core.files.base import ContentFile
 from sorl.thumbnail import delete
-from uuslug import uuslug
+from uuslug import uuslug, slugify
 
 from crm import models
-from crm.validators import svg_validator
-from .base_models import UserModel
+from .base_models import UserModel, BaseImageModel
 from .fields import SVGField
 from .logic import (
-	MediaFileStorage, get_image_html, image_resize, portfolio_upload_to, cover_upload_to, gallery_upload_to,
-	limit_file_size, update_google_sitemap
+	MediaFileStorage, image_resize, portfolio_upload_to, cover_upload_to, gallery_upload_to, limit_file_size
 )
+from .services import update_google_sitemap, delete_cached_fragment
 
 LOGO_FOLDER = 'logos/'
 BANNER_FOLDER = 'banners/'
 
 
-class Person(UserModel, models.Model):
+class Person(UserModel, BaseImageModel, models.Model):
 	""" Abstract model for Exhibitors, Organizer, Jury, Partners """
-	logo = models.ImageField('Логотип', upload_to=LOGO_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
+
+	IMAGE_FIELDS = ('logo',)
+
+	logo = models.ImageField(
+		'Логотип',
+		upload_to=LOGO_FOLDER,
+		storage=MediaFileStorage(image_size=[450, 450]),
+		null=True,
+		blank=True
+	)
 	name = models.CharField('Имя контакта', max_length=100)
 	slug = models.SlugField('Ярлык', max_length=100, unique=True)
 	description = RichTextUploadingField('Информация о контакте', blank=True)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
 
 	class Meta:
-		abstract = True  # Table will not be created
+		abstract = True
 
-	def __str__(self):
-		return self.name
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.original_logo = getattr(self, 'logo', None)
+		self.original_slug = getattr(self, 'slug', None)
 
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-
-		# Извлекаем request из kwargs если он там есть
-		request = None
-		for arg in args:
-			if hasattr(arg, 'META'):  # Это request
-				request = arg
-				break
-
-		# Первый save() - инициализируем оригинальные значения
-		if not hasattr(self, 'original_logo'):
-			self.original_logo = None
-		if not hasattr(self, 'original_slug'):
-			self.original_slug = None
-
-		# Если это новый объект (еще нет id), устанавливаем значения
-		if self.pk is None:
-			self.original_logo = self.logo
-			self.original_slug = self.slug
-
-		if not self.slug:
-			self.slug = uuslug(self.name.lower(), instance=self)
-
-		# если файл заменен, то требуется удалить все миниатюры в кэше у sorl-thumbnails
-		if self.original_logo and self.original_logo != self.logo:
-			delete(self.original_logo)
-
-		if request and 'logo' in request.FILES:
-			resized_logo = image_resize(self.logo, [450, 450], uploaded_file=request.FILES.get('logo'))
-			if resized_logo and resized_logo != 'error':
-				self.logo = resized_logo
-
-		if self.original_slug and self.slug != self.original_slug:
-			self.handle_slug_change()
-			self.original_slug = self.slug
-
-		super(Person, self).save(*args, **kwargs)
-		self.original_logo = self.logo
-
-	def handle_slug_change(self):
+	def handle_slug_change(self, current_slug: str = None):
 		"""Обработка изменения slug. Переопределяется в дочерних классах при необходимости."""
+		if not current_slug or current_slug == self.slug:
+			return
 
 		portfolio_folder = path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER, self.original_slug)
 		if path.exists(portfolio_folder):
@@ -100,14 +74,30 @@ class Person(UserModel, models.Model):
 			for image in owner_images:
 				# Only clears key-value store data in thumbnail-kvstore, but does not delete image file
 				delete(image.file, delete_file=False)
-				renamed_file = str(image.file).replace(self.original_slug, self.slug)
+				renamed_file = str(image.file).replace(current_slug, self.slug)
 				image.file = renamed_file
 				image.save()
 
-	def logo_thumb(self):
-		return get_image_html(self.logo)
+	def delete(self, *args, **kwargs):
+		delete(self.logo)
 
-	logo_thumb.short_description = 'Логотип'
+		super().delete(*args, **kwargs)
+
+	def save(self, *args, **kwargs):
+		super().save(*args, **kwargs)
+
+		if not self.slug:
+			self.slug = uuslug(self.name.lower(), instance=self)
+
+		self.delete_current_file_cache(self.logo, self.original_logo)
+		self.handle_slug_change(self.original_slug)
+
+		super().save(*args, **kwargs)
+		self.original_logo = self.logo
+		self.original_slug = self.slug
+
+	def __str__(self):
+		return self.name
 
 
 class Profile(models.Model):
@@ -169,7 +159,6 @@ class Exhibitors(Person, Profile):
 class Organizer(Person, Profile):
 	objects = UserManager()
 
-	# Metadata
 	class Meta(Person.Meta):
 		verbose_name = 'Организатор'
 		verbose_name_plural = 'Организаторы'
@@ -190,7 +179,7 @@ class Jury(Person):
 
 	def save(self, *args, **kwargs):
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		update_google_sitemap()
 
 	def get_absolute_url(self):
 		return reverse('exhibition:jury-detail-url', kwargs={'slug': self.slug})
@@ -207,7 +196,7 @@ class Partners(Person, Profile):
 
 	def save(self, *args, **kwargs):
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		update_google_sitemap()
 
 	def get_absolute_url(self):
 		return reverse('exhibition:partner-detail-url', kwargs={'slug': self.slug})
@@ -215,6 +204,7 @@ class Partners(Person, Profile):
 
 class Categories(models.Model):
 	""" Таблица Категорий """
+
 	title = models.CharField('Категория', max_length=150)
 	slug = models.SlugField('Ярлык', max_length=150, unique=True)
 	description = models.TextField('Описание категории', blank=True)
@@ -243,13 +233,6 @@ class Categories(models.Model):
 	def __str__(self):
 		return self.title if self.title else '<без категории>'
 
-	def logo_thumb(self):
-		"""Маленькое превью для списка в админке"""
-		return get_image_html(self.logo, width=50, height=50, css_class='admin-thumb')
-
-	logo_thumb.short_description = 'Логотип'
-	logo_thumb.allow_tags = True
-
 	def get_absolute_url(self):
 		return reverse('exhibition:projects-list-url', kwargs={'slug': self.slug})
 
@@ -273,7 +256,7 @@ class Nominations(models.Model):
 		if not self.slug:
 			self.slug = uuslug(self.title.lower(), instance=self)
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		update_google_sitemap()
 
 	def __str__(self):
 		return self.title
@@ -285,17 +268,28 @@ class Nominations(models.Model):
 			return reverse('exhibition:category-list-url', kwargs={'slug': None})
 
 
-class Exhibitions(models.Model):
+class Exhibitions(BaseImageModel):
 	""" Таблица Выставки """
+	IMAGE_FIELDS = ('banner',)
+
 	title = models.CharField('Название выставки', max_length=150)
 	slug = models.SlugField('Ярлык', max_length=150, unique=True)
-	banner = models.ImageField('Баннер', upload_to=BANNER_FOLDER, null=True, blank=True)
+	banner = models.ImageField(
+		'Баннер',
+		storage=MediaFileStorage(image_size=[1200, 800]),
+		upload_to=BANNER_FOLDER,
+		null=True,
+		blank=True
+	)
 	description = RichTextUploadingField('Описание выставки', blank=True)
 	date_start = models.DateField('Начало выставки', unique=True)
 	date_end = models.DateField('Окончание выставки', unique=True)
 	location = models.CharField('Расположение выставки', max_length=200, blank=True)
 	exhibitors = models.ManyToManyField(
-		Exhibitors, related_name='exhibitors_for_exh', verbose_name='Участники', blank=True
+		Exhibitors,
+		related_name='exhibitors_for_exh',
+		verbose_name='Участники',
+		blank=True
 	)
 	partners = models.ManyToManyField(Partners, related_name='partners_for_exh', verbose_name='Партнеры', blank=True)
 	jury = models.ManyToManyField(Jury, related_name='jury_for_exh', verbose_name='Жюри', blank=True)
@@ -306,28 +300,39 @@ class Exhibitions(models.Model):
 		blank=True
 	)
 
-	# events = models.ManyToManyField(Events, related_name='events_for_exh', verbose_name = 'Мероприятия')
-
-	# Metadata
 	class Meta:
-		ordering = ['-date_start']  # '-' for DESC ordering
+		ordering = ['-date_start']
 		verbose_name = 'Выставка'
 		verbose_name_plural = 'Выставки'
 		db_table = 'exhibitions'
 
-	# удаление связанных фото с галереей
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.current_banner = self.banner
+
+	def delete_cached_banner(self):
+		# физически удалим файл с диска, если он единственный
+		if len(Exhibitions.objects.filter(banner=self.banner.name)) == 1:
+			delete(self.banner)
+
+	def delete_related_gallery(self):
+		for gallery in self.gallery.all():
+			gallery.delete()
+
 	def delete(self, *args, **kwargs):
-		posts = self.gallery.all()
-		for post in posts:
-			post.delete()
+		self.delete_cached_banner()
+		self.delete_related_gallery()
 
 		super().delete(*args, **kwargs)
 
 	def save(self, *args, **kwargs):
 		if not self.slug:
 			self.slug = uuslug(self.date_start.strftime('%Y'), instance=self)
+
+		self.delete_current_file_cache(self.banner, self.current_banner)
+
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		self.current_banner = self.banner
 
 	def __str__(self):
 		return self.title
@@ -364,11 +369,6 @@ class Exhibitions(models.Model):
 	@property
 	def exh_year(self):
 		return self.date_start.strftime('%Y')
-
-	def banner_thumb(self):
-		return get_image_html(self.banner)
-
-	banner_thumb.short_description = 'Баннер'
 
 	def get_absolute_url(self):
 		return reverse('exhibition:exhibition-detail-url', kwargs={'exh_year': self.slug})
@@ -425,7 +425,7 @@ class Winners(models.Model):
 
 	def save(self, *args, **kwargs):
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		update_google_sitemap()
 
 	def __str__(self):
 		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
@@ -472,7 +472,7 @@ class Events(models.Model):
 
 	def save(self, *args, **kwargs):
 		super().save(*args, **kwargs)
-		update_google_sitemap()  # обновим карту сайта Google
+		update_google_sitemap()
 
 	def __str__(self):
 		return self.title
@@ -549,7 +549,9 @@ class PortfolioManager(models.Manager):
 		return queryset.filter(exhibition__date_start__lte=today)
 
 
-class Portfolio(models.Model):
+class Portfolio(BaseImageModel):
+	IMAGE_FIELDS = ('cover',)
+
 	project_id = models.IntegerField(null=True)
 	owner = models.ForeignKey(Exhibitors, on_delete=models.CASCADE, verbose_name='Участник')
 	exhibition = models.ForeignKey(
@@ -614,57 +616,21 @@ class Portfolio(models.Model):
 		super().delete(*args, **kwargs)
 
 	def save(self, *args, **kwargs):
+		# Сохраняем изображения во временный атрибут для сигнала
+		if 'images' in kwargs:
+			self._images_to_save = kwargs.pop('images')
+
 		# если файл заменен, то требуется удалить все миниатюры в кэше у sorl-thumbnails
 		if self.original_cover and self.original_cover != self.cover:
 			delete(self.original_cover)
 
-		resized_cover = image_resize(self.cover, [1500, 900])
-		if resized_cover and resized_cover != 'error':
-			self.cover = resized_cover
-
-		images = kwargs.pop('images', [])
-
 		if not self.project_id:
-			# найдем последнюю запись с наибольшим id
 			post = Portfolio.objects.filter(owner=self.owner).only('project_id').order_by('project_id').last()
-			if post:
-				self.project_id = post.project_id + 1
-			else:
-				self.project_id = 1
+			self.project_id = post.project_id + 1 if post else 1
 
 		super().save(*args, **kwargs)
 
-		if resized_cover != 'error':
-			self.original_cover = self.cover
-
-		# сохраним связанные с портфолио изображения
-		if self.pk and images:
-			for image in images:
-				exhibition_slug = self.exhibition.slug if self.exhibition else 'non-exhibition'
-				upload_filename = path.join(
-					settings.MEDIA_ROOT,
-					settings.FILES_UPLOAD_FOLDER,
-					self.owner.slug,
-					exhibition_slug,
-					self.slug,
-					image.name
-				)
-				append_image = True
-
-				if path.exists(upload_filename):
-					try:
-						# Portfolio has an image yet
-						exist_image = Image.objects.get(portfolio=self, file=upload_filename)
-						# Проверим размер загруженного повторно файла и изменим оригинал, если он превысит лимит указанный в settings
-						image_resize(exist_image.file)
-						append_image = False
-					except Image.DoesNotExist:
-						# New image in portfolio
-						image = upload_filename
-
-				if append_image:
-					instance = Image(portfolio=self, file=image)
-					instance.save()
+		self.original_cover = self.cover
 
 	@property
 	def slug(self):
@@ -708,62 +674,9 @@ class Portfolio(models.Model):
 		)
 
 
-class Gallery(models.Model):
-	""" Exhibition Photo Gallery """
+class Image(BaseImageModel):
+	IMAGE_FIELDS = ('file',)
 
-	exhibition = models.ForeignKey(
-		Exhibitions, on_delete=models.CASCADE, related_name='gallery',
-		verbose_name='Выставка'
-	)
-	title = models.CharField('Заголовок', max_length=100, null=True, blank=True)
-	file = models.ImageField('Фото', upload_to=gallery_upload_to)
-
-	# Metadata
-	class Meta:
-		verbose_name = 'Фото с выставки'
-		verbose_name_plural = 'Фото с выставки'
-		db_table = 'gallery'
-
-	def delete_storage_file(self):
-		try:
-			# is the object in the database yet?
-			obj = Gallery.objects.get(id=self.id)
-			if obj.file and self.file and obj.file != self.file:
-				delete(obj.file)
-		except Gallery.DoesNotExist:
-			if path.exists(self.file.path):
-				delete(self.file)
-
-	# Удаление файла на диске
-	def delete(self, *args, **kwargs):
-		delete(self.file)
-		super().delete(*args, **kwargs)
-
-	def save(self, *args, **kwargs):
-		self.delete_storage_file()
-		resized_image = image_resize(self.file)
-		if resized_image:
-			self.file = resized_image
-		super().save(*args, **kwargs)
-
-	def __str__(self):
-		if self.title:
-			return self.title
-		else:
-			return '<Без имени>'
-
-	def file_thumb(self):
-		return get_image_html(self.file)
-
-	file_thumb.short_description = 'Фото'
-
-	def filename(self):
-		return self.file.name.rsplit('/', 1)[-1]
-
-	filename.short_description = 'Имя файла'
-
-
-class Image(models.Model):
 	portfolio = models.ForeignKey(
 		Portfolio,
 		on_delete=models.CASCADE,
@@ -783,7 +696,7 @@ class Image(models.Model):
 				'Размер файла не более %s Мб' % round(settings.FILE_UPLOAD_MAX_MEMORY_SIZE / 1024 / 1024)
 		)
 	)
-	sort = models.SmallIntegerField('Индекс сортировки')
+	sort = models.SmallIntegerField('Индекс сортировки', blank=True)
 
 	class Meta:
 		verbose_name = 'Фото'
@@ -795,11 +708,7 @@ class Image(models.Model):
 		if self.title:
 			return self.title
 		else:
-			return '<Без имени>'
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.original_file = self.file
+			return self.portfolio.title
 
 	def delete(self, *args, **kwargs):
 		# Удаление файла на диске, если файл прикреплен только к текущему портфолио
@@ -813,6 +722,10 @@ class Image(models.Model):
 		super().delete(*args, **kwargs)
 
 	def save(self, *args, **kwargs):
+		if self.pk:
+			img = Image.objects.filter(pk=self.pk).values('file').first()
+			self.delete_current_file_cache(self.file, current_file=img.file)
+
 		if self.sort is None:
 			max_sort = (
 					Image.objects
@@ -821,24 +734,75 @@ class Image(models.Model):
 			)
 			self.sort = max_sort + 1
 
-		# если файл заменен, то требуется удалить все миниатюры в кэше у sorl-thumbnails
-		if self.original_file and self.original_file != self.file:
-			delete(self.original_file)
+		super().save(*args, **kwargs)
 
-		# Resizing uploading image
-		# Alternative package - django-resized
-		resized_image = image_resize(self.file)
-		if resized_image and resized_image != 'error':
-			self.file = resized_image
+	def filename(self):
+		return self.file.name.rsplit('/', 1)[-1]
 
-		if resized_image != 'error':
-			super().save(*args, **kwargs)
-			self.original_file = self.file
+	filename.short_description = 'Имя файла'
 
-	def file_thumb(self):
-		return get_image_html(self.file)
 
-	file_thumb.short_description = 'Фото'
+class Gallery(BaseImageModel):
+	""" Exhibition Photo Gallery """
+	IMAGE_FIELDS = ('file',)
+
+	exhibition = models.ForeignKey(
+		Exhibitions,
+		on_delete=models.CASCADE,
+		related_name='gallery',
+		verbose_name='Выставка'
+	)
+	title = models.CharField('Заголовок', max_length=100, null=True, blank=True)
+	file = models.ImageField(
+		'Файл',
+		upload_to=gallery_upload_to,
+		storage=MediaFileStorage(),
+		validators=[limit_file_size],
+		help_text=(
+				'Можно выбрать несколько фото одновременно. '
+				'Размер файла не более %s Мб' % round(settings.FILE_UPLOAD_MAX_MEMORY_SIZE / 1024 / 1024)
+		)
+	)
+
+	sort = models.SmallIntegerField('Индекс сортировки', blank=True)
+
+	class Meta:
+		verbose_name = 'Фото с выставки'
+		verbose_name_plural = 'Фото с выставок'
+		ordering = ['-exhibition__slug', 'sort']
+		db_table = 'gallery'
+
+	def calculate_next_sort_index(self):
+		return Gallery.objects.filter(exhibition=self.exhibition).aggregate(m=models.Max('sort'))['m'] or 0
+
+	def delete_storage_file(self):
+		try:
+			img = Gallery.objects.get(id=self.id)
+			self.delete_current_file_cache(self.file, img.file)
+
+		except Gallery.DoesNotExist:
+			if path.exists(self.file.path):
+				delete(self.file)
+
+	# Удаление файла на диске
+	def delete(self, *args, **kwargs):
+		delete(self.file)
+		super().delete(*args, **kwargs)
+
+	def save(self, *args, **kwargs):
+		self.delete_storage_file()
+
+		if self.sort is None:
+			sort = self.calculate_next_sort_index()
+			self.sort = sort + 1
+
+		super().save(*args, **kwargs)
+
+	def __str__(self):
+		if self.title:
+			return self.title
+		else:
+			return self.exhibition.title
 
 	def filename(self):
 		return self.file.name.rsplit('/', 1)[-1]
@@ -859,7 +823,6 @@ class MetaSEO(models.Model):
 		help_text='Поисковые словосочетания указывать через запятую. Рекомендуется до 20 слов и не более 3-х повторов'
 	)
 
-	# Metadata
 	class Meta:
 		verbose_name = 'SEO описание'
 		verbose_name_plural = 'SEO описания'
@@ -886,3 +849,29 @@ class MetaSEO(models.Model):
 	def get_content(cls, model, object_id=None):
 		model_name = model.__name__.lower()
 		return cls.objects.filter(model__model=model_name, post_id=object_id or None).first()
+
+
+@receiver(post_save, sender=Portfolio)
+def handle_portfolio_images(sender, instance, created, **kwargs):
+	"""
+	Обработчик для сохранения изображений портфолио.
+	"""
+	if hasattr(instance, '_images_to_save') and instance._images_to_save:
+		# Получаем максимальный sort для этого портфолио
+		max_sort = Image.objects.filter(portfolio=instance).aggregate(max_sort=models.Max('sort'))['max_sort'] or 0
+
+		for idx, image_file in enumerate(instance._images_to_save, start=1):
+			try:
+				Image.objects.create(
+					portfolio=instance,
+					sort=max_sort + idx,
+					file=image_file
+				)
+
+			except Exception as e:
+				import logging
+				logger = logging.getLogger(__name__)
+				logger.error(f"Error saving image for portfolio {instance.id}: {e}")
+
+		# Очищаем временный атрибут
+		del instance._images_to_save
