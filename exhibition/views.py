@@ -51,7 +51,7 @@ def index(request):
 	""" Main page """
 	context = {
 		'html_classes': ['home'],
-		'organizers': Organizer.objects.all().only('sort', 'logo', 'name', 'description').order_by('sort', 'name'),
+		'organizers': Organizer.objects.all().order_by('sort', 'name'),
 	}
 
 	return render(request, 'index.html', context)
