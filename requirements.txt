@@ -22,7 +22,7 @@ Pillow
 psycopg[binary]
 redis
 sorl-thumbnail
-xlsxwriter
+openpyxl
 Wand
 zipp
 requests
