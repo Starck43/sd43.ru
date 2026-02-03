@@ -816,266 +816,6 @@ class SearchSite(SearchMixin, ListView):
 		return context
 
 
-class ProgressBarUploadHandler(FileUploadHandler):
-	def receive_data_chunk(self, raw_data, start):
-		return raw_data
-
-	def file_complete(self, file_size):
-		...
-
-
-def get_nominations_categories(request):
-	""" API endpoint для получения маппинга номинаций к категориям """
-	nominations = Nominations.objects.select_related('category').all()
-	mapping = {}
-	for nom in nominations:
-		if nom.category:
-			mapping[str(nom.id)] = str(nom.category.id)
-
-	return JsonResponse(mapping)
-
-
-# views.py
-@login_required
-def get_nominations_for_exhibition(request):
-	""" AJAX view для получения номинаций по выбранной выставке """
-	exhibition_id = request.GET.get('exhibition_id')
-	selected_ids = request.GET.get('selected', '').split(',')
-
-	if exhibition_id:
-		try:
-			exhibition = Exhibitions.objects.get(id=exhibition_id)
-			nominations = exhibition.nominations.all()
-
-			nominations_data = []
-			for nom in nominations:
-				nominations_data.append({
-					'id': nom.id,
-					'title': nom.title,
-					'selected': str(nom.id) in selected_ids
-				})
-
-			return JsonResponse({'nominations': nominations_data})
-		except Exhibitions.DoesNotExist:
-			return JsonResponse({'nominations': []})
-
-	return JsonResponse({'nominations': []})
-
-
-@login_required
-def get_exhibitions_by_owner(request):
-	"""AJAX view для получения выставок по выбранному участнику"""
-	try:
-		owner_id = request.GET.get('owner_id')
-
-		if owner_id:
-			try:
-				owner = Exhibitors.objects.get(id=owner_id)
-				exhibitions = owner.exhibitors_for_exh.all().order_by('-date_start')
-
-				exhibitions_data = []
-				for exh in exhibitions:
-					exhibitions_data.append({
-						'id': exh.id,
-						'title': exh.title,
-						'year': exh.date_start.year if exh.date_start else '',
-						'date_start': exh.date_start.strftime('%d-%m-%Y') if exh.date_start else '',
-						'slug': exh.slug
-					})
-
-				return JsonResponse({'exhibitions': exhibitions_data})
-
-			except (Exhibitors.DoesNotExist, ValueError) as e:
-				return JsonResponse({'exhibitions': []})
-
-		return JsonResponse({'exhibitions': []})
-
-	except Exception as e:
-		return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-def get_exhibitors_by_exhibition(request):
-	"""AJAX view для получения участников по выбранной выставке"""
-	exhibition_id = request.GET.get('exhibition_id')
-
-	if exhibition_id:
-		try:
-			exhibition = Exhibitions.objects.get(id=exhibition_id)
-			exhibitors = exhibition.exhibitors.all().values('id', 'name', 'user__first_name', 'user__last_name')
-
-			exhibitors_data = []
-			for exh in exhibitors:
-				exhibitors_data.append({
-					'id': exh['id'],
-					'name': exh['name'] or f"{exh['user__first_name']} {exh['user__last_name']}".strip()
-				})
-
-			return JsonResponse({'exhibitors': exhibitors_data})
-		except Exhibitions.DoesNotExist:
-			return JsonResponse({'exhibitors': []})
-
-	return JsonResponse({'exhibitors': []})
-
-
-@csrf_exempt
-@login_required
-def portfolio_upload(request, **kwargs):
-	""" Загрузка нового портфолио или редактирование существующего """
-
-	# Проверка прав доступа
-	# Разрешено: администраторам, редакторам (is_staff) и дизайнерам (группа Exhibitors)
-	is_staff = request.user.is_staff
-	is_exhibitor = request.user.groups.filter(name='Exhibitors').exists()
-
-	if not is_staff and not is_exhibitor:
-		from django.http import HttpResponseForbidden
-		return HttpResponseForbidden('У вас нет прав для доступа к этой странице.')
-
-	request.upload_handlers.insert(0, ProgressBarUploadHandler(request))
-
-	pk = kwargs.pop('pk', None)
-	if pk:
-		portfolio = Portfolio.objects.filter(id=pk).first()
-		owner = portfolio.owner
-	else:
-		portfolio = None
-		owner = None
-
-	# Определяем владельца портфолио
-	if is_exhibitor and not is_staff:
-		try:
-			owner = Exhibitors.objects.get(user=request.user)
-
-			# Проверка прав на редактирование существующего портфолио
-			if portfolio:
-				if portfolio.owner != owner:
-					from django.http import HttpResponseForbidden
-					return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
-
-		except Exhibitors.DoesNotExist:
-			from django.http import HttpResponseForbidden
-			return HttpResponseForbidden('Профиль участника не найден.')
-
-	is_ajax = request.is_ajax
-
-	# Проверяем общий размер всех файлов
-	if request.method == 'POST' and request.FILES:
-		total_size = 0
-		for file_key in request.FILES:
-			for file in request.FILES.getlist(file_key):
-				try:
-					file.seek(0, SEEK_END)
-					total_size += file.tell()
-					file.seek(0)
-				except (AttributeError, OSError):
-					pass
-
-		max_total_size = settings.MAX_UPLOAD_FILES_SIZE \
-			if hasattr(settings, 'MAX_UPLOAD_FILES_SIZE') \
-			else 100 * 1024 * 1024
-
-		if total_size > max_total_size:
-			if is_ajax:
-				return JsonResponse({
-					'status': 'error',
-					'message': (
-						f'Общий размер файлов ({total_size / (1024 * 1024):.1f} MB) '
-						f'превышает лимит {max_total_size / (1024 * 1024)} MB'
-					)
-				}, status=400)
-			else:
-				messages.error(request, f'Общий размер файлов слишком большой!')
-
-	form = PortfolioForm(owner=owner, is_staff=is_staff, instance=portfolio)
-	inline_form_set = inlineformset_factory(Portfolio, Image, form=ImageForm, extra=0, can_delete=True)
-	formset = inline_form_set(instance=portfolio)
-	formset_helper = ImageFormHelper()
-
-	if request.method == 'POST':
-		form = PortfolioForm(request.POST, request.FILES, owner=owner, is_staff=is_staff, instance=portfolio)
-
-		if form.is_valid():
-			portfolio = form.save(commit=False)
-			formset = inline_form_set(request.POST, request.FILES, instance=portfolio)
-
-			if formset.is_valid():
-				images = request.FILES.getlist('files')
-				# Автоматически скрываем портфолио дизайнеров до модерации
-				if not is_staff:
-					portfolio.status = False
-				portfolio.save(images=images)
-				form.save_m2m()
-				formset.save()
-
-				nomination_ids = portfolio.nominations.values_list('id', flat=True)
-				category_ids = Nominations.objects.filter(
-					id__in=nomination_ids
-				).exclude(category__isnull=True).values_list(
-					'category_id', flat=True
-				).distinct()
-
-				# Обновить категории портфолио
-				portfolio.categories.set(category_ids)
-
-				context = {
-					'user': '%s %s' % (request.user.first_name, request.user.last_name),
-					'portfolio': portfolio,
-					'files': images,
-					'changed_fields': [],
-					'new': True
-				}
-				if pk:
-					context['changed_fields'] = form.changed_data
-					context['new'] = False
-
-				# Отправка email уведомления (раскомментировать при необходимости)
-				# template = render_to_string('account/portfolio_upload_confirm.html', context)
-				# send_email_async('%s портфолио на сайте sd43.ru!' % ('Внесены изменения в' if pk else 'Добавлено новое'), template)
-
-				# Если это AJAX запрос, возвращаем JSON с URL для перенаправления
-				if is_ajax:
-					redirect_url = '/account'
-
-					return JsonResponse({
-						'status': 'success',
-						'portfolio_id': portfolio.id,
-						'location': redirect_url,
-						'message': 'Портфолио успешно сохранено'
-					})
-				else:
-					# Обычный запрос (не AJAX)
-					if not pk:
-						return render(request, 'success_upload.html', {'portfolio': portfolio, 'files': images})
-					return redirect('/account')
-			else:
-				# Если formset невалиден, возвращаем ошибки
-				print(formset.errors)
-				if is_ajax:
-					return JsonResponse({
-						'status': 'error',
-						'portfolio_id': portfolio.id,
-						'errors': formset.errors,
-						'message': 'Ошибка при загрузке изображений'
-					}, status=400)
-		else:
-			# Если форма невалидна
-
-			if is_ajax:
-				return JsonResponse({
-					'status': 'error',
-					'portfolio_id': portfolio.id,
-					'errors': form.errors,
-					'message': 'Ошибка валидации формы'
-				}, status=400)
-
-	return render(
-		request,
-		'upload.html',
-		{'form': form, "formset": formset, 'portfolio_id': pk, 'formset_helper': formset_helper}
-	)
-
-
 @login_required
 def search_exhibitors(request):
 	query = request.GET.get('q', '')
@@ -1253,6 +993,270 @@ def deactivate_user(request):
 	return render(request, 'account/deactivation.html', {'form': form})
 
 
+class ProgressBarUploadHandler(FileUploadHandler):
+	def receive_data_chunk(self, raw_data, start):
+		return raw_data
+
+	def file_complete(self, file_size):
+		...
+
+
+def get_nominations_categories(request):
+	""" API endpoint для получения маппинга номинаций к категориям """
+	nominations = Nominations.objects.select_related('category').all()
+	mapping = {}
+	for nom in nominations:
+		if nom.category:
+			mapping[str(nom.id)] = str(nom.category.id)
+
+	return JsonResponse(mapping)
+
+
+# views.py
+@login_required
+def get_nominations_for_exhibition(request):
+	""" AJAX view для получения номинаций по выбранной выставке """
+	exhibition_id = request.GET.get('exhibition_id')
+	selected_ids = request.GET.get('selected', '').split(',')
+
+	if exhibition_id:
+		try:
+			exhibition = Exhibitions.objects.get(id=exhibition_id)
+			nominations = exhibition.nominations.all()
+
+			nominations_data = []
+			for nom in nominations:
+				nominations_data.append({
+					'id': nom.id,
+					'title': nom.title,
+					'selected': str(nom.id) in selected_ids
+				})
+
+			return JsonResponse({'nominations': nominations_data})
+		except Exhibitions.DoesNotExist:
+			return JsonResponse({'nominations': []})
+
+	return JsonResponse({'nominations': []})
+
+
+@login_required
+def get_exhibitions_by_owner(request):
+	"""AJAX view для получения выставок по выбранному участнику"""
+	try:
+		owner_id = request.GET.get('owner_id')
+
+		if owner_id:
+			try:
+				owner = Exhibitors.objects.get(id=owner_id)
+				exhibitions = owner.exhibitors_for_exh.all().order_by('-date_start')
+
+				exhibitions_data = []
+				for exh in exhibitions:
+					exhibitions_data.append({
+						'id': exh.id,
+						'title': exh.title,
+						'year': exh.date_start.year if exh.date_start else '',
+						'date_start': exh.date_start.strftime('%d-%m-%Y') if exh.date_start else '',
+						'slug': exh.slug
+					})
+
+				return JsonResponse({'exhibitions': exhibitions_data})
+
+			except (Exhibitors.DoesNotExist, ValueError) as e:
+				return JsonResponse({'exhibitions': []})
+
+		return JsonResponse({'exhibitions': []})
+
+	except Exception as e:
+		return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def get_exhibitors_by_exhibition(request):
+	"""AJAX view для получения участников по выбранной выставке"""
+	exhibition_id = request.GET.get('exhibition_id')
+
+	if exhibition_id:
+		try:
+			exhibition = Exhibitions.objects.get(id=exhibition_id)
+			exhibitors = exhibition.exhibitors.all().values('id', 'name', 'user__first_name', 'user__last_name')
+
+			exhibitors_data = []
+			for exh in exhibitors:
+				exhibitors_data.append({
+					'id': exh['id'],
+					'name': exh['name'] or f"{exh['user__first_name']} {exh['user__last_name']}".strip()
+				})
+
+			return JsonResponse({'exhibitors': exhibitors_data})
+		except Exhibitions.DoesNotExist:
+			return JsonResponse({'exhibitors': []})
+
+	return JsonResponse({'exhibitors': []})
+
+
+@csrf_exempt
+@login_required
+def portfolio_upload(request, **kwargs):
+	""" Загрузка нового портфолио или редактирование существующего """
+
+	# Проверка прав доступа
+	# Разрешено: администраторам, редакторам (is_staff) и дизайнерам (группа Exhibitors)
+	is_staff = request.user.is_staff
+	is_exhibitor = request.user.groups.filter(name='Exhibitors').exists()
+
+	if not is_staff and not is_exhibitor:
+		from django.http import HttpResponseForbidden
+		return HttpResponseForbidden('У вас нет прав для доступа к этой странице.')
+
+	request.upload_handlers.insert(0, ProgressBarUploadHandler(request))
+
+	pk = kwargs.pop('pk', None)
+	portfolio = None
+	owner = None
+	if pk:
+		try:
+			portfolio = Portfolio.objects.get(id=pk)
+			owner = portfolio.owner
+		except Portfolio.DoesNotExist:
+			raise Http404
+
+	# Определяем владельца портфолио
+	if is_exhibitor and not is_staff:
+		try:
+			owner = Exhibitors.objects.get(user=request.user, user__is_active=True)
+
+			# Проверка прав на редактирование существующего портфолио
+			if portfolio:
+				if portfolio.owner != owner:
+					from django.http import HttpResponseForbidden
+					return HttpResponseForbidden('Вы можете редактировать только свои портфолио.')
+
+		except Exhibitors.DoesNotExist:
+			from django.http import HttpResponseForbidden
+			return HttpResponseForbidden('Профиль участника не найден.')
+
+	is_ajax = request.is_ajax
+
+	# Проверяем общий размер всех файлов
+	if request.method == 'POST' and request.FILES:
+		total_size = 0
+		for file_key in request.FILES:
+			for file in request.FILES.getlist(file_key):
+				try:
+					file.seek(0, SEEK_END)
+					total_size += file.tell()
+					file.seek(0)
+				except (AttributeError, OSError):
+					pass
+
+		max_total_size = settings.MAX_UPLOAD_FILES_SIZE \
+			if hasattr(settings, 'MAX_UPLOAD_FILES_SIZE') \
+			else 100 * 1024 * 1024
+
+		if total_size > max_total_size:
+			if is_ajax:
+				return JsonResponse({
+					'status': 'error',
+					'message': (
+						f'Общий размер файлов ({total_size / (1024 * 1024):.1f} MB) '
+						f'превышает лимит {max_total_size / (1024 * 1024)} MB'
+					)
+				}, status=400)
+			else:
+				messages.error(request, f'Общий размер файлов слишком большой!')
+
+	form = PortfolioForm(owner=owner, is_staff=is_staff, instance=portfolio)
+	inline_form_set = inlineformset_factory(Portfolio, Image, form=ImageForm, extra=0, can_delete=True)
+	formset = inline_form_set(instance=portfolio)
+	formset_helper = ImageFormHelper()
+
+	if request.method == 'POST':
+		form = PortfolioForm(request.POST, request.FILES, owner=owner, is_staff=is_staff, instance=portfolio)
+
+		if form.is_valid():
+			portfolio = form.save(commit=False)
+			formset = inline_form_set(request.POST, request.FILES, instance=portfolio)
+
+			if formset.is_valid():
+				images = request.FILES.getlist('files')
+				# Автоматически скрываем добавленное портфолио дизайнеров до модерации
+				if not pk and not is_staff:
+					portfolio.status = False
+
+				portfolio.save(images=images)
+
+				form.save_m2m()
+				formset.save()
+
+				nomination_ids = portfolio.nominations.values_list('id', flat=True)
+				category_ids = Nominations.objects.filter(
+					id__in=nomination_ids
+				).exclude(category__isnull=True).values_list(
+					'category_id', flat=True
+				).distinct()
+
+				# Обновить категории портфолио
+				portfolio.categories.set(category_ids)
+
+				context = {
+					'user': '%s %s' % (request.user.first_name, request.user.last_name),
+					'portfolio': portfolio,
+					'files': images,
+					'changed_fields': [],
+					'new': True
+				}
+				if pk:
+					context['changed_fields'] = form.changed_data
+					context['new'] = False
+
+				# Отправка email уведомления (раскомментировать при необходимости)
+				# template = render_to_string('account/portfolio_upload_confirm.html', context)
+				# send_email_async('%s портфолио на сайте sd43.ru!' % ('Внесены изменения в' if pk else 'Добавлено новое'), template)
+
+				# Если это AJAX запрос, возвращаем JSON с URL для перенаправления
+				if is_ajax:
+					redirect_url = '/account'
+
+					return JsonResponse({
+						'status': 'success',
+						'portfolio_id': portfolio.id,
+						'location': redirect_url,
+						'message': 'Портфолио успешно сохранено'
+					})
+				else:
+					# Обычный запрос (не AJAX)
+					if not pk:
+						return render(request, 'success_upload.html', {'portfolio': portfolio, 'files': images})
+					return redirect('/account')
+			else:
+				# Если formset невалиден, возвращаем ошибки
+				print(formset.errors)
+				if is_ajax:
+					return JsonResponse({
+						'status': 'error',
+						'portfolio_id': portfolio.id,
+						'errors': formset.errors,
+						'message': 'Ошибка при загрузке изображений'
+					}, status=400)
+		else:
+			# Если форма невалидна
+
+			if is_ajax:
+				return JsonResponse({
+					'status': 'error',
+					'portfolio_id': portfolio.id,
+					'errors': form.errors,
+					'message': 'Ошибка валидации формы'
+				}, status=400)
+
+	return render(
+		request,
+		'upload.html',
+		{'form': form, "formset": formset, 'portfolio_id': pk, 'formset_helper': formset_helper}
+	)
+
+
 # dispatch_uid: some.unique.string.id.for.allauth.user_signed_up
 @receiver(user_signed_up, dispatch_uid="new_user")
 def user_signed_up_(request, user, **kwargs):
@@ -1350,4 +1354,3 @@ def __404__(request, exception):
 		logger.error(f"Ошибка в __404__: {e}")
 
 		return HttpResponseNotFound("404 - Страница не найдена")
-

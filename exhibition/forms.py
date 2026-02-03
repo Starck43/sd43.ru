@@ -12,6 +12,7 @@ from django.db.models.expressions import F
 from django.forms import FileInput, ClearableFileInput, BaseInlineFormSet
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from .logic import is_image_file
 from .utils import set_user_group
@@ -85,7 +86,7 @@ class MultipleFileField(forms.FileField):
 			result = [single_file_clean(d, initial) for d in data]
 		else:
 			result = [single_file_clean(data, initial)]
-		
+
 		return result
 
 
@@ -362,19 +363,18 @@ class PortfolioForm(PortfolioAdminForm):
 				self.fields['exhibition'].queryset = Exhibitions.objects.all()
 
 			elif self.exhibitor:
-				from django.utils.timezone import now
-
 				# Для дизайнеров скрываем owner и status
 				self.fields['owner'].initial = self.exhibitor
 				self.fields['owner'].widget = forms.HiddenInput()
+				self.fields['exhibition'].widget = forms.HiddenInput()
 				self.fields['status'].widget = forms.HiddenInput()
 
 				# Для дизайнеров фильтруем только активные и будущие выставки
 				self.fields['exhibition'].queryset = Exhibitions.objects.filter(
 					exhibitors=self.exhibitor,
-					date_end__gte=now().date()
 				).order_by('-date_start')
-				self.fields['exhibition'].widget.attrs['disabled'] = True
+				# self.fields['exhibition'].widget.attrs['disabled'] = True
+				current_exhibition = self.instance.exhibition
 
 	@property
 	def helper(self):
@@ -445,9 +445,9 @@ class PortfolioForm(PortfolioAdminForm):
 		else:
 			layout_fields = [
 				HTML(
-					'<div class="mb-3"><h5>Участник: ' + (
+					'<div class="mb-3"><h4>Участник: ' + (
 						self.exhibitor.name if hasattr(self.exhibitor, 'name') else ''
-					) + '</h5></div>'
+					) + '</h4></div>'
 				),
 				Field(
 					'owner',

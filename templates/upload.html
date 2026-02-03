@@ -24,7 +24,7 @@
 
         {% if portfolio_id and user.is_staff %}
             <div class="mb-3">
-                <a href="{% url 'admin:exhibition_portfolio_change' portfolio_id %}"
+                <a href="{% url 'admin:exhibition_portfolio_change' portfolio_id %}">
                     <i class="fas fa-edit"></i> Редактировать в панели администрирования
                 </a>
             </div>
@@ -70,7 +70,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer d-flex-column justify-between">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
                 </div>
             </div>

@@ -25,18 +25,27 @@ from crm import models
 from .base_models import UserModel, BaseImageModel
 from .fields import SVGField
 from .logic import (
-	MediaFileStorage, image_resize, portfolio_upload_to, cover_upload_to, gallery_upload_to, limit_file_size
+	MediaFileStorage, portfolio_upload_to, cover_upload_to, gallery_upload_to, limit_file_size
 )
-from .services import update_google_sitemap, delete_cached_fragment
+from .services import update_google_sitemap
 
 LOGO_FOLDER = 'logos/'
 BANNER_FOLDER = 'banners/'
+
+
+class PersonManager(models.Manager):
+	def get_queryset(self):
+		return super().get_queryset().filter(status=True)
 
 
 class Person(UserModel, BaseImageModel, models.Model):
 	""" Abstract model for Exhibitors, Organizer, Jury, Partners """
 
 	IMAGE_FIELDS = ('logo',)
+	CHOICES = (
+		(True, 'Доступен'),
+		(False, 'Скрыт')
+	)
 
 	logo = models.ImageField(
 		'Логотип',
@@ -48,7 +57,10 @@ class Person(UserModel, BaseImageModel, models.Model):
 	name = models.CharField('Имя контакта', max_length=100)
 	slug = models.SlugField('Ярлык', max_length=100, unique=True)
 	description = RichTextUploadingField('Информация о контакте', blank=True)
+	status = models.BooleanField('Видимость на сайте', choices=CHOICES, default=True)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
+
+	objects = PersonManager()
 
 	class Meta:
 		abstract = True
@@ -143,8 +155,6 @@ class Profile(models.Model):
 
 
 class Exhibitors(Person, Profile):
-	objects = UserManager()
-
 	class Meta(Person.Meta):
 		verbose_name = 'Участник выставки'
 		verbose_name_plural = 'Участники'
@@ -157,8 +167,6 @@ class Exhibitors(Person, Profile):
 
 
 class Organizer(Person, Profile):
-	objects = UserManager()
-
 	class Meta(Person.Meta):
 		verbose_name = 'Организатор'
 		verbose_name_plural = 'Организаторы'
@@ -168,8 +176,6 @@ class Organizer(Person, Profile):
 
 class Jury(Person):
 	excerpt = models.CharField('Краткое описание', max_length=255, null=True, blank=True)
-
-	objects = UserManager()
 
 	class Meta(Person.Meta):
 		verbose_name = 'Жюри'
@@ -186,8 +192,6 @@ class Jury(Person):
 
 
 class Partners(Person, Profile):
-	objects = UserManager()
-
 	class Meta(Person.Meta):
 		verbose_name = 'Партнер выставки'
 		verbose_name_plural = 'Партнеры'
@@ -513,12 +517,9 @@ class PortfolioAttributes(models.Model):
 
 
 class PortfolioManager(models.Manager):
-	def get_queryset(self):
-		return super().get_queryset().filter(status=True)
-
 	def get_visible_projects(self, user=None):
 		"""Возвращает видимые проекты в зависимости от прав пользователя"""
-		queryset = self.get_queryset().filter(exhibition__isnull=False)
+		queryset = self.get_queryset().filter(status=True, exhibition__isnull=False)
 		today = now().date()
 
 		if not user or not user.is_authenticated:
@@ -551,6 +552,10 @@ class PortfolioManager(models.Manager):
 
 class Portfolio(BaseImageModel):
 	IMAGE_FIELDS = ('cover',)
+	CHOICES = (
+		(True, 'Доступен'),
+		(False, 'Скрыт')
+	)
 
 	project_id = models.IntegerField(null=True)
 	owner = models.ForeignKey(Exhibitors, on_delete=models.CASCADE, verbose_name='Участник')
@@ -591,8 +596,8 @@ class Portfolio(BaseImageModel):
 		verbose_name='Аттрибуты фильтра',
 		blank=True
 	)
+	status = models.BooleanField('Видимость на сайте', default=True, choices=CHOICES)
 	order = models.IntegerField('Порядок', null=True, blank=True, default=1)
-	status = models.BooleanField('Статус', null=True, blank=True, default=True, help_text='Видимость на сайте')
 
 	objects = PortfolioManager()
 
@@ -607,13 +612,6 @@ class Portfolio(BaseImageModel):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.original_cover = self.cover
-
-	def delete(self, *args, **kwargs):
-		# удаление связанных фото с портфолио
-		for post in self.images.all():
-			post.delete()
-
-		super().delete(*args, **kwargs)
 
 	def save(self, *args, **kwargs):
 		# Сохраняем изображения во временный атрибут для сигнала
@@ -631,10 +629,6 @@ class Portfolio(BaseImageModel):
 		super().save(*args, **kwargs)
 
 		self.original_cover = self.cover
-
-	@property
-	def slug(self):
-		return 'project-%s' % self.project_id
 
 	def get_rating_stats(self):
 		"""Получение статистики рейтингов в виде словаря"""
@@ -660,6 +654,10 @@ class Portfolio(BaseImageModel):
 
 	def root_comments(self):
 		return self.comments_portfolio.filter(parent__isnull=True)
+
+	@property
+	def slug(self):
+		return 'project-%s' % self.project_id
 
 	def __str__(self):
 		if self.title:
@@ -712,8 +710,8 @@ class Image(BaseImageModel):
 
 	def delete(self, *args, **kwargs):
 		# Удаление файла на диске, если файл прикреплен только к текущему портфолио
-		if len(Image.objects.filter(file=self.file.name)) == 1:
-			# физически удалим файл с диска, если он единственный
+		if not Image.objects.filter(file=self.file.name).exclude(pk=self.pk).exists():
+			# Это последний Image с таким файлом
 			delete(self.file)
 			folder = path.join(settings.MEDIA_ROOT, path.dirname(self.file.name))
 			if not listdir(folder):
@@ -723,7 +721,7 @@ class Image(BaseImageModel):
 
 	def save(self, *args, **kwargs):
 		if self.pk:
-			img = Image.objects.filter(pk=self.pk).values('file').first()
+			img = Image.objects.filter(pk=self.pk).first()
 			self.delete_current_file_cache(self.file, current_file=img.file)
 
 		if self.sort is None:

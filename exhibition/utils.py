@@ -8,7 +8,7 @@ def is_exhibitor_of_exhibition(user, exhibition):
 	if not user or not user.is_authenticated:
 		return False
 
-	return exhibition.exhibitors.filter(user=user).exists()
+	return exhibition.exhibitors.filter(user=user, user__is_active=True).exists()
 
 
 def is_jury_member(user):
@@ -17,7 +17,7 @@ def is_jury_member(user):
 		return False
 
 	try:
-		return Jury.objects.filter(user=user).exists()
+		return Jury.objects.filter(user=user, user__is_active=True).exists()
 
 	except:
 		return False
@@ -28,7 +28,7 @@ def get_exhibitor_for_user(user):
 	if not user or not user.is_authenticated:
 		return None
 	try:
-		return Exhibitors.objects.get(user=user)
+		return Exhibitors.objects.get(user=user, user__is_active=True)
 	except Exhibitors.DoesNotExist:
 		return None
 

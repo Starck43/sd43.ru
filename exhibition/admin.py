@@ -51,15 +51,15 @@ class UserAdmin(BaseUserAdmin):
 	# form = CustomSignupForm
 	# add_form = CustomSignupForm
 
-	list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
-	list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+	list_display = ('username', 'email', 'first_name', 'last_name', 'is_active')
+	list_filter = ('is_staff', 'is_active', 'groups')
 	search_fields = ('username', 'first_name', 'last_name', 'email')
-	ordering = ('username',)
+	ordering = ('-date_joined',)
 
 	fieldsets = (
-		(None, {'fields': ('username', 'password')}),
+		(None, {'fields': ('username', 'password', 'is_active')}),
 		('Персональные данные', {'fields': ('first_name', 'last_name', 'email')}),
-		('Права доступа', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups',)}),
+		('Права доступа', {'fields': ('is_staff', 'is_superuser', 'groups',)}),
 		('Даты', {'fields': ('last_login', 'date_joined')}),
 	)
 
@@ -391,13 +391,15 @@ class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ad
 
 	form = PortfolioAdminForm
 
-	list_display = ('id', 'owner', '__str__', 'exhibition', 'nominations_list', 'status')
-	list_display_links = ('owner', '__str__')
+	list_display = ('id', 'title', 'exhibition', 'owner', 'nominations_list', 'status')
+	list_display_links = ('id', 'title')
 	list_filter = ('nominations', 'owner', 'status')
 	search_fields = (
 		'title', 'owner__name', 'owner__user__first_name', 'owner__user__last_name', 'exhibition__title',
 		'nominations__title'
 	)
+	ordering = ('-id',)
+
 	date_hierarchy = 'exhibition__date_start'
 	# autocomplete_fields = ('owner', 'exhibition')
 

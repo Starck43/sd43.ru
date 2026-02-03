@@ -3,7 +3,7 @@ import {Modal} from './components/modal.js';
 document.addEventListener("DOMContentLoaded", () => {
     const modalContainer = document.getElementById('progressModal');
     const form = document.querySelector('#uploadProjectForm');
-    const isEditMode = window.location.pathname.includes('/portfolio/edit/');
+    const isEditMode = window.location.pathname.includes('/edit/');
 
     if (!form) return;
 
@@ -755,8 +755,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (message) {
                         message.innerHTML = `
-                        <div class="alert-success p-3">
-                            <p><strong>${response.message || 'Портфолио успешно обновлено!'}</strong></p>
+                        <div class="status-success p-3">
+                            <h3><strong>${response.message || 'Портфолио успешно обновлено!'}</strong></h3>
                         </div>
                     `;
                     }
@@ -782,9 +782,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (message) {
                         message.innerHTML = `
-                        <div class="alert-success">
-                            <p><strong>${response.message || 'Портфолио успешно загружено!'}</strong></p>
-                            <p class="mb-0">Что делать дальше?</p>
+                        <div class="status-success">
+                            <h3><strong>${response.message || 'Портфолио успешно загружено!'}</strong></h3>
                         </div>
                     `;
                     }
@@ -793,11 +792,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Update footer with action buttons
                 if (footer) {
                     footer.innerHTML = `
-                    <button type="button" class="btn btn-outline-primary" onclick="window.location.href='/portfolio/edit/${response.portfolio_id}'">
-                        Редактировать портфолио
+                    <button type="button" class="btn btn-primary w-100" onclick="window.location.href='/portfolio/edit/${response.portfolio_id}'">
+                        Продолжить редактирование
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="window.location.href='/portfolio/add/'">
-                        Добавить новое
+                    <button type="button" class="btn btn-secondary w-100" onclick="window.location.href='/portfolio/add/'">
+                        Добавить новое портфолио
+                    </button>
+                    <button type="button" class="btn btn-secondary w-100" onclick="window.location.href='/account'">
+                        Перейти в свой профиль 
                     </button>
                 `;
                 }
@@ -813,8 +815,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const message = modalContainer.querySelector('.modal-message');
             if (message) {
                 message.innerHTML = `
-                    <div class="alert-danger">
-                        ${response.message || 'Произошла ошибка при загрузке'}
+                    <div class="status-danger">
+                        ${response.message || 'Произошла ошибка при загрузке.\nПовторите, или обратитесь к администратору'}
                     </div>
                 `;
             }
@@ -834,7 +836,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (modalContainer) {
             const messageEl = modalContainer.querySelector('.modal-message');
             if (messageEl) {
-                messageEl.innerHTML = `<div class="alert-danger">${message}</div>`;
+                messageEl.innerHTML = `<div class="status-danger">${message}</div>`;
             }
 
             const progressDiv = modalContainer.querySelector('.progress');

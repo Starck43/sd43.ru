@@ -362,6 +362,9 @@ img[data-sizes=auto] {
 .m-4 {
   margin: 2rem !important;
 }
+.mt-auto {
+  margin-top: auto !important;
+}
 .mt-0 {
   margin-top: 0 !important;
 }
@@ -373,6 +376,9 @@ img[data-sizes=auto] {
 }
 .mt-4 {
   margin-top: 2rem !important;
+}
+.mb-auto {
+  margin-bottom: auto !important;
 }
 .mb-0 {
   margin-bottom: 0 !important;

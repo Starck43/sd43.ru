@@ -109,15 +109,15 @@
                                                 <img src="{% get_media_prefix %}site/no-image.png" alt="">
                                             {% endthumbnail %}
                                         </div>
-                                        <div class="account-meta">
+                                        <div class="account-meta d-flex-column">
                                             <h4>{{ obj.title|default:'Заголовок отсутствует' }}</h4>
                                             <small class="form-text">
                                                 Номинация:
                                                 {% for nom in obj.nominations.all %}
                                                     <b>{{ nom.title }}{% if not forloop.last %}, {% endif %}</b>
                                                 {% endfor %}
-                                                <br>
-                                                Статус:
+                                            </small>
+                                            <small class="mt-auto">
                                                 {% if obj.status %}
                                                     <b class="status status-success">Опубликован</b>
                                                 {% else %}
@@ -126,6 +126,16 @@
                                             </small>
                                         </div>
                                     </a>
+                                    {% if user %}
+                                        <div class="account-actions">
+                                            <a class="admin-edit-link"
+                                               href="{% url 'exhibition:portfolio-upload-url' obj.id %}">
+                                                <svg>
+                                                    <use xlink:href="#edit-icon"></use>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
@@ -157,13 +167,7 @@
                                     </div>
                                     <div class="account-meta">
                                         <h4>{{ obj.title|default:'Заголовок отсутствует' }}</h4>
-                                        <small class="form-text">
-                                            Номинация:
-                                            {% for nom in obj.nominations.all %}
-                                                <b>{{ nom.title }}{% if not forloop.last %}, {% endif %}</b>
-                                            {% endfor %}
-                                            <br>
-                                            Статус:
+                                        <small>
                                             {% if obj.status %}
                                                 <b class="status status-success">Опубликован</b>
                                             {% else %}

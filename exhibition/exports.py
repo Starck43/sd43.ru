@@ -122,7 +122,7 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 
 		portfolios = (
 			Portfolio.objects
-			.filter(exhibition=exhibition)
+			.filter(exhibition=exhibition, status=True)
 			.prefetch_related('nominations')
 			.select_related('owner')
 		)
