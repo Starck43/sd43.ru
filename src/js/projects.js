@@ -1,279 +1,204 @@
 import {isInViewport} from './utils/viewport.js';
 import {lazyloadInit} from './utils/lazyload.js';
 import {createFormData} from "./utils/ajax.js";
-import {rafThrottle} from "./utils/common.js";
+import {normalizeMedaPath} from "./utils/common.js";
+
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    const contentBlock = document.querySelector('#projects');
-    let preloader = document.querySelector('.preloader');
-
-    if (!contentBlock || !preloader) return;
-
-    let currentPage = 1;
-    let hasNext = true;
-    let loading = false;
-    let canLoadNext = true; // Флаг для контроля задержки между загрузками
-
-    // Используем rafThrottle для оптимизации
-    const throttledCheck = rafThrottle(jsonRequest);
-
-    function onScroll() {
-        throttledCheck();
-    }
-
-    document.addEventListener('scroll', onScroll)
-
-    /* ===============================
-       HELPERS
-    =============================== */
-
-    function normalize(url, mediaUrl) {
-        if (!url) return '';
-        return url.startsWith('/media/')
-            ? url
-            : mediaUrl + url;
-    }
-
-    /* ===============================
-       RENDER PROJECTS
-    =============================== */
+    // Projects Render Variables
+    let preloader = document.querySelector('#preloader');
+    let currentPage = 1, nextPage = true;
 
     function contentRender(data) {
-        console.log(data.page)
-        const projectsList = data.projects || [];
-
+        const projectsList = data['projects_list'];
         let html = '';
 
-        if (!Array.isArray(projectsList)) {
-            console.error('Invalid projects payload', data);
-            return;
-        }
+        for (const i in projectsList) {
+            const
+                id = projectsList[i]['id'],
+                title = projectsList[i]['title'],
+                thumb_mini = normalizeMedaPath(projectsList[i]['thumb_mini'], data['media_url']),
+                thumb_xs = normalizeMedaPath(projectsList[i]['thumb_xs'], data['media_url']),
+                thumb_sm = normalizeMedaPath(projectsList[i]['thumb_sm'], data['media_url']),
+                thumb_xs_w = projectsList[i]['thumb_xs_w'],
+                thumb_sm_w = projectsList[i]['thumb_sm_w'],
+                author = projectsList[i]['owner__name'],
+                score = (projectsList[i]['average']) ? projectsList[i]['average'].toFixed(1) : null,
+                win_year = projectsList[i]['win_year'],
+                url = data['projects_url'] + projectsList[i]['owner__slug'] + '/project-' + projectsList[i]['project_id'] + '/';
 
-        // Если нет проектов, убираем preloader и останавливаем скроллинг
-        if (projectsList.length === 0) {
-            preloader.remove();
-            document.removeEventListener('scroll', onScroll);
-            return;
-        }
-
-        for (const project of projectsList) {
-            const {
-                id,
-                title,
-                owner__name: author,
-                average,
-                win_year,
-                owner__slug,
-                project_id,
-                thumb_mini,
-                thumb_xs,
-                thumb_sm,
-                thumb_xs_w = 320,
-                thumb_sm_w = 576
-            } = project;
-
-            const score = average ? average.toFixed(1) : '';
-            const url = `/projects/${owner__slug}/project-${project_id}/`;
-
-            html += `
-            <a id="project-${id}" class="grid-cell ratio centered" href="${url}" title="${title}">
-                <figure>
-                    <img class="project-cover lazyload"
-                         src="${normalize(thumb_mini, data.media_url)}"
-                         data-src="${normalize(thumb_sm, data.media_url)}"
-                         data-srcset="
-                            ${normalize(thumb_xs, data.media_url)} ${thumb_xs_w}w,
-                            ${normalize(thumb_sm, data.media_url)} ${thumb_sm_w}w
-                         "
-                         data-sizes="auto"
-                         loading="lazy"
-                         alt="${title ? title + '. ' : ''}Автор проекта: ${author || ''}">
-                    <figcaption class="d-flex-column">
-                        ${title ? `<h3 class="project-title">${title}</h3>` : ''}
-                        ${author ? `<div class="subtitle owner-name">${author}</div>` : ''}
-                        <div class="extra d-flex justify-between">
-                            ${win_year ? `<div class="portfolio-award d-flex">
-                                            <svg class="award">
-                                                <use xlink:href="#award-icon"></use>
-                                            </svg>
-                                        <span>${win_year}</span>
-                                        </div>` : ''}
-                            ${score ? `<div class="portfolio-rate d-flex">
-                                            <span>${score}</span>
-                                            <svg class="rate-star">
-                                                <use xlink:href="#star-icon"></use>
-                                            </svg>
-                                        </div>` : ''}
-                        </div>
-                    </figcaption>
-                </figure>
-            </a>
-        `;
+            html += '<a id="project-' + id + '" class="grid-cell ratio centered" href="' + url + '" title="' + title + '">\
+					<figure>\
+						<img class="project-cover lazyload"\
+							src="' + thumb_mini + '"\
+							data-src="' + thumb_sm + '"\
+							data-srcset="' + thumb_xs + ' ' + thumb_xs_w + 'w, ' + thumb_sm + ' ' + thumb_sm_w + 'w"\
+							loading="lazy"\
+							alt="' + (title ? title + '. ' : '') + 'Автор проекта: ' + author + '">\
+						<figcaption class="d-flex-column">' +
+                (title ? '<h3 class="project-title">' + title + '</h3>' : '') +
+                (author ? '<div class="subtitle owner-name">' + author + '</div>' : '') +
+                '<div class="extra d-flex justify-between">' +
+                (win_year ?
+                    '<div class="portfolio-award d-flex">\
+                        <svg class="award"><use xlink:href="#award-icon"></use></svg>\
+                        <span>' + win_year + '</span>\
+							</div>' : '') +
+                (score ?
+                    '<div class="portfolio-rate d-flex">\
+                        <span class="rate-counter">' + score + '</span>\
+								<svg class="rate-star"><use xlink:href="#star-icon"></use></svg>\
+							</div>' : '') +
+                '</div>' +
+                '</figcaption>\
+            </figure>\
+        </a>';
         }
 
         if (html) {
-            if (!preloader) {
-                preloader = document.createElement('div');
-                preloader.className = 'preloader';
-                preloader.href = window.location.pathname;
-                contentBlock.appendChild(preloader);
+            nextPage = data['next_page'];
+            currentPage = data['current_page'];
+
+            if (currentPage === 1) {
+                const clone = preloader.cloneNode(true);
+                contentBlock.innerHTML = html;
+                contentBlock.append(clone);
+                preloader = clone;
+                if (nextPage) {
+                    preloader.classList.remove('hidden');
+                    preloader.classList.add('show');
+                }
+
+            } else {
+                // Вставим контент перед прелоадером
+                preloader.insertAdjacentHTML('beforebegin', html);
             }
-            preloader.insertAdjacentHTML('beforebegin', html);
+            jsonRequest(); // сразу подгрузим следующий контент, если прелоадер остался в зоне видимости
+            lazyloadInit(); // обновим lazyload
+
+        } else nextPage = false;
+
+
+        if (nextPage === false) {
+            document.removeEventListener('scroll', jsonRequest);
+            preloader.classList.remove('show');
+            window.setTimeout(() => {
+                preloader.classList.add('hidden');
+            }, 200);
         }
-
-        /* ===== STATE UPDATE ===== */
-
-        currentPage = data.page;
-        hasNext = data.has_next;
-        loading = false;
-        canLoadNext = true;
-
-        if (!hasNext) {
-            // Удаляем preloader только если больше нет страниц
-            preloader.remove();
-            // document.removeEventListener('scroll', onScroll);
-        }
-
-        lazyloadInit();
     }
-
-    /* ===============================
-       AJAX REQUEST
-    =============================== */
 
     function jsonRequest() {
-        if (!hasNext || loading || !preloader) return;
-        if (!isInViewport(preloader, true)) return;
-
-        loading = true;
-        canLoadNext = false;
-        preloader.classList.add('show');
-
-        let params = 'page=' + (currentPage + 1);
-
-        if (filterForm) {
-            const filters = createFormData(filterForm);
-            if (filters) {
+        if (nextPage && isInViewport(preloader, true)) {
+            nextPage = null; // До завершения запроса на сервере, статус след страницы установим в null, чтобы не выполнять новые ajax запросы
+            let url = preloader.href;
+            let params = 'page=' + String(currentPage + 1);
+            if (filterForm) {
+                let filters = createFormData(filterForm);
                 params += '&' + filters;
             }
+            window.ajaxSend(url, params, 'get', contentRender);
         }
-
-        window.ajaxSend(preloader.href, params, 'get', contentRender);
     }
 
-    /* ===============================
-       FILTERS
-    =============================== */
+    if (preloader) {
+        document.addEventListener('scroll', jsonRequest);
+        preloader.addEventListener('click', (e) => {
+            e.preventDefault();
+            jsonRequest();
+        });
+    }
 
+    // Projects Filter
     const filterForm = document.querySelector('form[name=projects-filter]');
+    const contentBlock = document.querySelector('#projects');
 
     if (filterForm) {
         const filterCheckboxes = filterForm.querySelectorAll('input[type=checkbox]');
         const submitBtn = filterForm.querySelector('[type=submit]');
 
-        function submitFilter(form) {
-            currentPage = 1;
-            hasNext = true;
-            loading = false;
+        // запуск фильтрации контента в селекторе contentBlock
+        function submitFilter(el) {
+            nextPage = null; // блокируем пролистывание до окончания выполнения запроса в ajaxSend()
 
-            // Удаляем все текущие проекты
-            const projectElements = contentBlock.querySelectorAll('.grid-cell');
-            projectElements.forEach(el => el.remove());
-
-            // Восстанавливаем preloader
-            preloader = document.querySelector('.preloader');
-            if (!preloader) {
-                preloader = document.createElement('div');
-                preloader.id = 'preloader';
-                preloader.className = 'preloader';
-                preloader.href = form.action || window.location.pathname;
-                contentBlock.appendChild(preloader);
+            let url = el.action;
+            let method = el.method;
+            let params = createFormData(el);
+            if (params === '') {
+                // если аттрибуты сброшены
+                contentBlock.classList.remove('filtered');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'сбросить фильтры';
+            } else {
+                contentBlock.classList.add('filtered');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'сбросить фильтры';
             }
 
-            preloader.classList.remove('hidden');
-            preloader.classList.add('show');
-
-            const params = createFormData(form);
-            window.ajaxSend(
-                form.action,
-                'page=1&' + params,
-                form.method,
-                contentRender
-            );
+            document.addEventListener('scroll', jsonRequest);
+            window.ajaxSend(url, 'page=1&' + params, method, contentRender);
         }
 
+        // сброс положений аттрибутов фильтра
         function clearCheckboxes() {
-            filterCheckboxes.forEach(cb => cb.checked = false);
-            checkActiveFilters(); // <-- ВАЖНО: обновляем состояние кнопки после очистки
+            let i = filterCheckboxes.length - 1;
+            for (; i >= 0; i--) {
+                filterCheckboxes[i].checked = false;
+            }
         }
 
+        // загрузка фильтров из URL параметров
         function loadFiltersFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const filterGroups = urlParams.getAll('filter-group');
 
-            if (filterGroups.length) {
-                filterCheckboxes.forEach(cb => {
-                    if (filterGroups.includes(cb.value)) {
-                        cb.checked = true;
+            if (filterGroups.length > 0) {
+                filterCheckboxes.forEach((checkbox) => {
+                    if (filterGroups.includes(checkbox.value)) {
+                        checkbox.checked = true;
                     }
                 });
             }
-            checkActiveFilters(); // обновляем состояние кнопки после загрузки
         }
 
+        // проверка наличия активных фильтров при загрузке
         function checkActiveFilters() {
-            const active = [...filterCheckboxes].some(cb => cb.checked);
-
-            if (submitBtn) {
-                submitBtn.disabled = !active;
+            let hasActiveFilters = false;
+            filterCheckboxes.forEach((checkbox) => {
+                if (checkbox.checked) {
+                    hasActiveFilters = true;
+                }
+            });
+            if (hasActiveFilters) {
+                submitBtn.disabled = false;
+                contentBlock.classList.add('filtered');
+            } else {
+                submitBtn.disabled = true;
+                contentBlock.classList.remove('filtered');
             }
-
-            contentBlock.classList.toggle('filtered', active);
         }
 
-        // Обработчик изменения чекбоксов
-        filterCheckboxes.forEach(cb => {
-            cb.addEventListener('change', () => {
-                checkActiveFilters();
-
-                // Задержка для предотвращения множественных запросов
-                if (filterTimeout) clearTimeout(filterTimeout);
-                filterTimeout = setTimeout(() => submitFilter(filterForm), 300);
+        // инициализация обработчиков для чекбоксов
+        filterCheckboxes.forEach((checkbox) => {
+            // повесим событие на изменение чекбокса
+            checkbox.addEventListener('change', (e) => {
+                submitFilter(filterForm);
             });
         });
 
-        // Обработчик: в исходном коде очищает чекбоксы!
+        // загрузка фильтров из URL при загрузке страницы
+        loadFiltersFromURL();
+
+        // проверка при загрузке страницы
+        checkActiveFilters();
+
+        // нажатие на кнопку сброса фильтров
         filterForm.addEventListener('submit', function (e) {
             e.preventDefault();
             clearCheckboxes();
             submitFilter(this);
         });
-
-        // если есть кнопка сброса вне формы
-        const resetBtn = document.querySelector('[type="reset"], .reset-filters, .clear-filters');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                clearCheckboxes();
-                submitFilter(filterForm);
-            });
-        }
-
-        let filterTimeout = null;
-        loadFiltersFromURL();
-        checkActiveFilters();
     }
-
-    /* ===============================
-       AUTOLOAD IF SCREEN EMPTY
-    =============================== */
-
-    // Автозагрузка при инициализации
-    setTimeout(() => {
-        if (hasNext && preloader && isInViewport(preloader, true)) {
-            jsonRequest();
-        }
-    }, 150);
 
 });

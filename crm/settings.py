@@ -405,6 +405,8 @@ if DEBUG:
 else:
 	STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
+
+DEFAULT_NO_IMAGE = os.path.join(MEDIA_ROOT, 'site/no-image.png')
 FILES_UPLOAD_FOLDER = 'uploads/'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024

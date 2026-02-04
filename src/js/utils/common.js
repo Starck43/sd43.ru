@@ -11,6 +11,13 @@ export function rafThrottle(func) {
     };
 }
 
+export function normalizeMedaPath(url, mediaUrl) {
+    if (!url) return '';
+    return url.startsWith('/media/')
+        ? url
+        : mediaUrl + url;
+}
+
 /**
  * Проверка, является ли устройство мобильным
  * @returns {boolean}

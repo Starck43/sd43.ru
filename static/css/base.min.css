@@ -2130,12 +2130,8 @@ label,
   opacity: 0.5;
 }
 #preloader {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  -webkit-transform: translate(-50%, -50%);
-  -ms-transform: translate(-50%, -50%);
-  transform: translate(-50%, -50%);
+  position: relative;
+  margin: auto;
   z-index: 1000000;
 }
 #preloader .dot {
