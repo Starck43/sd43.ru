@@ -391,7 +391,7 @@ class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ad
 
 	form = PortfolioAdminForm
 
-	list_display = ('id', 'title', 'exhibition', 'owner', 'nominations_list', 'status')
+	list_display = ('id', 'title', 'exhibition', 'owner', 'nominations_list', 'status_field')
 	list_display_links = ('id', 'title')
 	list_filter = ('nominations', 'owner', 'status')
 	search_fields = (
@@ -436,6 +436,10 @@ class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ad
 		if obj.nominations.exists():
 			return ', '.join(obj.nominations.values_list('title', flat=True))
 		return 'Нет номинаций'
+
+	@admin.display(description='Видимость', boolean=True, ordering="status")
+	def status_field(self, obj):
+		return obj.status
 
 	def formfield_for_foreignkey(self, db_field, request, **kwargs):
 		if db_field.name == "owner":

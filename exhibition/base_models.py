@@ -184,7 +184,7 @@ class BaseImageModel(models.Model):
 				super().save(update_fields=self.IMAGE_FIELDS)
 
 	@staticmethod
-	def delete_current_file_cache(new_file:models.ImageField, current_file: models.ImageField = None):
+	def delete_current_file_cache(new_file, current_file=None):
 		# Удаляем все кэшированные файлы для этого файла у 'sorl-thumbnails'
 		if current_file and current_file != new_file:
 			from sorl.thumbnail import delete

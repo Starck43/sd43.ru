@@ -2,9 +2,9 @@ from ckeditor.fields import RichTextField
 from django.db import models
 from django.urls import reverse
 from smart_selects.db_fields import ChainedManyToManyField
-from sorl.thumbnail import delete
 
-from exhibition.logic import MediaFileStorage, image_resize, designers_upload_to
+from exhibition.base_models import BaseImageModel
+from exhibition.logic import MediaFileStorage, designers_upload_to
 from exhibition.models import Exhibitors, Partners, Portfolio
 
 LOGO_FOLDER = 'logos/'
@@ -12,7 +12,9 @@ AVATAR_FOLDER = 'avatars/'
 COVER_FOLDER = 'covers/'
 
 
-class Designer(models.Model):
+class Designer(BaseImageModel):
+	IMAGE_FIELDS = ('logo','avatar', 'background')
+
 	""" Страница Дизайнера """
 	STATUS = (
 		(1, 'на модерации'),
@@ -31,12 +33,28 @@ class Designer(models.Model):
 		'Имя сайта', max_length=20, unique=True,
 		help_text='Субдомен или часть адреса сайта латиницей, типа sitename.sd43.ru'
 	)
-	logo = models.ImageField('Логотип', upload_to=LOGO_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
-	avatar = models.ImageField('Аватар', upload_to=AVATAR_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
+	logo = models.ImageField(
+		'Логотип',
+		upload_to=LOGO_FOLDER,
+		storage=MediaFileStorage(image_size=[300, 300]),
+		null=True,
+		blank=True
+	)
+	avatar = models.ImageField(
+		'Аватар',
+		upload_to=AVATAR_FOLDER,
+		storage=MediaFileStorage(image_size=[600, 600]),
+		null=True,
+		blank=True
+	)
 	about = RichTextField('О себе', blank=True)
 	background = models.ImageField(
-		'Основное изображение', upload_to=designers_upload_to, storage=MediaFileStorage(),
-		null=True, blank=True, help_text='Фоновое изображение в шапке сайта'
+		'Основное изображение',
+		upload_to=designers_upload_to,
+		storage=MediaFileStorage(image_size=[1920, 1080]),
+		null=True,
+		blank=True,
+		help_text='Фоновое изображение в шапке сайта'
 	)
 	exh_portfolio = ChainedManyToManyField(
 		Portfolio,
@@ -103,38 +121,15 @@ class Designer(models.Model):
 			yield (name, label, value, link)
 
 	def save(self, *args, **kwargs):
-		# если файл заменен, то требуется удалить все миниатюры в кэше у sorl-thumbnails
-		if self.original_avatar and self.original_avatar != self.avatar:
-			delete(self.original_avatar)
-
-		if self.original_logo and self.original_logo != self.logo:
-			delete(self.original_logo)
-
-		if self.original_background and self.original_background != self.background:
-			delete(self.original_background)
-
-		resized_avatar = image_resize(self.avatar, [600, 600])
-		if resized_avatar and resized_avatar != 'error':
-			self.avatar = resized_avatar
-
-		resized_logo = image_resize(self.logo, [300, 300])
-		if resized_logo and resized_logo != 'error':
-			self.logo = resized_logo
-
-		resized_background = image_resize(self.background, [1920, 1080])
-		if resized_background and resized_background != 'error':
-			self.background = resized_background
+		self.delete_current_file_cache(self.avatar, self.original_avatar)
+		self.delete_current_file_cache(self.logo, self.original_logo)
+		self.delete_current_file_cache(self.background, self.original_background)
 
 		super().save(*args, **kwargs)
 
-		if resized_avatar != 'error':
-			self.original_avatar = self.avatar
-
-		if resized_logo != 'error':
-			self.original_logo = self.logo
-
-		if resized_background != 'error':
-			self.original_background = self.background
+		self.original_avatar = self.avatar
+		self.original_logo = self.logo
+		self.original_background = self.background
 
 	def get_absolute_url(self):
 		return reverse('designers:portfolio-page-url', kwargs={'slug': self.slug.lower()})
@@ -143,12 +138,20 @@ class Designer(models.Model):
 		return self.owner.name
 
 
-class Customer(models.Model):
+class Customer(BaseImageModel):
 	""" Заказчики дизайнеров """
+	IMAGE_FIELDS = ('logo',)
+
 	designer = models.ForeignKey(Designer, on_delete=models.CASCADE, related_name='customers', verbose_name='Дизайнер')
 	name = models.CharField('Имя заказчика', max_length=255)
 	excerpt = models.TextField('Дополнительное описание', blank=True)
-	logo = models.ImageField('Логотип', upload_to=LOGO_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
+	logo = models.ImageField(
+		'Логотип',
+		upload_to=LOGO_FOLDER,
+		storage=MediaFileStorage(image_size=[300, 300]),
+		null=True,
+		blank=True
+	)
 	link = models.URLField(
 		'Ссылка на проект',
 		blank=True,
@@ -162,12 +165,25 @@ class Customer(models.Model):
 		db_table = 'customers'
 		ordering = ['-logo', 'name']
 
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.original_logo = self.logo
+
+	def save(self, *args, **kwargs):
+		self.delete_current_file_cache(self.logo, self.original_logo)
+
+		super().save(*args, **kwargs)
+
+		self.original_logo = self.logo
+
 	def __str__(self):
 		return self.name + ' ' + self.excerpt
 
 
-class Achievement(models.Model):
+class Achievement(BaseImageModel):
 	""" Таблица Достижений """
+	IMAGE_FIELDS = ('cover',)
+
 	STATUS = (
 		(0, 'выставка Сфера Дизайна'),
 		(1, 'другие выставки'),
@@ -181,7 +197,13 @@ class Achievement(models.Model):
 		related_name='achievements',
 		verbose_name='Дизайнер'
 	)
-	cover = models.ImageField('Обложка', upload_to=COVER_FOLDER, storage=MediaFileStorage(), null=True, blank=True)
+	cover = models.ImageField(
+		'Обложка',
+		upload_to=COVER_FOLDER,
+		storage=MediaFileStorage(image_size=[300, 300]),
+		null=True,
+		blank=True
+	)
 	title = models.CharField('Заголовок', max_length=255)
 	description = models.TextField('Дополнительное описание', blank=True)
 	subtitle = models.CharField('Подзаголовок', max_length=100, null=True, blank=True, help_text='Например, название площадки или организатора')
@@ -191,12 +213,22 @@ class Achievement(models.Model):
 	)
 	date = models.DateField('Дата события', blank=True, null=True)
 
-	# Metadata
 	class Meta:
 		ordering = ['group', 'date']
 		verbose_name = 'Достижение'
 		verbose_name_plural = 'Достижения'
 		db_table = 'achievements'
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.original_cover = self.cover
+
+	def save(self, *args, **kwargs):
+		self.delete_current_file_cache(self.cover, self.original_cover)
+
+		super().save(*args, **kwargs)
+
+		self.original_cover = self.cover
 
 	def __str__(self):
 		return self.title

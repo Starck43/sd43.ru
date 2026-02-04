@@ -12,7 +12,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.files.uploadhandler import FileUploadHandler
 from django.db import connection, OperationalError
-from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count
+from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count, Value
 from django.dispatch import receiver
 from django.forms import inlineformset_factory
 from django.http import HttpResponse, JsonResponse, Http404
@@ -35,6 +35,7 @@ from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, User
 from .logic import send_email, send_email_async
 from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
 from .models import *
+from .services import PortfolioImageService, DEFAULT_COVER
 from .utils import is_exhibitor_of_exhibition, is_jury_member, set_user_group
 
 
@@ -207,7 +208,7 @@ class ProjectsList(MetaSeoMixin, BannersMixin, ListView):
 	""" Projects view """
 	model = Categories
 	template_name = 'exhibition/projects_list.html'
-	PAGE_SIZE = getattr(settings, 'PORTFOLIO_COUNT_PER_PAGE', 20)  # Количество выводимых записей на странице
+	PAGE_SIZE = getattr(settings, 'PORTFOLIO_COUNT_PER_PAGE', 20)
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
@@ -217,129 +218,176 @@ class ProjectsList(MetaSeoMixin, BannersMixin, ListView):
 		self.is_next_page = None
 		self.filters_group = None
 
-	# использовано для миксина MetaSeoMixin, где проверяется self.object
 	def setup(self, request, *args, **kwargs):
 		super().setup(request, *args, **kwargs)
 		self.slug = self.kwargs.get('slug')
 		if self.slug:
 			self.object = self.model.objects.get(slug=self.slug)
 
-	def get_queryset(self):
-		# Текущая страница для получения диапазона выборки записей
-		self.page = int(self.page) if self.page else 1
-		start_page = (self.page - 1) * self.PAGE_SIZE
-		end_page = self.page * self.PAGE_SIZE
-
+	def get_queryset(self, page=None):
+		"""Можно передать page для пагинации на уровне базы"""
 		query = Q(nominations__category__slug=self.slug)
 
-		# Если выбраны опции фильтра
 		if self.filters_group and self.filters_group[0] != '0':
-			query.add(Q(attributes__in=self.filters_group), Q.AND)
+			query &= Q(attributes__in=self.filters_group)
 
-		# Подзапрос для получения первого фото в портфолио
-		subquery = Subquery(Image.objects.filter(portfolio=OuterRef('pk')).values('file')[:1])
+		from exhibition.models import Winners, Image
 
-		subquery2 = Subquery(Winners.objects.filter(
+		first_image_subquery = Image.objects.filter(
+			portfolio=OuterRef('pk')
+		).order_by('id').values('file')[:1]
+
+		win_year_sq = Winners.objects.filter(
 			portfolio_id=OuterRef('pk'),
 			nomination__category__slug=self.slug
-		).values('exhibition__slug')[:1])
+		).values('exhibition__slug')[:1]
 
-		# Используем кастомный менеджер для фильтрации видимых проектов
-		base_queryset = Portfolio.objects.get_visible_projects(self.request.user)
+		qs = Portfolio.objects.get_visible_projects(self.request.user)
+		qs = qs.filter(project_id__isnull=False).filter(query)
 
-		posts = base_queryset.filter(
-			Q(project_id__isnull=False) & query
-		).distinct().prefetch_related('ratings').annotate(
-			last_exh_year=F('exhibition__slug'),
-			average=Avg('ratings__star'),
-			win_year=subquery2,
-			project_cover=Case(
-				When(Q(cover__exact='') | Q(cover__isnull=True), then=subquery),
-				default='cover',
-				output_field=CharField()
+		qs = (
+			qs.prefetch_related('ratings')
+			.annotate(
+				first_image_file=Subquery(first_image_subquery),
+				project_cover=Case(
+					When(
+						Q(cover__isnull=False) & ~Q(cover=''),
+						then='cover'
+					),
+					When(
+						Q(first_image_file__isnull=False),
+						then='first_image_file'
+					),
+					default=Value(DEFAULT_COVER),
+					output_field=CharField(),
+				),
+				average=Avg('ratings__star'),
+				win_year=Subquery(win_year_sq),
+				last_exh_year=F('exhibition__slug'),
 			)
-		).values(
-			'id', 'project_id', 'project_cover', 'title', 'nominations__title',
-			'last_exh_year', 'win_year', 'average', 'owner__name', 'owner__slug'
-		).order_by(
-			'-last_exh_year', '-win_year', '-average'
-		)[start_page:end_page]
+			.order_by('-last_exh_year', '-win_year', '-average')
+			.distinct()
+		)
 
-		self.is_next_page = False if len(posts) < self.PAGE_SIZE else True
-		return posts
+		# Если передан page, применяем срез
+		if page is not None:
+			start = (page - 1) * self.PAGE_SIZE
+			end = start + self.PAGE_SIZE
+			qs = qs[start:end]
 
-	def get(self, request, *args, **kwargs):
-		self.page = self.request.GET.get('page', None)  # Параметр GET запроса ?page текущей страницы
-		self.filters_group = self.request.GET.getlist('filter-group', None)
-		# Выбранные опции checkbox в GET запросе (?nominations=[])
+		return qs.values(
+			'id',
+			'project_id',
+			'project_cover',
+			'title',
+			'owner__name',
+			'owner__slug',
+			'average',
+			'win_year',
+			'last_exh_year',
+		)
 
-		if self.filters_group or self.page:
-			default_quality = getattr(settings, 'THUMBNAIL_QUALITY', 85)
-			admin_thumbnail_size = getattr(settings, 'ADMIN_THUMBNAIL_SIZE', [100, 100])
-			admin_default_size = '%sx%s' % (admin_thumbnail_size[0], admin_thumbnail_size[1])
-			admin_default_quality = getattr(settings, 'ADMIN_THUMBNAIL_QUALITY', 75)
+	def get_page(self, page: int):
+		"""Оптимизированная версия с пагинацией в БД"""
+		# Получаем QuerySet ТОЛЬКО для нужной страницы
+		qs_current_page = self.get_queryset(page=page)
+		items_current_page = list(qs_current_page)
 
-			queryset = self.get_queryset()
+		# Проверяем, есть ли следующая страница
+		# Для этого делаем быстрый запрос на 1 элемент следующей страницы
+		next_page_start = page * self.PAGE_SIZE
+		qs_next_check = self.get_queryset()
+		has_next = qs_next_check[next_page_start:next_page_start + 1].exists()
 
-			for i, q in enumerate(queryset):
-				if q['project_cover']:
-					thumb_mini = get_thumbnail(
-						q['project_cover'],
-						admin_default_size,
-						crop='center',
-						quality=admin_default_quality
-					)
-					thumb_320 = get_thumbnail(q['project_cover'], '320', quality=default_quality)
-					thumb_576 = get_thumbnail(q['project_cover'], '576', quality=default_quality)
-					queryset[i].update({
-						'thumb_mini': str(thumb_mini),
-						'thumb_xs': str(thumb_320),
-						'thumb_sm': str(thumb_576),
-						'thumb_xs_w': 320,
-						'thumb_sm_w': 576
-					})
+		return items_current_page, has_next
 
-			json_data = {
-				'current_page': int(self.page or 1),
-				'next_page': self.is_next_page,
-				'projects_list': list(queryset),
-				'projects_url': '/projects/',
-				'media_url': settings.MEDIA_URL,
-			}
+	def ajax_response(self, page):
+		items, has_next = self.get_page(page)
 
-			return JsonResponse(json_data, safe=False)
-		else:
-			# выполняется при загрузке первой страницы
-			return super().get(request, **kwargs)
+		from .services import PortfolioImageService
+		items = PortfolioImageService.enrich_queryset(items)
 
-	def get_context_data(self, **kwargs):
-		context = super().get_context_data(**kwargs)
+		return JsonResponse({
+			'page': page,
+			'has_next': has_next,
+			'projects': items,
+			'media_url': settings.MEDIA_URL,
+		})
 
-		# Отсортируем и сгруппируем словарь аттрибутов по ключу group
-		# keyfunc = lambda x:x['group']
-		# attributes = [list(data) for _, data in groupby(sorted(data, key=keyfunc), key=keyfunc)]
+	def enrich_projects_with_thumbnails(self, projects_data):
+		"""Обогащает проекты миниатюрами"""
+		from .services import PortfolioImageService
 
-		# найдем аттрибуты для фильтра в портфолио, если они есть в текущей категории
+		admin_thumbnail_size = getattr(settings, 'ADMIN_THUMBNAIL_SIZE', [100, 100])
+		admin_default_size = f"{admin_thumbnail_size[0]}x{admin_thumbnail_size[1]}"
+		admin_default_quality = getattr(settings, 'ADMIN_THUMBNAIL_QUALITY', 75)
+		default_quality = getattr(settings, 'THUMBNAIL_QUALITY', 85)
+
+		sizes = {
+			'mini': {'size': admin_default_size, 'quality': admin_default_quality, 'crop': 'center'},
+			'xs': {'size': '320', 'quality': default_quality, 'crop': None},
+			'sm': {'size': '576', 'quality': default_quality, 'crop': None},
+		}
+
+		enriched_projects = []
+		for project in projects_data:
+			enriched = PortfolioImageService.enrich_portfolio_data(
+				project,
+				sizes=sizes
+			)
+			enriched_projects.append(enriched)
+
+		return enriched_projects
+
+	def get_filter_attributes(self):
+		"""Получает атрибуты для фильтра"""
 		attributes = PortfolioAttributes.objects.prefetch_related('attributes_for_portfolio').filter(
 			attributes_for_portfolio__nominations__category__slug=self.slug,
 			group__isnull=False,
 		).distinct()
 
-		# Формирование групп аттрибутов фильтра
+		# Формирование групп атрибутов фильтра
 		attributes_dict = attributes.values('id', 'name', 'group')
 		filter_attributes = defaultdict(list)
 		for i, item in enumerate(attributes_dict):
-			attributes_dict[i].update({'group_name': attributes[
-				i].get_group_display()})  # {queryset_row}.get_group_display() - get choice field name
+			attributes_dict[i].update({
+				'group_name': attributes[i].get_group_display()
+			})
 			filter_attributes[item['group']].append(attributes_dict[i])
 
-		context['html_classes'] = ['projects', ]
-		context['parent_link'] = '/category'
-		context['absolute_url'] = self.slug
-		context['object'] = self.object
-		context['next_page'] = self.is_next_page
-		context['filter_attributes'] = list(filter_attributes.values())
-		context['cache_timeout'] = 86400  # one day
+		return list(filter_attributes.values())
+
+	def get(self, request, *args, **kwargs):
+		self.page = int(request.GET.get('page', 1))
+		self.filters_group = request.GET.getlist('filter-group')
+
+		if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+			return self.ajax_response(self.page)
+
+		return super().get(request, *args, **kwargs)
+
+	def get_context_data(self, **kwargs):
+		"""Добавляем данные в контекст для шаблона"""
+		context = super().get_context_data(**kwargs)
+
+		page = 1
+		items, has_next = self.get_page(page)
+		items = self.enrich_projects_with_thumbnails(items)
+
+		context.update({
+			'html_classes': ['projects'],
+			'parent_link': '/category',
+			'absolute_url': self.slug,
+			'object': self.object,
+
+			'initial_projects': items,
+			'has_next': has_next,
+			'current_page': page,
+			'PAGE_SIZE': self.PAGE_SIZE,
+			'filter_attributes': self.get_filter_attributes(),
+			'cache_timeout': 86400,
+		})
+
 		return context
 
 
@@ -481,12 +529,12 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 				context['exhibition_status'] in ['active', 'finished']
 		)
 
-		is_exhibitor = is_exhibitor_of_exhibition(user, exhibition)
+		context['is_exhibitor'] = is_exhibitor_of_exhibition(user, exhibition)
 
 		# Если выставка upcoming и пользователь не staff/жюри,
 		# но является участником этой выставки - показываем только его проекты
 		if context['exhibition_status'] == 'upcoming' and not (user.is_staff or is_jury):
-			context['show_projects'] = is_exhibitor
+			context['show_projects'] = context['is_exhibitor']
 
 		portfolios = Portfolio.objects.get_visible_projects(user).filter(
 			exhibition=exhibition
@@ -496,7 +544,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		# показываем только его проекты
 		if (
 				context['exhibition_status'] == 'upcoming' and
-				is_exhibitor and
+				context['is_exhibitor'] and
 				not (user.is_staff or is_jury)
 		):
 			portfolios = portfolios.filter(owner__user=user)
@@ -526,6 +574,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 					projects_by_nomination[nomination.id].append({
 						'id': portfolio.id,
 						'title': portfolio.title,
+						'cover': portfolio.get_cover,
 						'project_id': portfolio.project_id,
 						'owner_slug': portfolio.owner.slug,
 						'owner_name': portfolio.owner.name
@@ -1186,7 +1235,8 @@ def portfolio_upload(request, **kwargs):
 
 				portfolio.save(images=images)
 
-				form.save_m2m()
+				if is_staff or is_exhibitor and not pk:
+					form.save_m2m()
 				formset.save()
 
 				nomination_ids = portfolio.nominations.values_list('id', flat=True)

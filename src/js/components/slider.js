@@ -15,7 +15,7 @@ import {isMobile} from "../utils/common.js";
 /**
  * Базовые настройки для разных типов слайдеров
  */
-const getSwiperConfig = (type) => {
+const getSwiperConfig = (type, slidesCount = Infinity) => {
     const baseConfig = {
         modules: [Keyboard, Navigation],
         lazy: true,
@@ -30,14 +30,14 @@ const getSwiperConfig = (type) => {
     const typeConfigs = {
         banner: {
             modules: [Navigation, Pagination, Keyboard, Autoplay],
-            loop: true,
+            loop: slidesCount > 1, // Отключаем loop если только один слайд
             slidesPerView: 1,
             spaceBetween: 0,
             speed: Math.round(window.innerWidth / 1.5),
-            autoplay: {
+            autoplay: slidesCount > 1 ? { // Отключаем autoplay для одного слайда
                 delay: 5000,
                 disableOnInteraction: true,
-            },
+            } : false,
             on: {
                 afterInit: function (swiper) {
                     swiper.el.classList.add('show');
@@ -46,17 +46,17 @@ const getSwiperConfig = (type) => {
         },
         slider: {
             modules: [Navigation, Pagination, Keyboard, Autoplay],
-            loop: true,
+            loop: slidesCount > 1, // Отключаем loop если недостаточно слайдов
             slidesPerView: 1,
             spaceBetween: 0,
             breakpoints: {
-                992: {slidesPerView: 2, spaceBetween: 16},
-                1400: {slidesPerView: 3, spaceBetween: 24},
+                992: {slidesPerView: Math.min(2, slidesCount), spaceBetween: 16},
+                1400: {slidesPerView: Math.min(3, slidesCount), spaceBetween: 24},
             },
-            autoplay: {
+            autoplay: slidesCount > 1 ? { // Отключаем autoplay для одного слайда
                 delay: 4000,
                 disableOnInteraction: true,
-            },
+            } : false,
             on: {
                 afterInit: function (swiper) {
                     swiper.el.classList.add('show');
@@ -92,18 +92,34 @@ export function initSwiper(container, type = 'gallery', customOptions = {}) {
         el.classList.add('swiper');
     }
 
+    // Считаем количество слайдов
+    const slidesCount = wrapper.querySelectorAll('.swiper-slide:not(.swiper-slide-duplicate)').length;
+
+    // Определяем, нужно ли показывать навигацию и пагинацию
+    const hasMultipleSlides = slidesCount > 1;
+    const hasPagination = el.querySelector('.swiper-pagination') && hasMultipleSlides;
+    const hasNavigation = el.querySelector('.arrow-right') && el.querySelector('.arrow-left') && hasMultipleSlides;
+
     const config = {
-        ...getSwiperConfig(type),
+        ...getSwiperConfig(type, slidesCount),
         ...customOptions,
-        pagination: el.querySelector('.swiper-pagination') ? {
+        pagination: hasPagination ? {
             el: el.querySelector('.swiper-pagination'),
             clickable: true,
         } : false,
-        navigation: el.querySelector('.arrow-right') && el.querySelector('.arrow-left') ? {
+        navigation: hasNavigation ? {
             nextEl: el.querySelector('.arrow-right'),
             prevEl: el.querySelector('.arrow-left'),
         } : false,
     };
+
+    // Для случаев, когда пользовательские настройки переопределяют loop
+    if (customOptions.loop !== undefined) {
+        config.loop = customOptions.loop;
+    } else if (config.loop && !hasMultipleSlides) {
+        // Гарантируем отключение loop если только один слайд
+        config.loop = false;
+    }
 
     const instance = new Swiper(el, config);
 
@@ -135,7 +151,7 @@ export function getSwiper(swiperInstance, container, type = 'gallery', slideInde
  * Инициализирует модальную галерею с ленивой загрузкой
  */
 function initLazyGallery(gallery) {
-        let gallerySwiper = null;
+    let gallerySwiper = null;
     const galleryId = '#' + gallery.id;
     let cleanupTimeout = null;
 

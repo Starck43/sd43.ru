@@ -154,20 +154,36 @@
                             <h3 class="exh-title subtitle">{{ nomination.title }}</h3>
 
                             {% if show_projects %}
-                                <ul class="projects-list nomination-projects">
+                                <ul class="projects-list nomination-projects grid gap-0 p-0">
                                     {% with nomination_projects=projects_by_nomination|get_item:nomination.id %}
                                         {% if nomination_projects %}
                                             {% for project in nomination_projects %}
-                                                <li class="mb-0">
+                                                <ol class="p-0">
                                                     <a href="{% url 'exhibition:project-detail-url' project.owner_slug project.project_id %}"
-                                                       class="project-link">
-                                                        {{ project.title|default:"Без названия" }}
-                                                        ({{ project.owner_name }})
+                                                       class="d-flex-column gap-1 m-1"
+                                                    >
+                                                        <div class="fit-cover ratio">
+                                                            {% with project as obj %}
+                                                            {% with obj.cover as thumb %}
+                                                                {% include "exhibition/thumb.html" %}
+                                                            {% endwith %}
+                                                            {% endwith %}
+                                                        </div>
+                                                        <div class="d-flex-column">
+                                                            <h4 class="text-uppercase mb-0">{{ project.title|default:"Без названия" }}</h4>
+                                                            <span class="text-muted">{{ project.owner_name }}</span>
+                                                        </div>
                                                     </a>
-                                                </li>
+                                                </ol>
                                             {% endfor %}
                                         {% else %}
-                                            <li class="text-muted">Пока нет проектов в этой номинации</li>
+                                            <li class="text-muted">
+                                                {% if is_exhibitor %}
+                                                    Вы не принимаете участие в номинации
+                                                {% else %}
+                                                    Пока нет проектов в этой номинации
+                                                {% endif %}
+                                            </li>
                                         {% endif %}
                                     {% endwith %}
                                 </ul>
@@ -230,7 +246,8 @@
                     </header>
                     <div class="grid partners-list">
                         {% for partner in object.partners.all %}
-                            <a class="grid-cell partner-link d-flex ratio ratio-1x1" href="{{ partner.get_absolute_url }}">
+                            <a class="grid-cell partner-link d-flex ratio ratio-1x1"
+                               href="{{ partner.get_absolute_url }}">
                                 {% thumbnail partner.logo "150x150" as logo_1x %}
                                     {% thumbnail partner.logo "300x300" as logo_2x %}
                                         <img class="lazyload p-2"

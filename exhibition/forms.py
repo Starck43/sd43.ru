@@ -1,3 +1,5 @@
+from datetime import date
+
 from allauth.account.forms import SignupForm
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
@@ -9,14 +11,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import OuterRef, Subquery, Max
 from django.db.models.expressions import F
-from django.forms import FileInput, ClearableFileInput, BaseInlineFormSet
+from django.forms import ClearableFileInput, SelectMultiple
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 
 from .logic import is_image_file
-from .utils import set_user_group
 from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations
+from .utils import set_user_group
 
 
 class AccountSignupForm(SignupForm):
@@ -76,6 +77,7 @@ class MultipleFileInput(forms.ClearableFileInput):
 
 class MultipleFileField(forms.FileField):
 	"""Кастомное поле для множественной загрузки файлов"""
+
 	def __init__(self, *args, **kwargs):
 		kwargs.setdefault("widget", MultipleFileInput())
 		super().__init__(*args, **kwargs)
@@ -95,6 +97,17 @@ class CustomClearableFileInput(ClearableFileInput):
 		attrs = attrs or {}
 		attrs['accept'] = 'image/*'
 		super().__init__(attrs)
+
+
+class DisabledSelectMultiple(SelectMultiple):
+	"""SelectMultiple с disabled опциями"""
+
+	def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+		option = super().create_option(name, value, label, selected, index, subindex, attrs)
+
+		if 'disabled' not in option['attrs']:
+			option['attrs']['disabled'] = True
+		return option
 
 
 class CategoriesAdminForm(forms.ModelForm):
@@ -284,15 +297,6 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 			'status',
 		)
 
-		STATUS_CHOICES = (
-			(False, "Скрыт"),
-			(True, "Доступен (по умолчанию)"),
-		)
-
-		widgets = {
-			'status': forms.Select(choices=STATUS_CHOICES),
-		}
-
 	def clean(self):
 		cleaned_data = super().clean()
 		owner = cleaned_data.get('owner')
@@ -310,28 +314,21 @@ class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
 		return cleaned_data
 
 
-# def save(self, commit=True):
-# 	# Здесь обрабатываешь загруженные files
-# 	portfolio = super().save(commit=False)
-# 	if commit:
-# 		portfolio.save()
-# 		files = self.cleaned_data.get('files')
-# 		if files:
-# 			# Сохраняешь в связанную модель Image
-# 			for file in files:
-# 				Image.objects.create(portfolio=portfolio, file=file)
-# 	return portfolio
-
-
 class PortfolioForm(PortfolioAdminForm):
 	class Meta(PortfolioAdminForm.Meta):
+
+		STATUS_CHOICES = (
+			(False, "Скрыт"),
+			(True, "Доступен (по умолчанию)"),
+		)
 
 		widgets = {
 			'cover': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
 			'categories': forms.CheckboxSelectMultiple(attrs={
 				'class': 'form-check-input',
-				'disabled': 'disabled'
+				'disabled': True
 			}),
+			'status': forms.Select(choices=STATUS_CHOICES),
 			# 'attributes': forms.CheckboxSelectMultiple(attrs={'class': 'form-group'}),
 		}
 
@@ -348,7 +345,6 @@ class PortfolioForm(PortfolioAdminForm):
 			})
 
 		if 'nominations' in self.fields and hasattr(self.fields['nominations'], 'queryset'):
-			# Фильтруем номинации вручную через JavaScript
 			self.fields['nominations'].queryset = Nominations.objects.all()
 
 		if 'categories' in self.fields:
@@ -356,25 +352,78 @@ class PortfolioForm(PortfolioAdminForm):
 			self.fields['categories'].help_text = 'Категории автоматически определяются по выбранным номинациям'
 			self.fields['categories'].label = 'Категории номинаций (автовыбор)'
 
-		# Настройка поля выставки
 		if 'exhibition' in self.fields:
 			if self.is_editor:
-				# В админке - динамическая фильтрация через JavaScript.
+				# Редакторы видят все выставки
 				self.fields['exhibition'].queryset = Exhibitions.objects.all()
 
 			elif self.exhibitor:
-				# Для дизайнеров скрываем owner и status
+				# Дизайнеры
 				self.fields['owner'].initial = self.exhibitor
 				self.fields['owner'].widget = forms.HiddenInput()
-				self.fields['exhibition'].widget = forms.HiddenInput()
 				self.fields['status'].widget = forms.HiddenInput()
 
-				# Для дизайнеров фильтруем только активные и будущие выставки
-				self.fields['exhibition'].queryset = Exhibitions.objects.filter(
+				today = date.today()
+				# Получаем выставки, где зарегистрирован дизайнер и они еще не начались
+				available_exhibitions = Exhibitions.objects.filter(
 					exhibitors=self.exhibitor,
+					date_start__gt=today
 				).order_by('-date_start')
-				# self.fields['exhibition'].widget.attrs['disabled'] = True
-				current_exhibition = self.instance.exhibition
+
+				self.fields['exhibition'].queryset = available_exhibitions
+
+				# Проверяем, есть ли уже выставка у портфолио
+				if self.instance and self.instance.pk and self.instance.exhibition:
+					# Выставка уже есть - делаем поле readonly
+					self.fields['exhibition'].widget.attrs.update({
+						'class': 'form-control disabled-field',
+						'disabled': True,
+					})
+					self.fields['exhibition'].help_text = 'Выставка уже определена'
+
+					# Убедимся, что текущая выставка в queryset
+					if self.instance.exhibition not in available_exhibitions:
+						# Если текущая выставка не в списке доступных, добавляем ее
+						self.fields['exhibition'].queryset = available_exhibitions | Exhibitions.objects.filter(
+							id=self.instance.exhibition_id
+						)
+
+					if self.instance and self.instance.pk:
+						current_nominations = self.instance.nominations.values_list('id', flat=True)
+						self.initial['nominations'] = list(current_nominations)
+
+					# Делаем поле disabled
+					self.fields['nominations'].widget.attrs.update({
+						'class': 'form-control disabled-multiselect',
+						'style': 'pointer-events: none; opacity: 0.7;',
+						'disabled': True,
+					})
+					self.fields['nominations'].help_text = 'Номинации недоступны для изменения'
+
+				else:
+					# Если есть только одна доступная выставка, выбираем ее по умолчанию
+					if available_exhibitions.count() == 1:
+						self.fields['exhibition'].initial = available_exhibitions.first()
+						self.fields['exhibition'].widget.attrs.update({
+							'class': 'form-control single-option',
+							'readonly': True  # только для просмотра, но значение отправляется
+						})
+
+	def save(self, commit=True):
+		portfolio = super().save(commit=False)
+
+		# Для дизайнеров восстанавливаем выставку если поле disabled
+		if not self.is_editor and self.exhibitor and portfolio.pk:
+			# Получаем оригинальное значение из БД
+			original_portfolio = Portfolio.objects.get(pk=portfolio.pk)
+			if original_portfolio.exhibition:
+				portfolio.exhibition = original_portfolio.exhibition
+
+		if commit:
+			portfolio.save()
+			self.save_m2m()
+
+		return portfolio
 
 	@property
 	def helper(self):
@@ -452,7 +501,7 @@ class PortfolioForm(PortfolioAdminForm):
 				Field(
 					'owner',
 					type="hidden"
-				),  # Hidden field
+				),
 				Field(
 					'exhibition',
 					css_class="form-control",
@@ -471,11 +520,6 @@ class PortfolioForm(PortfolioAdminForm):
 					field_class='categories-checkboxes'
 				),
 				Field(
-					'files',
-					css_class="form-control",
-					wrapper_class="mb-2"
-				),
-				Field(
 					'title',
 					css_class="form-control",
 					placeholder="Название проекта",
@@ -491,6 +535,11 @@ class PortfolioForm(PortfolioAdminForm):
 				Field(
 					'cover',
 					template='crispy_forms/cover_field.html',
+					wrapper_class="mb-2"
+				),
+				Field(
+					'files',
+					css_class="form-control",
 					wrapper_class="mb-2"
 				),
 				Field(
@@ -532,14 +581,6 @@ class PortfolioForm(PortfolioAdminForm):
 
 		helper.layout = Layout(*layout_fields)
 		return helper
-
-
-# def save(self, *args, **kwargs):
-# 	instance = super().save(*args, **kwargs)
-# 	if self.exhibitor:
-# 		instance.categories.set(None)
-
-# 	return instance
 
 
 class ImageForm(forms.ModelForm):

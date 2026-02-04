@@ -1,8 +1,112 @@
 import re
 import unicodedata
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
+from sorl.thumbnail import get_thumbnail
+from django.db.models import Subquery, OuterRef, Case, When, Q, Value, CharField
+
+
+DEFAULT_COVER = getattr(
+	settings,
+	'DEFAULT_NO_IMAGE',
+	'site/no-image.png'
+)
+
+
+class PortfolioImageService:
+	"""Сервис для работы с изображениями портфолио"""
+
+	DEFAULT_SIZES = {
+		'mini': {'size': '100x100', 'quality': 75, 'crop': 'center'},
+		'xs': {'size': '320', 'quality': 85, 'crop': None},
+		'sm': {'size': '576', 'quality': 85, 'crop': None},
+		'md': {'size': '768', 'quality': 85, 'crop': None},
+		'lg': {'size': '1024', 'quality': 85, 'crop': None},
+	}
+
+	@classmethod
+	def annotate_queryset_with_cover(cls, queryset):
+		"""Аннотирует queryset полем project_cover с обложкой"""
+
+		from exhibition.models import Image
+		# Получаем первое изображение портфолио
+		first_image_subquery = Image.objects.filter(
+			portfolio=OuterRef('pk')
+		).order_by('id').values('file')[:1]
+
+		return queryset.annotate(
+			# Сначала аннотируем файл первого изображения
+			first_image_file=Subquery(first_image_subquery),
+			# Затем используем Case для выбора обложки
+			project_cover=Case(
+				When(
+					Q(cover__isnull=False) & ~Q(cover=''),
+					then='cover'
+				),
+				When(
+					# Используем проверку на существование файла
+					Q(first_image_file__isnull=False),
+					then='first_image_file'
+				),
+				default=Value(settings.DEFAULT_COVER if hasattr(settings, 'DEFAULT_COVER') else ''),
+				output_field=CharField(),
+			)
+		)
+
+	@classmethod
+	def get_thumbnails(cls, cover_field, sizes=None):
+		"""Генерирует миниатюры для изображения"""
+		if not cover_field:
+			return {}
+
+		if sizes is None:
+			sizes = cls.DEFAULT_SIZES
+
+		thumbnails = {}
+		for key, config in sizes.items():
+			try:
+				thumb = get_thumbnail(
+					cover_field,
+					config['size'],
+					crop=config.get('crop'),
+					quality=config.get('quality', 85)
+				)
+				thumbnails[f'thumb_{key}'] = thumb.url
+				thumbnails[f'thumb_{key}_w'] = thumb.width
+				thumbnails[f'thumb_{key}_h'] = thumb.height
+			except Exception as e:
+				# Обработка ошибок генерации миниатюр
+				thumbnails[f'thumb_{key}'] = str(cover_field) if cover_field else ''
+				thumbnails[f'thumb_{key}_w'] = 0
+				thumbnails[f'thumb_{key}_h'] = 0
+
+		return thumbnails
+
+	@classmethod
+	def enrich_portfolio_data(cls, portfolio_data, sizes=None):
+		"""Обогащает данные портфолио миниатюрами"""
+		if isinstance(portfolio_data, dict):
+			if 'project_cover' in portfolio_data and portfolio_data['project_cover']:
+				thumbnails = cls.get_thumbnails(portfolio_data['project_cover'], sizes)
+				portfolio_data.update(thumbnails)
+		elif hasattr(portfolio_data, 'project_cover') and portfolio_data.project_cover:
+			# Если это объект модели
+			thumbnails = cls.get_thumbnails(portfolio_data.project_cover, sizes)
+			for key, value in thumbnails.items():
+				setattr(portfolio_data, key, value)
+
+		return portfolio_data
+
+	@classmethod
+	def enrich_queryset(cls, queryset, sizes=None):
+		"""Обогащает queryset портфолио миниатюрами"""
+		enriched = []
+		for item in queryset:
+			enriched_item = cls.enrich_portfolio_data(item, sizes)
+			enriched.append(enriched_item)
+		return enriched
 
 
 def delete_cached_fragment(fragment_name, *args):

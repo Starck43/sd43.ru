@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from exhibition.admin import MetaSeoFieldsAdmin
+from exhibition.mixins import ImagePreviewMixin, MediaWidgetMixin
 from .forms import DesignerForm
 from .models import Designer, Customer, Achievement
 
@@ -8,18 +9,18 @@ admin.site.site_title = 'Сайты дизайнеров'
 admin.site.site_header = 'Сайты дизайнеров'
 
 
-class CustomerInline(admin.StackedInline):
+class CustomerInline(MediaWidgetMixin, admin.StackedInline):
 	model = Customer
 	# template = 'admin/exhibition/edit_inline/stacked.html'
 	extra = 1
 	show_change_link = True
-	fields = ('name', 'link', 'logo',)
+	fields = ('logo', 'name', 'link', )
 	# list_display = ('logo', 'name',)
 	# list_editable = ['name']
 	classes = ['customers-inline-tab']
 
 
-class AchievementInline(admin.StackedInline):
+class AchievementInline(MediaWidgetMixin, admin.StackedInline):
 	model = Achievement
 	# template = 'admin/exhibition/edit_inline/stacked.html'
 	extra = 0
@@ -31,28 +32,34 @@ class AchievementInline(admin.StackedInline):
 
 
 @admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-	fields = ('designer', 'name', 'excerpt', 'logo', 'link')
+class CustomerAdmin(ImagePreviewMixin, MediaWidgetMixin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('logo',)
+
+	fields = ('logo', 'designer', 'name', 'excerpt', 'link')
 	list_display = ('designer', 'name', 'excerpt')
 	list_display_links = ('designer', 'name')
 
 
 @admin.register(Achievement)
-class AchievementAdmin(admin.ModelAdmin):
-	fields = ('designer', 'title', 'description', 'date', 'group', 'link')
-	list_display = ('designer', 'title', 'subtitle', 'date', 'group')
-	list_display_links = ('designer', 'title', 'date', 'group')
+class AchievementAdmin(ImagePreviewMixin, MediaWidgetMixin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('cover',)
+
+	fields = ('cover', 'designer', 'title', 'description', 'date', 'group', 'link')
+	list_display = ('designer', 'title', 'subtitle',)
+	list_display_links = ('designer', 'title',)
 
 
 @admin.register(Designer)
-class DesignerAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
+class DesignerAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+	PREVIEW_FIELDS = ('logo', )
+
 	class Media:
 		js = ['/static/js/designers.min.js']
 
 	form = DesignerForm
-	list_display = ('id', 'owner', 'logo', 'slug', 'status')
+	list_display = ('id', 'owner', 'slug', 'status')
 	list_display_links = ('id', 'owner')
-	filter_horizontal = ('exh_portfolio', 'add_portfolio')
+	filter_horizontal = ('exh_portfolio', 'add_portfolio', 'partners')
 	search_fields = ('title', 'slug')
 	list_per_page = 50
 

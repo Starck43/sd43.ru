@@ -630,6 +630,21 @@ class Portfolio(BaseImageModel):
 
 		self.original_cover = self.cover
 
+	@property
+	def get_cover(self):
+		"""Возвращает обложку (cover или первое изображение)"""
+		if self.cover:
+			return self.cover
+
+		# Получаем первое изображение из портфолио
+		first_image = self.images.first()
+		return first_image.file if first_image else None
+
+	def get_thumbnails(self, sizes=None):
+		"""Возвращает миниатюры для портфолио"""
+		from .services import PortfolioImageService
+		return PortfolioImageService.get_thumbnails(self.get_cover, sizes)
+
 	def get_rating_stats(self):
 		"""Получение статистики рейтингов в виде словаря"""
 

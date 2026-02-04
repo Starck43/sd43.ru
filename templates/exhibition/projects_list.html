@@ -4,15 +4,12 @@
 {% load cache %}
 {% load thumbnail %}
 
-
 {% block title %}{{ block.super }} {{ separator }} {{ object }}{% endblock %}
-
 
 {% block script %}
     {{ block.super }}
     <script type="text/javascript" src="{% md5url 'js/projects.min.js' %}"></script>
 {% endblock script %}
-
 
 {% block svg_icons %}
     {{ block.super }}
@@ -21,7 +18,6 @@
         <path d="M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1 4 11.794z"></path>
     </symbol>
 {% endblock svg_icons %}
-
 
 {% block site_title %}
 
@@ -34,7 +30,6 @@
     <h1>{% if object %}{{ object }}{% else %}Категория пустая{% endif %}</h1>
 
 {% endblock site_title %}
-
 
 {% block link %}
     <div class="controls">
@@ -106,47 +101,31 @@
 
 {% block content %}
 
-    {% if object_list %}
-
+    {% if initial_projects %}
         <div id="projects" class="grid projects-grid">
-            {% for e in object_list %}
-                {% with e.title as project_title %}
+            {% for e in initial_projects %}
+
+                {% if e.thumb_mini and e.thumb_xs and e.thumb_sm %}
                     <a id="project-{{ e.id }}" class="grid-cell ratio ratio-1x1 centered"
                        href="{% url 'exhibition:project-detail-url' e.owner__slug e.project_id %}"
-                       title="{{ project_title }}">
+                       title="{{ e.title }}">
                         <figure>
-                            {% with cover=e.project_cover %}
-                                {% if cover %}
-                                    {% thumbnail cover "100x100" crop="center" quality=75 as mini %}
-                                        {% thumbnail cover "320" as xs %}
-                                            {% thumbnail cover "576" as sm %}
-                                                <img class="project-cover lazyload"
-                                                     src="{{ mini.url }}"
-                                                     data-src="{{ sm.url }}"
-                                                     data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
-                                                     data-sizes="auto"
-                                                     loading="lazy"
-                                                     title="{{ project_title }}"
-                                                     alt="{% if project_title %}{{ project_title }}. {% endif %}Автор проекта: {{ e.owner__slug }}">
-                                            {% endthumbnail %}
-                                        {% endthumbnail %}
-                                    {% endthumbnail %}
-                                {% endif %}
-                            {% endwith %}
-
+                            <img class="project-cover lazyload"
+                                 src="{{ e.thumb_mini }}"
+                                 data-src="{{ e.thumb_sm }}"
+                                 data-srcset="{{ e.thumb_xs }} {{ e.thumb_xs_w|default:320 }}w,
+                                              {{ e.thumb_sm }} {{ e.thumb_sm_w|default:576 }}w"
+                                 data-sizes="auto"
+                                 loading="lazy"
+                                 alt="{% if e.title %}{{ e.title }}. {% endif %}Автор проекта: {{ e.owner__name }}"
+                            >
                             <figcaption class="d-flex-column">
-                                {% if project_title %}
-                                    <h3 class="project-title">{{ project_title }}</h3>
+                                {% if e.title %}
+                                    <h3 class="project-title">{{ e.title }}</h3>
                                 {% endif %}
-
-{#                                {% if e.nominations__title %}#}
-{#                                    <div class="subtitle nomination-title mb-1"><b>{{ e.nominations__title }}</b></div>#}
-{#                                {% endif %}#}
-
                                 {% if e.owner__name %}
                                     <div class="subtitle owner-name">{{ e.owner__name }}</div>
                                 {% endif %}
-
                                 <div class="extra d-flex justify-between">
                                     {% if e.win_year %}
                                         <div class="portfolio-award d-flex">
@@ -156,7 +135,6 @@
                                             <span>{{ e.win_year }}</span>
                                         </div>
                                     {% endif %}
-
                                     {% if e.average > 0 %}
                                         <div class="portfolio-rate d-flex">
                                             <span class="rate-counter">{{ e.average|stringformat:".1f" }}</span>
@@ -169,37 +147,61 @@
                             </figcaption>
                         </figure>
                     </a>
-                {% endwith %}
+                {% else %}
+                    <a id="project-{{ e.id }}" class="grid-cell ratio ratio-1x1 centered"
+                       href="{% url 'exhibition:project-detail-url' e.owner__slug e.project_id %}"
+                       title="{{ e.title }}">
+                        <figure>
+                            {% if e.project_cover %}
+                                {% thumbnail e.project_cover "100x100" crop="center" quality=75 as mini %}
+                                    {% thumbnail e.project_cover "320" as xs %}
+                                        {% thumbnail e.project_cover "576" as sm %}
+                                            <img class="project-cover lazyload"
+                                                 src="{{ mini.url }}"
+                                                 data-src="{{ sm.url }}"
+                                                 data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
+                                                 data-sizes="auto"
+                                                 loading="lazy"
+                                                 alt="
 
+                                                         {% if e.title %}{{ e.title }}. {% endif %}Автор проекта: {{ e.owner__name }}">
+                                        {% endthumbnail %}
+                                    {% endthumbnail %}
+                                {% endthumbnail %}
+                            {% else %}
+                                <img class="project-cover lazyload" src="{% get_media_prefix %}site/no-image.png"
+                                     alt="">
+                            {% endif %}
+
+                            <figcaption class="d-flex-column">
+                                {% if e.title %}
+                                    <h3 class="project-title">{{ e.title }}</h3>
+                                {% endif %}
+                                {% if e.owner__name %}
+                                    <div class="subtitle owner-name">{{ e.owner__name }}</div>
+                                {% endif %}
+                            </figcaption>
+                        </figure>
+                    </a>
+                {% endif %}
             {% endfor %}
 
-            <a id="preloader" class="centered fade {% if next_page %}show{% endif %}"
-               href="{% url 'exhibition:projects-list-url' absolute_url %}">
+            <a class="preloader centered fade {% if has_next_page %}show{% endif %}"
+               href="{% url 'exhibition:projects-list-url' absolute_url %}"
+            >
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="dot"></div>
             </a>
-
         </div>
-
-        {% if next_page %}
-            <script>var nextPage = true;</script>
-        {% else %}
-            <script>var nextPage = false;</script>
-        {% endif %}
-
     {% else %}
-
         <a class="back-link" href="{{ parent_link }}">
             <svg class="icon arrow-icon arrow-left">
                 <use xlink:href="#arrow-icon"></use>
             </svg>
             &nbspВернуться к списку категорий
         </a>
-
     {% endif %}
-
-{% endblock content %}
-
+{% endblock %}
