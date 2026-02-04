@@ -182,21 +182,19 @@ class ExhibitionsAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, 
 	PREVIEW_FIELDS = ('banner',)
 
 	form = ExhibitionsForm
-	list_display = ('title', 'date_start', 'date_end', )
+	list_display = ('title', 'date_start', 'date_end',)
 	list_display_links = ('title',)
 	search_fields = ('title',)
-	date_hierarchy = 'date_start'
 	filter_horizontal = ('nominations', 'jury', 'partners', 'exhibitors',)
+	date_hierarchy = 'date_start'
+	inlines = [EventsInlineAdmin, GalleryInlineAdmin, ]
 
-	# list_select_related = ('events',)
-	# prepopulated_fields = {"slug": ('date_start',)} # adding name to slug field but not only DateFields
 	list_per_page = 20
 	view_on_site = True
-	inlines = [EventsInlineAdmin, GalleryInlineAdmin, ]
 
 	fieldsets = (
 		("Общая информация", {
-			'fields': ('title', 'slug', 'banner', 'description', 'date_start', 'date_end', 'location',)
+			'fields': ('title', 'slug', 'banner', 'description', 'date_start', 'date_end', 'location', 'files')
 		}),
 		("Номинации", {
 			'fields': ('nominations',)
@@ -209,9 +207,6 @@ class ExhibitionsAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, 
 		}),
 		("Партнеры", {
 			'fields': ('partners',)
-		}),
-		("Фото с выставки", {
-			'fields': ('files',)
 		}),
 	)
 
@@ -415,7 +410,7 @@ class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ad
 	)
 	fieldsets += MetaSeoFieldsAdmin.fieldsets
 
-	jazzmin_section_order = ("Основная информация", "Фото", "Оценки проекта", "Отзывы", "СЕО Настройки", )
+	jazzmin_section_order = ("Основная информация", "Фото", "Оценки проекта", "Отзывы", "СЕО Настройки",)
 
 	save_on_top = True
 	save_as = True

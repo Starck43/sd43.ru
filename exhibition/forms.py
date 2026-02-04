@@ -16,7 +16,7 @@ from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
 from .logic import is_image_file
-from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations
+from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations, Gallery
 from .utils import set_user_group
 
 
@@ -255,30 +255,23 @@ class MetaSeoFieldsForm(forms.ModelForm):
 
 
 class ExhibitionsForm(MetaSeoFieldsForm, forms.ModelForm):
-	files = forms.ImageField(
-		label='Фото',
-		widget=forms.ClearableFileInput(attrs={'class': 'form-control'}),
-		required=False
+	files = MultipleFileField(
+		label='Фото с выставки',
+		widget=MultipleFileInput(attrs={
+			'class': 'form-control multiple-files-control',
+			'accept': 'image/*',
+		}),
+		required=False,
+		help_text='Общий размер загружаемых фото не должен превышать %s Мб' % round(
+			settings.MAX_UPLOAD_FILES_SIZE / 1024 / 1024)
 	)
 
 	class Meta:
 		model = Exhibitions
 		fields = '__all__'
-		# fields = ('meta_title','meta_description','meta_keywords')
-		# exclude = ('slug',)
-		# template_name = 'django/forms/widgets/checkbox_select.html'
-
-		widgets = {
-			# "exhibitors": forms.CheckboxSelectMultiple(attrs={'class': ''}),
-		}
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.fields['files'].widget.attrs['multiple'] = True
 
 
 class PortfolioAdminForm(MetaSeoFieldsForm, forms.ModelForm):
-	# Это поле не сохраняется в модель, только для загрузки
 	files = MultipleFileField(
 		label='Фото',
 		widget=MultipleFileInput(attrs={
@@ -622,6 +615,15 @@ class ImageInlineForm(forms.ModelForm):
 			if 'portfolio' in self.initial:
 				portfolio_id = self.initial['portfolio']
 				max_sort = Image.objects.filter(portfolio_id=portfolio_id).aggregate(
+					Max('sort')
+				)['sort__max']
+				self.initial['sort'] = (max_sort or 0) + 1
+			else:
+				self.initial['sort'] = 1
+
+			if 'exhibition' in self.initial:
+				exhibition_id = self.initial['exhibition']
+				max_sort = Gallery.objects.filter(exhibition_id=exhibition_id).aggregate(
 					Max('sort')
 				)['sort__max']
 				self.initial['sort'] = (max_sort or 0) + 1
