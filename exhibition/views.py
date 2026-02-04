@@ -10,10 +10,10 @@ from allauth.socialaccount.signals import social_account_removed
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.files.uploadhandler import FileUploadHandler
 from django.db import connection, OperationalError
-from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count, Value
-from django.dispatch import receiver
+from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count, Max
 from django.forms import inlineformset_factory
 from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, HttpResponseRedirect
@@ -33,7 +33,7 @@ from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
 from .logic import send_email, send_email_async
-from .mixins import ExhibitionYearListMixin, BannersMixin, MetaSeoMixin
+from .mixins import BannersMixin, MetaSeoMixin, ExhibitionsYearsMixin
 from .models import *
 from .utils import is_exhibitor_of_exhibition, is_jury_member, set_user_group
 
@@ -57,42 +57,30 @@ def index(request):
 	return render(request, 'index.html', context)
 
 
-class ExhibitorsList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
+class ExhibitorsList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	""" Exhibitors view """
 	model = Exhibitors
-	queryset = Exhibitors.objects.all().order_by('name')
-	template_name = 'exhibition/participants_list.html'
+	queryset = Exhibitors.objects.annotate(
+		latest_exh_date=Max('exhibitors_for_exh__date_start')
+	).order_by('-latest_exh_date', 'name')
 
-	def get_queryset(self):
-		if self.kwargs.get('exh_year'):
-			return self.queryset.prefetch_related('exhibitors_for_exh').filter(
-				exhibitors_for_exh__slug=self.kwargs['exh_year']
-			)
-		else:
-			return self.queryset.prefetch_related('exhibitors_for_exh')
+	template_name = 'exhibition/participants_list.html'
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		context['html_classes'] = ['participants', ]
 		context['cache_timeout'] = 2592000
-
 		return context
 
 
-class PartnersList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
+class PartnersList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	""" Partners view """
 	model = Partners
+	queryset = Partners.objects.annotate(
+		latest_exh_date=Max('partners_for_exh__date_start')
+	).order_by('-latest_exh_date', 'name')
+
 	template_name = 'exhibition/partners_list.html'
-
-	def get_queryset(self):
-		if self.kwargs.get('exh_year'):
-			q = Q(partners_for_exh__slug=self.kwargs['exh_year'])
-		else:
-			last_exh = Exhibitions.objects.values_list('slug', flat=True).first()
-			q = ~Q(partners_for_exh__slug=last_exh)  # except last exhibition
-
-		posts = self.model.objects.prefetch_related('partners_for_exh').filter(q)
-		return posts
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
@@ -102,10 +90,13 @@ class PartnersList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
 		return context
 
 
-class JuryList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
+class JuryList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	""" Jury view """
 	model = Jury
-	queryset = model.objects.all()
+	queryset = Jury.objects.annotate(
+		latest_exh_date=Max('jury_for_exh__date_start')
+	).order_by('-latest_exh_date', 'name')
+
 	template_name = 'exhibition/persons_list.html'
 
 	def get_queryset(self):
@@ -124,7 +115,7 @@ class JuryList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
 		return context
 
 
-class EventsList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
+class EventsList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	""" Events view """
 	model = Events
 	template_name = 'exhibition/participants_list.html'
@@ -144,27 +135,14 @@ class EventsList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
 		return context
 
 
-class ExhibitionsList(MetaSeoMixin, BannersMixin, ListView):
-	""" Exhibition view """
-	model = Exhibitions
-
-	def get_context_data(self, **kwargs):
-		context = super().get_context_data(**kwargs)
-		context['html_classes'] = ['exhibitions', ]
-		context['page_title'] = self.model._meta.verbose_name_plural
-		context['cache_timeout'] = 2592000
-
-		return context
-
-
-class WinnersList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
+class WinnersList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	""" Winners view """
 	model = Winners
 	queryset = Winners.objects.all()
 	template_name = 'exhibition/winners_list.html'
 
 	def get_queryset(self):
-		query = self.queryset.select_related(
+		return self.queryset.select_related(
 			'nomination', 'exhibitor', 'exhibition', 'portfolio'
 		).annotate(
 			exh_year=F('exhibition__slug'),
@@ -176,14 +154,22 @@ class WinnersList(MetaSeoMixin, ExhibitionYearListMixin, ListView):
 			'exh_year', 'nomination_title', 'exhibitor_name', 'exhibitor_slug', 'project_id'
 		).order_by('exhibitor_name', '-exh_year')
 
-		if self.kwargs.get('exh_year'):
-			return query.filter(exhibition__slug=self.kwargs['exh_year'])
-
-		return query
-
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		context['html_classes'] = ['participants', 'winners']
+		context['cache_timeout'] = 2592000
+
+		return context
+
+
+class ExhibitionsList(MetaSeoMixin, BannersMixin, ListView):
+	""" Exhibition view """
+	model = Exhibitions
+
+	def get_context_data(self, **kwargs):
+		context = super().get_context_data(**kwargs)
+		context['html_classes'] = ['exhibitions', ]
+		context['page_title'] = self.model._meta.verbose_name_plural
 		context['cache_timeout'] = 2592000
 
 		return context
@@ -221,128 +207,163 @@ class ProjectsList(MetaSeoMixin, BannersMixin, ListView):
 	def setup(self, request, *args, **kwargs):
 		super().setup(request, *args, **kwargs)
 		self.slug = self.kwargs.get('slug')
-		if self.slug:
-			self.object = self.model.objects.get(slug=self.slug)
+		self.object = self.model.objects.filter(slug=self.slug).first()
 
 	def get_queryset(self):
-		# Текущая страница для получения диапазона выборки записей
-		self.page = int(self.page) if self.page else 1
-		start_page = (self.page - 1) * self.PAGE_SIZE
-		end_page = self.page * self.PAGE_SIZE
+		queryset = self.build_base_queryset()
+		queryset = self.apply_filters(queryset)
+		queryset = self.annotate_projects(queryset)
 
+		queryset = queryset.values(
+			'id', 'project_id', 'project_cover', 'title',
+			'last_exh_year', 'win_year', 'average',
+			'owner__name', 'owner__slug'
+		).order_by('-last_exh_year', '-win_year', '-average')
+
+		return self.paginate(queryset)
+
+	def build_base_queryset(self):
+		return Portfolio.objects.get_visible_projects(self.request.user)
+
+	def apply_filters(self, queryset):
 		query = Q(nominations__category__slug=self.slug)
 
-		# Если выбраны опции фильтра
 		if self.filters_group and self.filters_group[0] != '0':
-			query.add(Q(attributes__in=self.filters_group), Q.AND)
+			query &= Q(attributes__in=self.filters_group)
 
-		# Подзапрос для получения первого фото в портфолио
-		subquery = Subquery(Image.objects.filter(portfolio=OuterRef('pk')).values('file')[:1])
-
-		subquery2 = Subquery(Winners.objects.filter(
-			portfolio_id=OuterRef('pk'),
-			nomination__category__slug=self.slug
-		).values('exhibition__slug')[:1])
-
-		# Используем кастомный менеджер для фильтрации видимых проектов
-		base_queryset = Portfolio.objects.get_visible_projects(self.request.user)
-
-		posts = base_queryset.filter(
+		return queryset.filter(
 			Q(project_id__isnull=False) & query
-		).distinct().prefetch_related('ratings').annotate(
+		).distinct()
+
+	def annotate_projects(self, queryset):
+		cover_subquery = Subquery(
+			Image.objects.filter(portfolio=OuterRef('pk')).values('file')[:1]
+		)
+
+		win_year_subquery = Subquery(
+			Winners.objects.filter(
+				portfolio_id=OuterRef('pk'),
+				nomination__category__slug=self.slug
+			).values('exhibition__slug')[:1]
+		)
+
+		return queryset.annotate(
 			last_exh_year=F('exhibition__slug'),
 			average=Avg('ratings__star'),
-			win_year=subquery2,
+			win_year=win_year_subquery,
 			project_cover=Case(
-				When(Q(cover__exact='') | Q(cover__isnull=True), then=subquery),
+				When(Q(cover__isnull=True) | Q(cover=''), then=cover_subquery),
 				default='cover',
 				output_field=CharField()
 			)
-		).values(
-			'id', 'project_id', 'project_cover', 'title', 'nominations__title',
-			'last_exh_year', 'win_year', 'average', 'owner__name', 'owner__slug'
-		).order_by(
-			'-last_exh_year', '-win_year', '-average'
-		)[start_page:end_page]
+		)
 
-		self.is_next_page = False if len(posts) < self.PAGE_SIZE else True
-		return posts
+	def paginate(self, queryset):
+		start = (self.page - 1) * self.PAGE_SIZE
+		limit = self.PAGE_SIZE + 1
 
-	def get(self, request, *args, **kwargs):
-		self.page = self.request.GET.get('page', None)  # Параметр GET запроса ?page текущей страницы
-		self.filters_group = self.request.GET.getlist('filter-group', None)
-		# Выбранные опции checkbox в GET запросе (?nominations=[])
+		items = list(queryset[start:start + limit])
+		self.is_next_page = len(items) > self.PAGE_SIZE
 
-		if self.filters_group or self.page:
-			default_placeholder = getattr(settings, 'DEFAULT_NO_IMAGE', '')
-			default_quality = getattr(settings, 'THUMBNAIL_QUALITY', 85)
-			admin_thumbnail_size = getattr(settings, 'ADMIN_THUMBNAIL_SIZE', [100, 100])
-			admin_default_size = '%sx%s' % (admin_thumbnail_size[0], admin_thumbnail_size[1])
-			admin_default_quality = getattr(settings, 'ADMIN_THUMBNAIL_QUALITY', 75)
+		return items[:self.PAGE_SIZE]
 
-			queryset = self.get_queryset()
+	@staticmethod
+	def enrich_queryset_with_thumbnails(queryset):
+		default_quality = getattr(settings, 'THUMBNAIL_QUALITY', 85)
 
-			for i, q in enumerate(queryset):
-				if q['project_cover']:
-					thumb_mini = get_thumbnail(
-						q['project_cover'],
-						admin_default_size,
-						crop='center',
-						quality=admin_default_quality
-					)
-					thumb_320 = get_thumbnail(q['project_cover'], '320', quality=default_quality)
-					thumb_576 = get_thumbnail(q['project_cover'], '576', quality=default_quality)
-					queryset[i].update({
-						'thumb_mini': str(thumb_mini) or default_placeholder,
-						'thumb_xs': str(thumb_320) or default_placeholder,
-						'thumb_sm': str(thumb_576) or default_placeholder,
-						'thumb_xs_w': 320,
-						'thumb_sm_w': 576
-					})
+		for item in queryset:
+			cover = item.get('project_cover')
+			if not cover:
+				continue
 
-			json_data = {
-				'current_page': int(self.page or 1),
-				'next_page': self.is_next_page,
-				'projects_list': list(queryset),
-				'projects_url': '/projects/',
-				'media_url': settings.MEDIA_URL,
-			}
+			mini = get_thumbnail(cover, '100x100', crop='center', quality=75)
+			xs = get_thumbnail(cover, '320', quality=default_quality)
+			sm = get_thumbnail(cover, '576', quality=default_quality)
 
-			return JsonResponse(json_data, safe=False)
-		else:
-			# выполняется при загрузке первой страницы
-			return super().get(request, **kwargs)
+			item.update({
+				'thumb_mini': settings.MEDIA_URL + str(mini),
+				'thumb_xs': settings.MEDIA_URL + str(xs),
+				'thumb_sm': settings.MEDIA_URL + str(sm),
+				'thumb_xs_w': 320,
+				'thumb_sm_w': 576,
+			})
 
-	def get_context_data(self, **kwargs):
-		context = super().get_context_data(**kwargs)
+		return queryset
 
-		# Отсортируем и сгруппируем словарь аттрибутов по ключу group
-		# keyfunc = lambda x:x['group']
-		# attributes = [list(data) for _, data in groupby(sorted(data, key=keyfunc), key=keyfunc)]
+	@staticmethod
+	def build_filter_attributes(attributes):
+		attributes_values = list(attributes.values('id', 'name', 'group'))
+		grouped = defaultdict(list)
 
-		# найдем аттрибуты для фильтра в портфолио, если они есть в текущей категории
-		attributes = PortfolioAttributes.objects.prefetch_related('attributes_for_portfolio').filter(
+		for idx, item in enumerate(attributes_values):
+			item['group_name'] = attributes[idx].get_group_display()
+			grouped[item['group']].append(item)
+
+		return list(grouped.values())
+
+	def get_filter_cache_key(self):
+		return f'portfolio:filters:{self.slug}'
+
+	def get_filter_attributes(self):
+		cache_key = self.get_filter_cache_key()
+		cached = cache.get(cache_key)
+
+		if cached is not None:
+			return cached
+
+		attributes = PortfolioAttributes.objects.prefetch_related(
+			'attributes_for_portfolio'
+		).filter(
 			attributes_for_portfolio__nominations__category__slug=self.slug,
 			group__isnull=False,
 		).distinct()
 
-		# Формирование групп аттрибутов фильтра
-		attributes_dict = attributes.values('id', 'name', 'group')
-		filter_attributes = defaultdict(list)
-		for i, item in enumerate(attributes_dict):
-			attributes_dict[i].update({'group_name': attributes[
-				i].get_group_display()})  # {queryset_row}.get_group_display() - get choice field name
-			filter_attributes[item['group']].append(attributes_dict[i])
+		grouped = self.build_filter_attributes(attributes)
 
-		context['html_classes'] = ['projects', ]
-		context['parent_link'] = '/category'
-		context['absolute_url'] = self.slug
-		context['object'] = self.object
-		context['next_page'] = self.is_next_page
-		context['filter_attributes'] = list(filter_attributes.values())
-		context['cache_timeout'] = 86400  # one day
+		cache.set(cache_key, grouped, 86400)  # сутки
+		return grouped
+
+	def json_response(self, queryset):
+		return JsonResponse({
+			'current_page': self.page,
+			'next_page': self.is_next_page,
+			'projects_list': queryset,
+			'projects_url': '/projects/',
+			'media_url': settings.MEDIA_URL,
+			'default_placeholder': getattr(settings, 'DEFAULT_NO_IMAGE', ''),
+		})
+
+	def get(self, request, *args, **kwargs):
+		self.page = int(request.GET.get('page', 1))
+		self.filters_group = request.GET.getlist('filter-group')
+
+		if self.filters_group or 'page' in request.GET:
+			queryset = self.get_queryset()
+			queryset = self.enrich_queryset_with_thumbnails(queryset)
+			return JsonResponse({
+				'current_page': self.page,
+				'next_page': self.is_next_page,
+				'projects_list': list(queryset),
+				'projects_url': '/projects/',
+				'default_placeholder': settings.MEDIA_URL + getattr(settings, 'DEFAULT_NO_IMAGE', ''),
+			})
+
+		return super().get(request, **kwargs)
+
+	def get_context_data(self, **kwargs):
+		context = super().get_context_data(**kwargs)
+
+		context.update({
+			'html_classes': ['projects'],
+			'parent_link': '/category',
+			'absolute_url': self.slug,
+			'object': self.object,
+			'next_page': self.is_next_page,
+			'filter_attributes': self.get_filter_attributes(),
+			'cache_timeout': 86400,
+		})
+
 		return context
-
 
 
 class ProjectsListByYear(ListView):

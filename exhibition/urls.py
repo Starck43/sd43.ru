@@ -15,22 +15,27 @@ urlpatterns = [
 	path('projects/<exh_year>/', views.ProjectsListByYear.as_view(), name='projects-list-by-year-url'),
 
 	path('jury/', views.JuryList.as_view(), kwargs={'exh_year': None}, name='jury-list-url'),
-	path('jury/<exh_year>/', views.JuryList.as_view(), name='jury-list-url'),
+	path('jury/all/', views.JuryList.as_view(), name='jury-list-url'),
+	path('jury/<exh_year>/', views.JuryList.as_view(), name='jury-list-year'),
 	path('jury/<slug>/detail/', views.JuryDetail.as_view(), name='jury-detail-url'),
 
 	path('partners/', views.PartnersList.as_view(), kwargs={'exh_year': None}, name='partners-list-url'),
-	path('partners/<exh_year>/', views.PartnersList.as_view(), name='partners-list-url'),
+	path('partners/all/', views.PartnersList.as_view(), name='partners-list-url'),
+	path('partners/<exh_year>/', views.PartnersList.as_view(), name='partners-list-year'),
 	path('partner/<slug>/detail/', views.PartnerDetail.as_view(), name='partner-detail-url'),
 
 	path('exhibitors/', views.ExhibitorsList.as_view(), kwargs={'exh_year': None}, name='exhibitors-list-url'),
-	path('exhibitors/<exh_year>/', views.ExhibitorsList.as_view(), name='exhibitors-list-url'),
+	path('exhibitors/all/', views.ExhibitorsList.as_view(), name='exhibitors-list-all'),
+	path('exhibitors/<exh_year>/', views.ExhibitorsList.as_view(), name='exhibitors-list-year'),
 	path('exhibitor/<slug>/detail/', views.ExhibitorDetail.as_view(), name='exhibitor-detail-url'),
 
 	path('winners/', views.WinnersList.as_view(), kwargs={'exh_year': None}, name='winners-list-url'),
-	path('winners/<exh_year>/', views.WinnersList.as_view(), name='winners-list-url'),
+	path('winners/all/', views.WinnersList.as_view(), name='winners-list-url'),
+	path('winners/<exh_year>/', views.WinnersList.as_view(), name='winners-list-year'),
 
 	path('events/', views.EventsList.as_view(), kwargs={'exh_year': None}, name='events-list-url'),
-	path('events/<exh_year>/', views.EventsList.as_view(), name='events-list-url'),
+	path('events/all/', views.EventsList.as_view(), name='events-list-url'),
+	path('events/<exh_year>/', views.EventsList.as_view(), name='events-list-year'),
 	path('events/<exh_year>/<pk>/', views.EventDetail.as_view(), name='event-detail-url'),
 
 	# path('exhibition/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),

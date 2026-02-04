@@ -131,7 +131,8 @@
                                                      data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
                                                      data-sizes="auto"
                                                      loading="lazy"
-                                                     alt="{% if project_title %}{{ project_title }}. {% endif %}Автор проекта: {{ e.owner__slug }}">
+                                                     alt="{% if project_title %}{{ project_title }}. {% endif %}Автор проекта: {{ e.owner__slug }}"
+                                                >
                                             {% endthumbnail %}
                                         {% endthumbnail %}
                                     {% endthumbnail %}
@@ -177,7 +178,7 @@
 
             {% endfor %}
 
-            <a id="preloader" class="centered fade {% if next_page %}show{% endif %}"
+            <a id="preloader" class="ratio centered fade {% if next_page %}show{% endif %}"
                href="{% url 'exhibition:projects-list-url' absolute_url %}">
                 <div class="dot"></div>
                 <div class="dot"></div>

@@ -10,5 +10,5 @@
             alt="{{ obj.title }}"
     >
 {% empty %}
-    <img src="{% get_media_prefix %}site/no-image.png" alt="">
+    <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
 {% endthumbnail %}

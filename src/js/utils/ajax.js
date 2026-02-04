@@ -4,9 +4,14 @@
  * @param {string} params - параметры запроса
  * @param {string} method - метод запроса
  * @param {Function} renderFunc - функция для рендеринга результата
- * @param {HTMLElement} alertModal - модальное окно для отображения ошибок
+ * @param {boolean} showAlert - флаг для отображения ошибок через модальное окно
  */
-export function ajaxSend(url, params = '', method = 'post', renderFunc = defaultRender, alertModal = null) {
+export function ajaxSend(
+    url, params = '',
+    method = 'post',
+    renderFunc = defaultRender,
+    showAlert = false
+) {
     // Формируем URL для GET запросов
     const requestUrl = method.toLowerCase() === 'get' ? `${url}?${params}` : url;
 
@@ -28,43 +33,29 @@ export function ajaxSend(url, params = '', method = 'post', renderFunc = default
     fetch(requestUrl, requestConfig)
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`❌ HTTP error!\nstatus: ${response.status}`);
             }
             return response.json();
         })
         .then(json => {
             if (typeof renderFunc === 'function') {
-                console.log('📞 Calling render function');
                 renderFunc(json);
             } else {
-                console.warn('❌ Render function not provided');
+                console.warn('❌ Render function not provided', json);
                 defaultRender(json);
             }
         })
         .catch((error) => {
-            console.error('AJAX Error:', error);
-            handleAjaxError(error, alertModal);
+            console.error('❌ AJAX Error:', error);
+
+            if (showAlert) {
+                // Используем глобальную систему уведомлений
+                const errorMessage = getErrorMessage(error);
+                showGlobalError(errorMessage);
+            }
         });
 }
 
-/**
- * Обработчик ошибок AJAX
- */
-function handleAjaxError(error, alertModal = null) {
-    const errorMessage = getErrorMessage(error);
-
-    if (alertModal) {
-        // Используем переданное модальное окно для ошибок
-        const alertBlock = alertModal.querySelector('.message-status');
-        if (alertBlock) {
-            alertBlock.classList.add('error');
-            alertBlock.textContent = errorMessage;
-        }
-    } else {
-        // Используем глобальную систему уведомлений
-        showGlobalError(errorMessage);
-    }
-}
 
 /**
  * Получение понятного сообщения об ошибке
@@ -93,8 +84,7 @@ function showGlobalError(message) {
         window.Alert.error(`<h3>Ошибка!</h3><p>${message}</p>`);
     } else {
         // Fallback: простой alert если система уведомлений не загружена
-        console.error('AJAX Error:', message);
-        alert(`Ошибка: ${message}`);
+        alert(`Ошибка сервера: ${message}`);
     }
 }
 
@@ -102,8 +92,6 @@ function showGlobalError(message) {
  * Функция по умолчанию для рендеринга
  */
 function defaultRender(json) {
-    console.log('AJAX Response (no render function provided):', json);
-
     // Если в ответе есть сообщение, показываем его
     if (json.message && window.Alert) {
         const messageType = json.status === 'error' ? 'error' : 'success';

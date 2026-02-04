@@ -18,9 +18,10 @@
                                  data-expand="50"
                                  loading="lazy"
                                  style="max-width: {{ img.file.width }}px"
-                                 title="{% if img.title %}{{ img.title }}{% endif %}">
+                                 alt="{% if img.title %}{{ img.title }}{% endif %}"
+                            >
                         {% empty %}
-                            <img src="{% get_media_prefix %}site/no-image.png">
+                            <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
                         {% endthumbnail %}
                     {% endthumbnail %}
                 {% endthumbnail %}

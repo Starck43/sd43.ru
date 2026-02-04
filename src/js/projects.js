@@ -1,60 +1,27 @@
 import {isInViewport} from './utils/viewport.js';
 import {lazyloadInit} from './utils/lazyload.js';
 import {createFormData} from "./utils/ajax.js";
-import {normalizeMedaPath} from "./utils/common.js";
+import {normalizeImageUrl, rafThrottle} from "./utils/common.js";
 
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    // Projects Render Variables
     let preloader = document.querySelector('#preloader');
     let currentPage = 1, nextPage = true;
+    let preloaderVisible = false;
+
+    const throttledJsonRequest = rafThrottle(jsonRequest);
+
 
     function contentRender(data) {
         const projectsList = data['projects_list'];
-        let html = '';
+        const defaultPlaceholder = data['default_placeholder'];
+        const mediaUrl = data['media_url']
+        const getImageUrl = (url) => normalizeImageUrl(url, mediaUrl, defaultPlaceholder);
 
-        for (const i in projectsList) {
-            const
-                id = projectsList[i]['id'],
-                title = projectsList[i]['title'],
-                thumb_mini = normalizeMedaPath(projectsList[i]['thumb_mini'], data['media_url']),
-                thumb_xs = normalizeMedaPath(projectsList[i]['thumb_xs'], data['media_url']),
-                thumb_sm = normalizeMedaPath(projectsList[i]['thumb_sm'], data['media_url']),
-                thumb_xs_w = projectsList[i]['thumb_xs_w'],
-                thumb_sm_w = projectsList[i]['thumb_sm_w'],
-                author = projectsList[i]['owner__name'],
-                score = (projectsList[i]['average']) ? projectsList[i]['average'].toFixed(1) : null,
-                win_year = projectsList[i]['win_year'],
-                url = data['projects_url'] + projectsList[i]['owner__slug'] + '/project-' + projectsList[i]['project_id'] + '/';
-
-            html += '<a id="project-' + id + '" class="grid-cell ratio centered" href="' + url + '" title="' + title + '">\
-					<figure>\
-						<img class="project-cover lazyload"\
-							src="' + thumb_mini + '"\
-							data-src="' + thumb_sm + '"\
-							data-srcset="' + thumb_xs + ' ' + thumb_xs_w + 'w, ' + thumb_sm + ' ' + thumb_sm_w + 'w"\
-							loading="lazy"\
-							alt="' + (title ? title + '. ' : '') + 'Автор проекта: ' + author + '">\
-						<figcaption class="d-flex-column">' +
-                (title ? '<h3 class="project-title">' + title + '</h3>' : '') +
-                (author ? '<div class="subtitle owner-name">' + author + '</div>' : '') +
-                '<div class="extra d-flex justify-between">' +
-                (win_year ?
-                    '<div class="portfolio-award d-flex">\
-                        <svg class="award"><use xlink:href="#award-icon"></use></svg>\
-                        <span>' + win_year + '</span>\
-							</div>' : '') +
-                (score ?
-                    '<div class="portfolio-rate d-flex">\
-                        <span class="rate-counter">' + score + '</span>\
-								<svg class="rate-star"><use xlink:href="#star-icon"></use></svg>\
-							</div>' : '') +
-                '</div>' +
-                '</figcaption>\
-            </figure>\
-        </a>';
-        }
+        const html = projectsList
+            .map(project => createProjectHTML(project, getImageUrl))
+            .join('');
 
         if (html) {
             nextPage = data['next_page'];
@@ -74,14 +41,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Вставим контент перед прелоадером
                 preloader.insertAdjacentHTML('beforebegin', html);
             }
-            jsonRequest(); // сразу подгрузим следующий контент, если прелоадер остался в зоне видимости
-            lazyloadInit(); // обновим lazyload
+            throttledJsonRequest(); // сразу подгрузим следующий контент, если прелоадер остался в зоне видимости
+            lazyloadInit();
 
         } else nextPage = false;
 
 
         if (nextPage === false) {
-            document.removeEventListener('scroll', jsonRequest);
+            document.removeEventListener('scroll', throttledJsonRequest);
             preloader.classList.remove('show');
             window.setTimeout(() => {
                 preloader.classList.add('hidden');
@@ -89,25 +56,63 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function createProjectHTML(project, imageFunc) {
+        const {
+            id, title, owner__name: author, average, win_year,
+            owner__slug, project_id, thumb_mini, thumb_xs, thumb_sm,
+            thumb_xs_w = 320, thumb_sm_w = 576
+        } = project;
+
+        const width = (w) => w ? `${w}w` : '';
+
+        return `
+            <a id="project-${id}" class="grid-cell ratio centered" href="/projects/${owner__slug}/project-${project_id}/" title="${title || ''}">
+                <figure>
+                    <img class="project-cover lazyload"
+                         src="${imageFunc(thumb_mini)}"
+                         data-src="${imageFunc(thumb_sm)}"
+                         data-srcset="${imageFunc(thumb_xs)} ${width(thumb_xs_w)}, ${imageFunc(thumb_sm)} ${width(thumb_sm_w)}"
+                         data-sizes="auto"
+                         loading="lazy"
+                         alt="${title ? `${title}. ` : ''}Автор проекта: ${author || ''}">
+                    <figcaption class="d-flex-column">
+                        ${title ? `<h3 class="project-title">${title}</h3>` : ''}
+                        ${author ? `<div class="subtitle owner-name">${author}</div>` : ''}
+                        <div class="extra d-flex justify-between">
+                            ${win_year ? `<div class="portfolio-award d-flex"><svg class="award"><use xlink:href="#award-icon"></use></svg><span>${win_year}</span></div>` : ''}
+                            ${average ? `<div class="portfolio-rate d-flex"><span>${average.toFixed(1)}</span><svg class="rate-star"><use xlink:href="#star-icon"></use></svg></div>` : ''}
+                        </div>
+                    </figcaption>
+                </figure>
+            </a>`;
+    }
+
     function jsonRequest() {
-        if (nextPage && isInViewport(preloader, true)) {
-            nextPage = null; // До завершения запроса на сервере, статус след страницы установим в null, чтобы не выполнять новые ajax запросы
-            let url = preloader.href;
-            let params = 'page=' + String(currentPage + 1);
-            if (filterForm) {
-                let filters = createFormData(filterForm);
-                params += '&' + filters;
-            }
-            window.ajaxSend(url, params, 'get', contentRender);
+        if (!nextPage) return;
+
+        preloaderVisible = isInViewport(preloader, true);
+        if (!preloaderVisible) return;
+
+        // До завершения запроса на сервере, статус след страницы установим в null, чтобы не выполнять новые ajax запросы
+        nextPage = null;
+
+        let url = preloader.href;
+        let params = 'page=' + String(currentPage + 1);
+        if (filterForm) {
+            let filters = createFormData(filterForm);
+            params += '&' + filters;
         }
+        window.ajaxSend(url, params, 'get', contentRender);
     }
 
     if (preloader) {
-        document.addEventListener('scroll', jsonRequest);
+        document.addEventListener('scroll', throttledJsonRequest);
         preloader.addEventListener('click', (e) => {
             e.preventDefault();
-            jsonRequest();
+            throttledJsonRequest();
         });
+        
+        throttledJsonRequest();
     }
 
     // Projects Filter
@@ -136,7 +141,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 submitBtn.textContent = 'сбросить фильтры';
             }
 
-            document.addEventListener('scroll', jsonRequest);
+            document.addEventListener('scroll', throttledJsonRequest);
             window.ajaxSend(url, 'page=1&' + params, method, contentRender);
         }
 
@@ -192,6 +197,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // проверка при загрузке страницы
         checkActiveFilters();
+
+        if (filterForm) {
+            const hasFilters = Array.from(
+                filterForm.querySelectorAll('input[type=checkbox]')
+            ).some(cb => cb.checked);
+
+            if (hasFilters) {
+                submitFilter(filterForm);
+            }
+        }
+
 
         // нажатие на кнопку сброса фильтров
         filterForm.addEventListener('submit', function (e) {

@@ -63,8 +63,8 @@
                                              data-srcset="{{ logo_1x.url }} {{ logo_1x.x }}w, {{ logo_2x.url }} {{ logo_2x.x }}w, {{ partner.logo.url }} {{ partner.logo.width }}w"
                                              data-sizes="auto"
                                              loading="lazy"
-                                             title="{{ partner.name }}"
-                                             alt="{{ partner.name }}">
+                                             alt="{{ partner.name }}"
+                                        >
                                     {% empty %}
                                         <img src="{% get_media_prefix %}site/no-person.png" alt="">
                                     {% endthumbnail %}

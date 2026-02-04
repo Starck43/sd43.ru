@@ -124,10 +124,6 @@ label + * {
   padding-left: 3px;
   color: darkred;
 }
-.form-control,
-.btn {
-  border-radius: var(--border-radius);
-}
 svg.icon {
   width: 100%;
   height: 100%;
@@ -1255,7 +1251,7 @@ form:not(.nav-search) > * {
   border-color: #160D32;
 }
 .sidebar form .filters-group {
-  padding-left: 0;
+  padding-left: 0.5rem;
 }
 @media (min-width: 992px) {
   .sidebar form .filters-group {
@@ -1495,6 +1491,7 @@ form:not(.nav-search) > * {
   color: var(--main-color);
   background-color: #fff;
   border: 1px solid var(--main-color);
+  border-radius: var(--border-radius);
   -webkit-transition: all 200ms ease-in-out;
   transition: all 200ms ease-in-out;
 }
@@ -1851,6 +1848,9 @@ form:not(.nav-search) > * {
 .grid.persons-grid {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
+.grid.persons-grid .grid-cell {
+  border: 1px solid #cccccc;
+}
 .grid.persons-grid .person-title {
   margin: 0.5rem;
   text-align: center;
@@ -1919,6 +1919,8 @@ form:not(.nav-search) > * {
   padding: 0.75em 1em;
   gap: 0.3em;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.3);
+  border: 1px solid #cccccc;
+  border-radius: var(--border-radius);
 }
 .grid .grid-cell figcaption::before {
   content: "";
@@ -2315,7 +2317,7 @@ label,
   width: 100%;
   padding: 1em;
   margin-bottom: 4vh;
-  border: solid 3px #cccccc;
+  border: solid 2px #cccccc;
   -webkit-transition: 150ms border-color ease;
   transition: 150ms border-color ease;
 }
@@ -2377,7 +2379,7 @@ label,
   --text-color: #222;
   --border-color: #160D32;
   --border-radius: 0.25rem;
-  --border-thickness: 3px;
+  --border-thickness: 2px;
   --link-color: rgb(39.8095238095, 23.5238095238, 90.4761904762);
   --link-hover-color: rgb(75.4285714286, 44.5714285714, 171.4285714286);
 }
@@ -2443,7 +2445,7 @@ h4 {
   -webkit-box-flex: 100%;
   -ms-flex: 100%;
   flex: 100%;
-  margin-bottom: 0.75rem;
+  margin: 0.75rem 0;
 }
 .controls .back-link {
   display: -webkit-box;

@@ -157,10 +157,10 @@ class Profile(models.Model):
 class Exhibitors(Person, Profile):
 	class Meta(Person.Meta):
 		verbose_name = 'Участник выставки'
-		verbose_name_plural = 'Участники'
+		verbose_name_plural = 'Участники выставки'
 		ordering = ['user__last_name']
-		db_table = 'exhibitors'
 		unique_together = ['user', ]
+		db_table = 'exhibitors'
 
 	def get_absolute_url(self):
 		return reverse('exhibition:exhibitor-detail-url', kwargs={'slug': self.slug})
@@ -180,7 +180,7 @@ class Jury(Person):
 	class Meta(Person.Meta):
 		verbose_name = 'Жюри'
 		verbose_name_plural = 'Жюри'
-		ordering = ['sort', 'name']
+		ordering = [Coalesce("sort", F('id') + 500)]  # сортировка в приоритете по полю sort, а потом уже по-умолчанию
 		db_table = 'jury'
 
 	def save(self, *args, **kwargs):
@@ -249,7 +249,6 @@ class Nominations(models.Model):
 	description = RichTextUploadingField('Описание номинации', blank=True)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
 
-	# Metadata
 	class Meta:
 		ordering = ['sort', 'title']
 		verbose_name = 'Номинация'
@@ -292,11 +291,21 @@ class Exhibitions(BaseImageModel):
 	exhibitors = models.ManyToManyField(
 		Exhibitors,
 		related_name='exhibitors_for_exh',
-		verbose_name='Участники',
+		verbose_name='Участники выставки',
 		blank=True
 	)
-	partners = models.ManyToManyField(Partners, related_name='partners_for_exh', verbose_name='Партнеры', blank=True)
-	jury = models.ManyToManyField(Jury, related_name='jury_for_exh', verbose_name='Жюри', blank=True)
+	partners = models.ManyToManyField(
+		Partners,
+		related_name='partners_for_exh',
+		verbose_name='Партнеры выставки',
+		blank=True
+	)
+	jury = models.ManyToManyField(
+		Jury,
+		related_name='jury_for_exh',
+		verbose_name='Жюри выставки',
+		blank=True
+	)
 	nominations = models.ManyToManyField(
 		Nominations,
 		related_name='nominations_for_exh',
@@ -341,10 +350,16 @@ class Exhibitions(BaseImageModel):
 	def __str__(self):
 		return self.title
 
+	@classmethod
+	def get_unfinished_exhibition(cls):
+		"""Получить текущую или предстоящую выставку (не завершенную)"""
+		today = now().date()
+
+		# Ищем выставки, которые еще не завершены (date_end >= today)
+		return cls.objects.filter(date_end__gte=today).order_by('date_start').first()
+
 	@property
 	def status(self):
-		from django.utils.timezone import now
-
 		today = now().date()
 		return 'upcoming' if today < self.date_start else 'active' if today <= self.date_end else 'finished'
 
@@ -452,9 +467,9 @@ class Events(models.Model):
 		Exhibitions,
 		on_delete=models.SET_NULL,
 		related_name='events',
+		verbose_name='Выставка',
 		null=True,
 		blank=True,
-		verbose_name='Выставка'
 	)
 	title = models.CharField('Название мероприятия', max_length=250)
 	date_event = models.DateField('Дата мероприятия')

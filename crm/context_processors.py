@@ -1,3 +1,4 @@
+from crm import settings
 from exhibition.apps import ExhibitionConfig
 from exhibition.services import is_mobile
 from exhibition.models import Exhibitions
@@ -9,7 +10,10 @@ def common_context(request):
 	meta = {
 		'title': "Дизайнерская выставка Сфера Дизайна",
 		'description': "Выставка реализованных дизайн-проектов, где представлены портфолио дизайнеров и победители",
-		'keywords': "дизайнерская выставка, реализованные проекты интерьеров, дизайн интерьеров, сфера дизайна, портфолио дизайнеров, победители выставки"
+		'keywords': (
+			"дизайнерская выставка, реализованные проекты интерьеров, дизайн интерьеров, сфера дизайна, "
+			"портфолио дизайнеров, победители выставки"
+		)
 	}
 
 	scheme = request.is_secure() and "https" or "http"
@@ -36,4 +40,5 @@ def common_context(request):
 		'scheme': scheme,
 		# 'page_url': site_url + request.path,
 		'default_meta': meta,
+		'no_image_placeholder': settings.DEFAULT_NO_IMAGE
 	}

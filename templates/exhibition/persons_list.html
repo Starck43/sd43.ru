@@ -10,7 +10,9 @@
 
 
 {% block site_title %}
-    <h1>{{ page_title }} {% if exh_year %}{{ exh_year }}{% else %}за все годы{% endif %}</h1>
+    <h1>
+        {{ page_title }} {% if exh_year %}{{ exh_year }}{% elif is_all_years %}за все годы{% endif %}
+    </h1>
 {% endblock site_title %}
 
 {% block link %}
@@ -32,20 +34,37 @@
 {% endblock link %}
 
 {% block sidebar %}
-    <div class="years-filters sidebar-inner">
-        <ul class="nav d-flex-column">
-            <li class="nav-title mb-2 {% if not exh_year %}active{% endif %}">
-                <a href="/{{ absolute_url }}/">
-                    все годы
-                </a>
-            </li>
-            {% for e in exhibitions_list %}
-                <li class="nav-title my-2 {% if exh_year and exh_year == e.exh_year|stringformat:'s' %}active{% endif %}">
-                    <a href="/{{ absolute_url }}/{{ e.exh_year }}/">{{ e.exh_year }}</a>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
+    {% with list_all_url='exhibition:'|add:absolute_url|add:'-list-url' %}
+        {% with list_year_url='exhibition:'|add:absolute_url|add:'-list-year' %}
+
+            <div class="years-filters sidebar-inner">
+                <ul class="nav d-flex-column">
+                    <li class="nav-title mb-2 {% if is_all_years %}active{% endif %}">
+                        {% if not is_all_years %}
+                            <a href="{% url list_all_url %}">
+                                все годы
+                            </a>
+                        {% else %}
+                            <span class="active-link">все годы</span>
+                        {% endif %}
+                    </li>
+                    {% for e in exhibitions_list %}
+                        <li class="nav-title my-2
+                    {% if exh_year and exh_year == e.exh_year|stringformat:'s' %}active{% endif %}">
+                            {% if exh_year == e.exh_year|stringformat:'s' %}
+                                <span class="active-link">{{ e.exh_year }}</span>
+                            {% else %}
+                                <a href="{% url list_year_url e.exh_year %}">
+                                    {{ e.exh_year }}
+                                </a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        {% endwith %}
+    {% endwith %}
 {% endblock sidebar %}
 
 {% block sidebar_secondary %}{% include "ads/sidebar_banners_list.html" %}{% endblock sidebar_secondary %}
@@ -59,7 +78,7 @@
             <div class="grid persons-grid">
                 {% for person in object_list %}
                     <a class="grid-cell" href="{{ person.get_absolute_url }}">
-                        <div class="person-logo ratio ratio-1x1">
+                        <div class="person-logo ratio">
                             {% thumbnail person.logo "150x150" as xs %}
                                 {% thumbnail person.logo "300x300" as sm %}
                                     <img class="lazyload"
@@ -76,7 +95,7 @@
                                 {% endthumbnail %}
                             {% endthumbnail %}
                         </div>
-                        <h4 class="mt-1">{{ person }}</h4>
+                        <h4 class="person-title">{{ person }}</h4>
                     </a>
                 {% empty %}
                     <h2>Не определены!</h2>

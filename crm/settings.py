@@ -1,7 +1,9 @@
 import os
-from dotenv import load_dotenv
-import dj_database_url
+from os import getenv
 from pathlib import Path
+
+import dj_database_url
+from dotenv import load_dotenv
 
 from .project import *
 
@@ -406,7 +408,7 @@ else:
 	STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 
-DEFAULT_NO_IMAGE = os.path.join(MEDIA_ROOT, 'site/no-image.png')
+DEFAULT_NO_IMAGE = 'site/default-image.webp'
 FILES_UPLOAD_FOLDER = 'uploads/'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
@@ -418,7 +420,7 @@ if os.path.exists(os.path.join(MEDIA_ROOT, 'tmp')):
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# It uses in exhibition.views.projects_list as parameter for queryset
-PORTFOLIO_COUNT_PER_PAGE = 20
+# It uses in exhibition.views.ProjectsList as parameter for queryset
+PORTFOLIO_COUNT_PER_PAGE = int(os.getenv('PORTFOLIO_COUNT_PER_PAGE', 20))
 # It uses in blog.views.ArticleList as parameter for queryset
-ARTICLES_COUNT_PER_PAGE = 10
+ARTICLES_COUNT_PER_PAGE = int(os.getenv('ARTICLES_COUNT_PER_PAGE', 10))

@@ -1,10 +1,13 @@
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ImageField, FileField
+from django.shortcuts import redirect
+from django.utils.timezone import now
 
 from ads.models import Banner
 from .forms import ImageInlineForm, ImageInlineFormSet
-from .models import MetaSEO
+from .models import MetaSEO, Exhibitors, Jury, Partners
+from .services import delete_cached_fragment
 from .widgets import MediaWidget
 
 from django.contrib import admin
@@ -139,6 +142,33 @@ class PersonAdminMixin(ImagePreviewMixin, MediaWidgetMixin):
 
 		return queryset, use_distinct
 
+	@staticmethod
+	def clear_person_cache(obj):
+		absolute_url = obj.__class__.__name__.lower()
+
+		# 1. Базовые варианты
+		delete_cached_fragment('persons', absolute_url, None)
+		delete_cached_fragment('persons', absolute_url, '')
+		delete_cached_fragment('persons', absolute_url, 'all')
+
+		if isinstance(obj, Exhibitors):
+			exhibitions = obj.exhibitors_for_exh.only('slug')
+		elif isinstance(obj, Jury):
+			exhibitions = obj.jury_for_exh.only('slug')
+		elif isinstance(obj, Partners):
+			exhibitions = obj.partners_for_exh.only('slug')
+		else:
+			exhibitions = []
+
+		# 2. Для каждой выставки, где участвует этот объект
+		for exh in exhibitions:
+			delete_cached_fragment('persons', absolute_url, exh.slug)
+
+			# Также очищаем кэш контента выставки
+			delete_cached_fragment('exhibition_content', exh.slug)
+
+		return f"Cleared cache for {absolute_url}"
+
 
 class ProfileAdminMixin:
 	"""Mixin для добавления полей Profile в админку"""
@@ -159,14 +189,77 @@ class ProfileAdminMixin:
 		return list_display
 
 
-class ExhibitionYearListMixin:
+class ExhibitionsYearsMixin:
+	"""Миксин для списков участников, жюри, партнеров"""
+
+	def setup(self, request, *args, **kwargs):
+		super().setup(request, *args, **kwargs)
+
+		# Определяем тип страницы
+		self.is_all_years_page = '/all/' in request.path
+		self.is_root_page = self._is_root_page(request.path)
+
+	def _is_root_page(self, path):
+		"""Определяем, корневая ли это страница"""
+		absolute_url = self.model.__name__.lower()
+		root_paths = [
+			f'/{absolute_url}/',
+			f'/{absolute_url}',
+		]
+		return path in root_paths
+
+	def get_queryset(self):
+		model_name = self.model.__name__.lower()
+		related_name = f'{model_name}_for_exh'
+
+		if self.is_all_years_page:
+			# Для "всех годов" - добавляем аннотацию для сортировки если нужно
+			if hasattr(self, 'queryset') and self.queryset is not None:
+				qs = self.queryset
+			else:
+				qs = self.model.objects.all()
+
+			return qs.prefetch_related(related_name).distinct()
+
+		elif self.kwargs.get('exh_year'):
+			# Для конкретного года
+			if hasattr(self, 'queryset') and self.queryset is not None:
+				qs = self.queryset
+			else:
+				qs = self.model.objects.all()
+
+			return qs.prefetch_related(related_name).filter(
+				**{f'{related_name}__slug': self.kwargs['exh_year']}
+			).distinct()
+
+		return self.model.objects.none()
+
+	def get(self, request, *args, **kwargs):
+		if self.is_root_page:
+			# Ленивый импорт внутри метода
+			from exhibition.models import Exhibitions
+
+			today = now().date()
+			current_exhibition = Exhibitions.objects.filter(
+				date_end__gte=today
+			).order_by('date_start').first()
+
+			if current_exhibition:
+				return redirect(
+					f'exhibition:{self.model.__name__.lower()}-list-year',
+					exh_year=current_exhibition.slug
+				)
+
+			return redirect(f'exhibition:{self.model.__name__.lower()}-list-all')
+
+		return super().get(request, *args, **kwargs)
+
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		context['page_title'] = self.model._meta.verbose_name_plural
 		context['absolute_url'] = self.model.__name__.lower()
-		context['exh_year'] = self.kwargs.get('exh_year', None)
-		if not context.get('cache_timeout'):
-			context['cache_timeout'] = 86400
+		context['exh_year'] = self.kwargs.get('exh_year')
+		context['is_all_years'] = self.is_all_years_page
 		return context
 
 

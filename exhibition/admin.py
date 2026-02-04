@@ -126,13 +126,7 @@ class ExhibitorsAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, a
 				for article in articles:
 					delete_cached_fragment('article', article.id)
 
-		delete_cached_fragment('persons', 'exhibitors', None)
-
-		if obj.id:
-			exhibitions = Exhibitions.objects.filter(exhibitors=obj.id).only('slug')
-			for exh in exhibitions:
-				delete_cached_fragment('persons', 'exhibitors', exh.slug)
-				delete_cached_fragment('exhibition_content', exh.slug)
+		self.clear_person_cache(obj)
 
 
 @admin.register(Jury)
@@ -148,20 +142,6 @@ class JuryAdmin(PersonAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 			delete_cached_fragment('exhibition_content', exh.slug)
 
 
-@admin.register(Organizer)
-class OrganizerAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
-	list_display = ('name', 'description_html',)
-	ordering = ('sort',)
-
-	@admin.display(description='Описание для главной страницы', empty_value='')
-	def description_html(self, obj):
-		return format_html(obj.description)
-
-	def save_model(self, request, obj, form, change):
-		super().save_model(request, obj, form, change)
-		delete_cached_fragment('index_page')
-
-
 @admin.register(Partners)
 class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 
@@ -175,6 +155,20 @@ class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, adm
 		for exh in exhibitions:
 			delete_cached_fragment('persons', 'partners', exh.slug)
 			delete_cached_fragment('exhibition_content', exh.slug)
+
+
+@admin.register(Organizer)
+class OrganizerAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
+	list_display = ('name', 'description_html',)
+	ordering = ('sort',)
+
+	@admin.display(description='Описание для главной страницы', empty_value='')
+	def description_html(self, obj):
+		return format_html(obj.description)
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+		delete_cached_fragment('index_page')
 
 
 @admin.register(Exhibitions)

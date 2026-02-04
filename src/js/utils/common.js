@@ -11,8 +11,8 @@ export function rafThrottle(func) {
     };
 }
 
-export function normalizeMedaPath(url, mediaUrl) {
-    if (!url) return '';
+export function normalizeImageUrl(url, mediaUrl = '', placeholder = '') {
+    if (!url) return placeholder;
     return url.startsWith('/media/')
         ? url
         : mediaUrl + url;
