@@ -100,11 +100,14 @@
         </span>
 
         {# Средняя оценка #}
-        {% if show_average and average_rate > 0 and not is_owner and not exhibition_ended %}
-            <span class="summary-score ms-2">
-                {{ average_rate|unlocalize }}
-            </span>
-        {% endif %}    </div>
+        {% if show_average and average_rate > 0 %}
+            {% if not is_owner or exhibition_ended %}
+                <span class="summary-score ms-2">
+                    {{ average_rate|unlocalize }}
+                </span>
+            {% endif %}
+        {% endif %}
+    </div>
 
     {# Личная оценка пользователя #}
     {% if user_score %}
