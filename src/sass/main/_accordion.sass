@@ -1,0 +1,63 @@
+[data-accordion]
+	--arrow-down: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>')
+	--arrow-angle: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>')
+	--arrow-plus: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>')
+	--arrow-minus: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg>')
+
+	--arrow-size: 32px
+	--arrow-margin: 0 0 0 8px
+
+	// Состояния
+	&[data-accordion="collapsed"] > :not(:first-child):not([data-static])
+		height: 0
+		opacity: 0
+		overflow: hidden
+
+	&[data-accordion="expanded"] > :not(:first-child):not([data-static])
+		height: auto
+		opacity: 1
+		overflow: visible
+
+	// Анимация
+	> :not(:first-child):not([data-static])
+		transition: height 0.3s ease, opacity 0.3s ease
+
+	// Заголовок
+	> :first-child:not([data-static])
+		cursor: pointer
+		display: flex
+		align-items: center
+		justify-content: space-between
+
+		&::after
+			content: ''
+			display: inline-block
+			width: var(--arrow-size)
+			height: var(--arrow-size)
+			background: var(--arrow-down) no-repeat center
+			background-size: contain
+			margin: var(--arrow-margin)
+			transition: transform 0.3s ease
+			flex-shrink: 0
+
+	// Поворот стрелки при раскрытии
+	&[data-accordion="expanded"]:not([data-arrow="plus"])
+		> :first-child:not([data-static])::after
+			transform: rotate(180deg)
+
+	// Варианты стрелок
+	&[data-arrow="angle"]
+		> :first-child:not([data-static])::after
+			background-image: var(--arrow-angle)
+
+		&[data-accordion="expanded"] > :first-child:not([data-static])::after
+			transform: rotate(90deg)
+
+	&[data-arrow="plus"]
+		> :first-child:not([data-static])::after
+			background-image: var(--arrow-plus)
+			transition: opacity 0.15s ease
+
+		&[data-accordion="expanded"] > :first-child:not([data-static])::after
+			background-image: var(--arrow-minus)
+			transform: none

@@ -908,6 +908,9 @@ form:not(.nav-search) > * {
 }
 .navbar .nav-item.dropdown {
   position: relative;
+  --arrow-down: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>');
+  --arrow-size: 27px;
+  --arrow-margin: 0 0 0 3px;
 }
 .navbar .nav-item:hover {
   opacity: 1;
@@ -962,17 +965,10 @@ form:not(.nav-search) > * {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 .dropdown-toggle {
-  position: relative;
   width: auto !important;
-  margin: auto;
-  cursor: pointer;
-}
-.dropdown-toggle::before {
-  position: absolute !important;
-  width: 1.3rem !important;
-  height: 1.3rem !important;
-  top: 0.4rem;
-  right: -0.2rem;
+  -webkit-box-pack: center !important;
+  -ms-flex-pack: center !important;
+  justify-content: center !important;
 }
 .dropdown-item {
   display: block;
@@ -1093,69 +1089,78 @@ form:not(.nav-search) > * {
     font-size: 1em;
   }
 }
-.collapsed,
-.expanded {
-  position: relative;
+[data-accordion] {
+  --arrow-down: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>');
+  --arrow-angle: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>');
+  --arrow-plus: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>');
+  --arrow-minus: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg>');
+  --arrow-size: 32px;
+  --arrow-margin: 0 0 0 8px;
+}
+[data-accordion][data-accordion=collapsed] > :not(:first-child):not([data-static]) {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+[data-accordion][data-accordion=expanded] > :not(:first-child):not([data-static]) {
+  height: auto;
+  opacity: 1;
+  overflow: visible;
+}
+[data-accordion] > :not(:first-child):not([data-static]) {
+  -webkit-transition: height 0.3s ease, opacity 0.3s ease;
+  transition: height 0.3s ease, opacity 0.3s ease;
+}
+[data-accordion] > :first-child:not([data-static]) {
+  cursor: pointer;
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
-  flex-wrap: wrap;
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  margin: 0;
-  cursor: pointer;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
 }
-.collapsed > *:not(.collapsed):not(.expanded),
-.expanded > *:not(.collapsed):not(.expanded) {
-  overflow: hidden;
-  -webkit-transition: 200ms all ease;
-  transition: 200ms all ease;
-}
-.collapsed > *:first-child,
-.expanded > *:first-child {
-  width: 100%;
-}
-.collapsed > *:first-child::before,
-.expanded > *:first-child::before {
+[data-accordion] > :first-child:not([data-static])::after {
   content: "";
-  position: relative;
-  width: 1.6rem;
-  height: 1.6rem;
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 2 12 20" fill="none" stroke="gray" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>') no-repeat center;
-  float: right;
+  display: inline-block;
+  width: var(--arrow-size);
+  height: var(--arrow-size);
+  background: var(--arrow-down) no-repeat center;
+  background-size: contain;
+  margin: var(--arrow-margin);
   -webkit-transition: -webkit-transform 0.3s ease;
   transition: -webkit-transform 0.3s ease;
   transition: transform 0.3s ease;
   transition: transform 0.3s ease, -webkit-transform 0.3s ease;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
 }
-.collapsed.bg-dark > *:first-child::before,
-.expanded.bg-dark > *:first-child::before {
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 2 12 20" fill="none" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>') no-repeat center;
+[data-accordion][data-accordion=expanded]:not([data-arrow=plus]) > :first-child:not([data-static])::after {
+  -webkit-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
+  transform: rotate(180deg);
 }
-.collapsed > *:first-child::before {
-  -webkit-transform: rotate(-180deg);
-  -ms-transform: rotate(-180deg);
-  transform: rotate(-180deg);
+[data-accordion][data-arrow=angle] > :first-child:not([data-static])::after {
+  background-image: var(--arrow-angle);
 }
-.collapsed > *:last-child {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
+[data-accordion][data-arrow=angle][data-accordion=expanded] > :first-child:not([data-static])::after {
+  -webkit-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  transform: rotate(90deg);
 }
-.expanded ~ *:not(.collapsed):not(.expanded) {
-  max-height: 900px;
-  opacity: 1;
+[data-accordion][data-arrow=plus] > :first-child:not([data-static])::after {
+  background-image: var(--arrow-plus);
+  -webkit-transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease;
 }
-.expanded > *:first-child::before {
-  -webkit-transform: rotate(-90deg);
-  -ms-transform: rotate(-90deg);
-  transform: rotate(-90deg);
-}
-.expanded > *:last-child {
-  max-height: 900px;
-  opacity: 1;
+[data-accordion][data-arrow=plus][data-accordion=expanded] > :first-child:not([data-static])::after {
+  background-image: var(--arrow-minus);
+  -webkit-transform: none;
+  -ms-transform: none;
+  transform: none;
 }
 .sidebar {
   max-width: 180px;

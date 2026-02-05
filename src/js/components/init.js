@@ -1,6 +1,6 @@
 import {Alert} from "./alert.js";
 import {Offcanvas} from "./offcanvas.js";
-// import {Collapse} from "./collapse.js";
+import {Accordion} from "./accordion.js";
 import {smoothScroll} from '../utils/viewport.js';
 import {rafThrottle} from "../utils/common.js";
 
@@ -60,7 +60,7 @@ export function initComponents() {
     initOffcanvases();      // Выдвижные панели
     initSearch();           // Поиск
     initAlerts();           // Уведомления
-    initCollapsedBlocks();  // Свернутые блоки
+    initAccordions();       // Аккордеоны
 }
 
 /**
@@ -148,22 +148,6 @@ function initSearch() {
 /**
  * Инициализация разворачиваемых блоков
  */
-function initCollapsedBlocks() {
-    const collapsedBlocks = document.querySelectorAll('.collapsed');
-
-    collapsedBlocks.forEach((item) => {
-        item.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A' || e.target.closest('a')) {
-                return;
-            }
-
-            if (e.currentTarget.classList.contains('collapsed')) {
-                e.currentTarget.classList.remove('collapsed');
-                e.currentTarget.classList.add('expanded');
-            } else if (e.currentTarget.classList.contains('expanded')) {
-                e.currentTarget.classList.remove('expanded');
-                e.currentTarget.classList.add('collapsed');
-            }
-        }, {passive: true});
-    });
+function initAccordions() {
+    document.querySelectorAll('[data-accordion]').forEach(el => new Accordion(el));
 }

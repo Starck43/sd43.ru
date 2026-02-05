@@ -48,7 +48,7 @@
             {% cache 2592000 navbar %}
 
                 {% if exhibitions_list %}
-                    <li class="nav-item dropdown exhibitions-item bg-dark collapsed">
+                    <li class="nav-item dropdown exhibitions-item" data-accordion>
                         <div
                                 class="nav-link dropdown-toggle d-lg-none"
                                 role="button"
@@ -57,7 +57,7 @@
                             Выставки
                         </div>
 
-                        <a class="nav-link" href="/exhibitions/">Выставки</a>
+                        <a class="nav-link" data-static href="/exhibitions/">Выставки</a>
 
                         <ul id="dropdownYearsList" class="dropdown-menu d-lg-none" aria-labelledby="exhibitionsMenuLink">
                             {% for e in exhibitions_list %}

@@ -34,9 +34,6 @@
 				max-width: 100%
 				margin: 0 0 1em
 
-	.expanded .description
-		margin-bottom: 1.5vh
-
 	.banners-container
 		visibility: visible
 		flex: 100%
@@ -54,10 +51,6 @@
 				object-fit: cover
 
 	.exhibition-container
-		p
-			margin: 0
-			padding-top: 0.5rem
-
 		> div
 			position: relative
 			padding: 3vh 0
@@ -102,14 +95,12 @@
 		user-select: none
 
 		~ ol
+			gap: 0.2rem
 			padding: 0
 
 			> li
 				padding: 0.5rem 1rem
 				background-color: $highlight-block-bg
-
-				&:not(.collapsed):not(.expanded):not(:last-child)
-					padding-bottom: 0
 
 		~ ul
 			margin-bottom: 0
@@ -138,13 +129,6 @@
 
 			+mixins.media-max(sm)
 				font-size: 1.4rem
-
-		&::after
-			margin-left: 7px
-
-		&.collapsed,
-		&.expanded
-			padding-right: 0.75em
 
 	.subtitle ~ *
 		flex: 100%

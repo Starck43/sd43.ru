@@ -150,9 +150,9 @@
                 <h2 class="nominations-title exh-title">
                     Номинации
                 </h2>
-                <ol class="d-flex-column gap-1">
+                <ol class="d-flex-column">
                     {% for nomination in object.nominations.all %}
-                        <li class="nomination-item {% if show_projects %}collapsed{% else %}pb-1{% endif %}">
+                        <li class="nomination-item" {% if show_projects %}data-accordion{% endif %}>
                             <h3 class="exh-title subtitle">{{ nomination.title }}</h3>
 
                             {% if show_projects %}
@@ -190,7 +190,7 @@
 
             <div id="exhibitors" class="exhibitors-block">
                 <h2 class="exhibitors-title exh-title">{{ object.exhibitors.first|verbose_name_plural }}</h2>
-                <ol class="d-flex-column gap-1">
+                <ol class="d-flex-column">
                     {% for item in object.exhibitors.all %}
                         <li class="pb-1">
                             <a href="{{ item.get_absolute_url }}">
@@ -208,9 +208,9 @@
 
             <div id="jury" class="jury-block">
                 <h2 class="exhibitors-title exh-title">{{ object.jury.first|verbose_name_plural }}</h2>
-                <ol class="d-flex-column gap-1">
+                <ol class="d-flex-column">
                     {% for item in object.jury.all %}
-                        <li class="collapsed">
+                        <li data-accordion>
                             <h3 class="subtitle exh-title">
                                 <a href="{{ item.get_absolute_url }}">{{ item.name }}</a>
                             </h3>
@@ -258,7 +258,7 @@
 
                 {% else %}
 
-                    <h2 class="partners-title exh-title collapsed">{{ object.partners.first|verbose_name_plural }}</h2>
+                    <h2 class="partners-title exh-title">{{ object.partners.first|verbose_name_plural }}</h2>
                     <ul>
                         {% for item in object.partners.all %}
                             <li><h3 class="subtitle exh-title brand-title">{{ item.name }}</h3></li>
@@ -275,11 +275,10 @@
         {% if object.events.count %}
 
             <div id="events" class="events-block">
-                <h2 class="events-title exh-title {% if object.date_end < today %}collapsed{% else %}expanded{% endif %}">{{ events_title }}</h2>
-                <ol class="d-flex-column gap-1">
+                <h2 class="events-title exh-title">{{ events_title }}</h2>
+                <ol class="d-flex-column gap-2">
                     {% for item in object.events.all %}
-                        <li>
-                            <div class="collapsed">
+                            <li data-accordion>
                                 <h3 class="subtitle exh-title">{{ item.title }}</h3>
                                 <div class="event-datetime excerpt">
                                     {% if item.description %}
@@ -289,12 +288,11 @@
                                     {% if item.hoster %}<p><span>Организатор: </span>{{ item.hoster }}</p>{% endif %}
                                     {% if item.lector %}<p><span>Ведущий: </span>{{ item.lector }}</p>{% endif %}
                                 </div>
-                            </div>
-                            <div class="event-details">
-                                <p>{{ item.date_event }}</p>
-                                <p>{{ item.time_event }}</p>
-                            </div>
-                        </li>
+                                <div class="event-details" data-static>
+                                    <p>{{ item.date_event }}</p>
+                                    <p>{{ item.time_event }}</p>
+                                </div>
+                            </li>
                     {% endfor %}
                 </ol>
             </div>

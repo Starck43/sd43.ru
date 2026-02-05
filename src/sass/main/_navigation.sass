@@ -91,6 +91,9 @@
 
 		&.dropdown
 			position: relative
+			--arrow-down: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>')
+			--arrow-size: 27px
+			--arrow-margin: 0 0 0 3px
 
 		&:hover
 			opacity: 1
@@ -139,17 +142,8 @@
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1)
 
 .dropdown-toggle
-	position: relative
 	width: auto !important
-	margin: auto
-	cursor: pointer
-
-	&::before
-		position: absolute !important
-		width: 1.3rem !important
-		height: 1.3rem !important
-		top: 0.4rem
-		right: -0.2rem
+	justify-content: center !important
 
 .dropdown-item
 	display: block
