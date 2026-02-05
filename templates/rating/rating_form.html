@@ -101,7 +101,7 @@
 
         {# Средняя оценка #}
         {% if show_average and average_rate > 0 %}
-            {% if not is_owner or exhibition_ended %}
+            {% if not is_owner or exhibition_ended or is_jury or user.is_staff %}
                 <span class="summary-score ms-2">
                     {{ average_rate|unlocalize }}
                 </span>
