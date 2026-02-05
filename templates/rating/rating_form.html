@@ -100,7 +100,7 @@
         </span>
 
         {# Средняя оценка #}
-        {% if show_average and average_rate > 0 and not (is_owner and not exhibition_ended) %}
+        {% if show_average and average_rate > 0 and not is_owner and not exhibition_ended %}
             <span class="summary-score ms-2">
                 {{ average_rate|unlocalize }}
             </span>
