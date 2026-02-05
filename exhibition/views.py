@@ -121,17 +121,18 @@ class EventsList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	template_name = 'exhibition/participants_list.html'
 
 	def get_queryset(self):
-		if self.kwargs.get('exh_year'):
+		if self.is_all_years_page:
+			posts = self.model.objects.all().order_by('-exhibition__slug', 'title')
+		elif self.kwargs.get('exh_year'):
 			posts = self.model.objects.filter(exhibition__slug=self.kwargs['exh_year']).order_by('title')
 		else:
-			posts = self.model.objects.all().order_by('-exhibition__slug', 'title')
+			posts = self.model.objects.none()
 
 		return posts
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
 		context['html_classes'] = ['events', ]
-
 		return context
 
 
@@ -142,7 +143,17 @@ class WinnersList(MetaSeoMixin, ExhibitionsYearsMixin, ListView):
 	template_name = 'exhibition/winners_list.html'
 
 	def get_queryset(self):
-		return self.queryset.select_related(
+		queryset = self.queryset
+
+		if self.is_all_years_page:
+			queryset = queryset.all()
+		elif self.kwargs.get('exh_year'):
+			queryset = queryset.filter(exhibition__slug=self.kwargs['exh_year'])
+		else:
+			return Winners.objects.none()
+
+		# Добавляем аннотации и выбор полей
+		return queryset.select_related(
 			'nomination', 'exhibitor', 'exhibition', 'portfolio'
 		).annotate(
 			exh_year=F('exhibition__slug'),

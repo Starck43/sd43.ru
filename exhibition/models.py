@@ -482,12 +482,10 @@ class Events(models.Model):
 
 	# Metadata
 	class Meta:
-		ordering = ['date_event', 'time_start']  # '-' for DESC ordering
+		ordering = ['date_event', 'time_start']
 		verbose_name = 'Мероприятие'
 		verbose_name_plural = 'Мероприятия'
 		db_table = 'events'
-
-	# unique_together = ['date_event', 'time_start', 'time_end']
 
 	def save(self, *args, **kwargs):
 		super().save(*args, **kwargs)
