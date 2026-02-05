@@ -8,6 +8,8 @@ class ExhibitionConfig(AppConfig):
 	default_auto_field = 'django.db.models.BigAutoField'
 
 	def ready(self):
+		import exhibition.signals
+
 		Exhibtitors = self.get_model("Exhibitors")
 		watson.register(Exhibtitors, store=("description",))
 		Jury = self.get_model("Jury")

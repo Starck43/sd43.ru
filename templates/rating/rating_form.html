@@ -71,7 +71,8 @@
         <span class="rating centered"
               data-average="{{ average_rate }}"
               data-round-rate="{{ round_rate }}"
-              data-extra-percent="{{ extra_rate_percent }}">
+              data-extra-percent="{{ extra_rate_percent }}"
+        >
             {% for choice in rating_form.star %}
                 {{ choice.tag }}
                 <label for="{{ choice.id_for_label }}" class="centered">

@@ -461,23 +461,6 @@ class PortfolioAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, ad
 		images = request.FILES.getlist('files')
 		obj.save(images=images)  # сохраним портфолио и связанные фотографии
 
-		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, True)
-		delete_cached_fragment('portfolio_list', obj.owner.slug, obj.project_id, False)
-		delete_cached_fragment('portfolio_slider', obj.owner.slug, obj.project_id)
-		delete_cached_fragment('participant_detail', obj.owner.id)
-		# delete_cached_fragment('exhibition_header', obj.exhibition.slug)
-
-		for nomination in obj.nominations.all():
-			if nomination.category:
-				delete_cached_fragment('projects_list', nomination.category.slug)
-				delete_cached_fragment('sidebar', nomination.category.slug)
-
-		victories = Winners.objects.filter(portfolio=obj)
-		for victory in victories:
-			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, True)
-			delete_cached_fragment('portfolio_list', victory.exhibition.slug, victory.nomination.slug, False)
-			delete_cached_fragment('portfolio_slider', victory.exhibition.slug, victory.nomination.slug)
-
 
 @admin.register(Gallery)
 class GalleryAdmin(ImagePreviewMixin, MediaWidgetMixin, admin.ModelAdmin):

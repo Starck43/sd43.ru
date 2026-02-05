@@ -616,7 +616,6 @@ class Portfolio(BaseImageModel):
 
 	objects = PortfolioManager()
 
-	# Metadata
 	class Meta:
 		ordering = ['-exhibition__slug', 'order', 'title']
 		verbose_name = 'Портфолио'
@@ -872,29 +871,3 @@ class MetaSEO(models.Model):
 	def get_content(cls, model, object_id=None):
 		model_name = model.__name__.lower()
 		return cls.objects.filter(model__model=model_name, post_id=object_id or None).first()
-
-
-@receiver(post_save, sender=Portfolio)
-def handle_portfolio_images(sender, instance, created, **kwargs):
-	"""
-	Обработчик для сохранения изображений портфолио.
-	"""
-	if hasattr(instance, '_images_to_save') and instance._images_to_save:
-		# Получаем максимальный sort для этого портфолио
-		max_sort = Image.objects.filter(portfolio=instance).aggregate(max_sort=models.Max('sort'))['max_sort'] or 0
-
-		for idx, image_file in enumerate(instance._images_to_save, start=1):
-			try:
-				Image.objects.create(
-					portfolio=instance,
-					sort=max_sort + idx,
-					file=image_file
-				)
-
-			except Exception as e:
-				import logging
-				logger = logging.getLogger(__name__)
-				logger.error(f"Error saving image for portfolio {instance.id}: {e}")
-
-		# Очищаем временный атрибут
-		del instance._images_to_save
