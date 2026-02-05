@@ -16,12 +16,16 @@
                 <ul>
                     {% for nom in person.list %}
                         <li>
-                            <a
-                                    class="nomination-link"
-                                    href="{% url 'exhibition:project-detail-url' nom.exhibitor_slug nom.project_id %}"
-                            >
+                            {% if nom.project_id %}
+                                <a
+                                        class="nomination-link"
+                                        href="{% url 'exhibition:project-detail-url' nom.exhibitor_slug nom.project_id %}"
+                                >
+                                    <h4>{{ nom.nomination_title }}, <span>{{ nom.exh_year }}</span></h4>
+                                </a>
+                            {% else %}
                                 <h4>{{ nom.nomination_title }}, <span>{{ nom.exh_year }}</span></h4>
-                            </a>
+                            {% endif %}
                         </li>
                     {% endfor %}
                 </ul>
