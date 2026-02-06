@@ -3,7 +3,8 @@
 
 
 #articleFilter
-	margin-bottom: 5vh
+	+mixins.media-min(lg)
+		margin-bottom: 5vh
 	+mixins.media-max(lg)
 		background-color: $highlight-block-bg
 
@@ -12,16 +13,28 @@
 
 .articles
 	.sidebar.sidebar-primary
+		position: relative
+		top: -0.5rem
+		transform: none
+		visibility: visible !important
+		z-index: 1
+
 		+mixins.media-max(lg)
-			position: relative
 			width: 100%
 			max-width: 100% !important
 			left: 0
 			right: unset
+			border: $border-thickness solid $highlight-border-color
+			border-radius: $border-radius
+			transform: translateX(0)
+
 			button
 				display: none
+			.sidebar-inner
+				padding: $container-margin-md
 
 label, .article-title
+	margin-top: 0
 	text-transform: lowercase
 
 .article-content

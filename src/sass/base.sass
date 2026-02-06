@@ -31,6 +31,7 @@
 	--border-thickness: #{$border-thickness}
 	--link-color: #{$link-color}
 	--link-hover-color: #{$link-hover-color}
+	--gap: 1rem
 
 html
 	font-family: var(--bs-body-font-family), Tahoma, serif
@@ -56,6 +57,11 @@ h1
 		font-style: italic
 		color: $text-color
 
+h2
+	margin-bottom: 0.8rem
+	text-transform: lowercase
+	font-size: calc(1.6rem + 0.8vw)
+
 h3
 	margin-bottom: 0.5rem
 	font-size: calc(1.2rem + .2vw)
@@ -76,7 +82,7 @@ h3, h4
 .controls
 	position: relative
 	flex: 100%
-	margin: 0.75rem 0
+	margin-top: 1rem
 
 	.back-link
 		display: flex
@@ -221,21 +227,19 @@ h3, h4
 
 .container
 	position: relative
-	flex-wrap: wrap
-	width: auto
+	flex-direction: column
+	gap: var(--gap)
+	width: 100%
 	max-width: $container-max_w
-	margin: 0
-	padding-left: $container-margin-xs
-	padding-right: $container-margin-xs
+	padding: 0 $container-margin-xs
 	+mixins.media-min(sm)
-		padding-left: $container-margin-md
-		padding-right: $container-margin-md
-	+mixins.media-min(md)
-		flex-direction: unset
+		padding: 0 $container-margin-md
 	+mixins.media-min(lg)
-		padding-left: $container-margin-lg
-		padding-right: $container-margin-lg
+		flex-direction: row
+		padding: 0 $container-margin-lg
 		margin-bottom: $container-margin-lg
+	+mixins.media-min(xxl)
+		+mixins.push--auto
 
 	header
 		padding: $container-margin-xs*3 0 $container-margin-xs*2
@@ -244,29 +248,16 @@ h3, h4
 			padding: $container-margin-md*3 0 $container-margin-md*2
 
 	.content
-		justify-content: flex-start
 		gap: 2vh
 		flex: 1
+		margin: 0 auto
 		width: 100%
 		+mixins.media-min(xxl)
 			width: 100% - $col-width-xxl*2
 
-
-.flex-content
-	margin: $container-margin-xs 0 !important
-	+mixins.media-min(lg)
-		margin-left: $col-width-lg !important
-		margin-right: $col-width-lg !important
-	+mixins.media-min(xl)
-		margin-left: $col-width-xl !important
-		margin-right: $col-width-xl !important
-	+mixins.media-min(xxl)
-		margin-left: $col-width-xxl !important
-		margin-right: $col-width-xxl !important
-
 .home
 	.content
-		max-width: 1000px
+		//max-width: 1000px
 		margin: auto
 
 	h1
@@ -315,14 +306,9 @@ h3, h4
 //font-size: calc(1.5rem + 1vw)
 
 
-.exhibition, .nominations
+.nominations
 	h2
 		margin-bottom: 0
-
-.participant, .exhibition, .nominations
-	h2
-		font-weight: bold
-		text-transform: lowercase
 
 	h3
 		margin: 0

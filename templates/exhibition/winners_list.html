@@ -7,7 +7,7 @@
 
 {% block persons_list %}
 
-    <ol class="list-style-none mt-2">
+    <ol class="list-style-none">
         {% regroup object_list by exhibitor_name as exhibitors %}
 
         {% for person in exhibitors %}

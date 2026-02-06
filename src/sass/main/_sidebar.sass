@@ -4,16 +4,15 @@
 
 
 .sidebar
-	max-width: $col-width-lg
 	> *
 		margin: $container-margin-sm
 
 	+mixins.media-min(lg)
-		position: relative
-		flex: auto
-		width: 100%
+		position: sticky
+		top: 5rem
+		width: calc($col-width-lg - var(--gap))
 		height: 100%
-		padding: $container-margin-xs
+		margin: 0
 		background-color: transparent
 		transform: unset
 		visibility: visible !important
@@ -26,31 +25,29 @@
 
 
 	+mixins.media-min(xl)
-		max-width: $col-width-xl
-		padding: $container-margin-sm
+		width: calc($col-width-xl - var(--gap))
 
 	+mixins.media-min(xxl)
-		max-width: $col-width-xxl
-		padding: $container-margin-md
-		flex: 100%
+		width: calc($col-width-xxl - var(--gap))
 
 	&-inner
 		width: 100%
 		height: 100%
-		overflow-y: auto
-		margin: $container-margin-sm 0
+		margin: 0
 
-		ul.nav
+		.years-list
 			margin: 0
 			padding: 0
+			+mixins.media-min(lg)
+				padding: $container-margin-lg 0
+				background-color: $highlight-block-bg
+				border-radius: $border-radius
+				border: $border-thickness solid $highlight-border-color
 
 			li
 				+mixins.push--auto
 				display: table
 				margin-bottom: 0.8rem
-
-		+mixins.media-min(lg)
-			margin: 0
 
 	.banner-link
 		display: block
@@ -93,8 +90,9 @@
 	padding: 0 1.5rem
 
 	+mixins.media-min(lg)
-		margin-left: -0.7rem
-		padding: 0 0.5rem
+		padding: 0
+	+mixins.media-min(xl)
+		padding-right: 0.5rem
 
 .home .sidebar
 	max-width: calc($brand-logo-width)
@@ -104,15 +102,6 @@
 		max-width: $brand-logo-width - 40px
 	+mixins.media-max(lg)
 		max-width: $brand-logo-width - 70px
-
-
-.articles .sidebar-primary
-	transform: none
-	visibility: visible !important
-	+mixins.media-max(lg)
-		//z-index: 1000
-		.sidebar-inner
-			padding: $container-margin-md
 
 
 .sidebar-toggler

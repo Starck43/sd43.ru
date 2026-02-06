@@ -34,11 +34,11 @@
 {% endblock link %}
 
 {% block sidebar %}
-    {% with list_all_url='exhibition:'|add:absolute_url|add:'-list-url' %}
+    {% with list_all_url='exhibition:'|add:absolute_url|add:'-list-all' %}
         {% with list_year_url='exhibition:'|add:absolute_url|add:'-list-year' %}
 
             <div class="years-filters sidebar-inner">
-                <ul class="nav d-flex-column">
+                <ul class="years-list nav d-flex-column">
                     <li class="nav-title mb-2 {% if is_all_years %}active{% endif %}">
                         {% if not is_all_years %}
                             <a href="{% url list_all_url %}">

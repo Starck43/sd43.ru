@@ -50,16 +50,16 @@
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none">
     {% block svg_icons %}
-        <symbol id="arrow-icon" height="100%" width="100%" viewBox="0 0 24 24" fill="transparent" stroke-width="2"
+        <symbol id="arrow-icon" height="100%" width="100%" viewBox="0 0 24 24" fill="transparent" stroke-width="1"
                 stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
             <path d="M7 2 L17 12 L7 22"></path>
         </symbol>
-        <symbol id="close-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round"
+        <symbol id="close-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="1" stroke-linejoin="round"
                 stroke-linecap="round" stroke="currentColor">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </symbol>
-        <symbol id="close2-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <symbol id="close2-icon" width="100%" height="100%" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
             <path d="M1 1 L23 23 M23 1 L1 23"></path>
         </symbol>
         <symbol id="search-icon" width="100%" height="100%" viewBox="0 0 30 30" fill="transparent" stroke="currentColor"
@@ -121,7 +121,7 @@
 </div>
 
 
-<div class="container d-flex-column loading">
+<main class="container d-flex mt-4 loading">
 
     <aside id="sidebarPrimary" class="sidebar sidebar-primary left-side offcanvas offcanvas-start">
         <button type="button" class="btn-close btn-md d-lg-none" data-dismiss="offcanvas" aria-label="Закрыть">
@@ -140,7 +140,7 @@
         {% block sidebar_secondary %}{% endblock sidebar_secondary %}
     </aside>
 
-</div>
+</main>
 
 <div id="site-footer">
     <div id="copyright" class="centered justify-between text-muted">

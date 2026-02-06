@@ -50,7 +50,9 @@
 				width: 100%
 				object-fit: cover
 
-	.exhibition-container
+	.exhibition-content
+		margin-top: -2rem
+
 		> div
 			position: relative
 			padding: 3vh 0
@@ -88,6 +90,7 @@
 
 	.subtitle
 		font-weight: 400
+		margin: 0
 
 
 	.exh-title
@@ -124,8 +127,8 @@
 
 
 		&:not(.subtitle)
-			margin-top: 1.3rem
-			text-transform: uppercase
+			//text-transform: uppercase
+			text-align: center
 
 			+mixins.media-max(sm)
 				font-size: 1.4rem
