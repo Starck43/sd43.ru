@@ -21,7 +21,7 @@
                                  alt="{% if img.title %}{{ img.title }}{% endif %}"
                             >
                         {% empty %}
-                            <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                            <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                         {% endthumbnail %}
                     {% endthumbnail %}
                 {% endthumbnail %}

@@ -8,7 +8,8 @@ from os import path
 from django.conf import settings
 
 from django import template
-from django.utils.safestring import mark_safe
+from django.db.models import Model
+from django.utils.safestring import mark_safe, SafeString
 
 register = template.Library()
 
@@ -52,8 +53,17 @@ def to_string(obj):
 
 
 @register.filter
-def admin_change_url(model, app="exhibition"):
-	return 'admin:%s_%s_change' % (app, model)
+def admin_change_url(obj, app='exhibition'):
+	if isinstance(obj, str | SafeString):
+		model_name = str(obj)
+	elif isinstance(obj, Model):
+		model_name = obj._meta.model_name
+	else:
+		raise ValueError(
+			f'admin_change_url: unsupported type {type(obj)}'
+		)
+
+	return f'admin:{app}_{model_name}_change'
 
 
 @register.filter

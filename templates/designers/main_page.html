@@ -177,7 +177,7 @@
                                             class="lazyload"
                                     >
                                 {% empty %}
-                                    <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                    <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                 {% endthumbnail %}
                             {% endthumbnail %}
                         {% else %}
@@ -252,7 +252,7 @@
                         {% thumbnail person.logo "100x100" as logo %}
                             <img src="{{ logo.url }}" loading="lazy" class="logo lazyload">
                         {% empty %}
-                            <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="" class="logo">
+                            <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="" class="logo">
                         {% endthumbnail %}
                     {% endif %}
 

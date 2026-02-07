@@ -60,7 +60,7 @@
 							{% thumbnail object.exhibitor.logo "300x300" as logo %}
 								<img src="{{ logo.url }}" loading="lazy" alt="Победитель выставки {{ object.exhibitor.name }}">
 							{% empty %}
-								<img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+								<img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
 							{% endthumbnail %}
 						</div>
 						{% endif %}

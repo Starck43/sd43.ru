@@ -1,0 +1,86 @@
+{% load static %}
+{% load custom_tags %}
+{% load thumbnail %}
+
+{% if object_list %}
+
+    <div id="projects" class="grid projects-grid">
+        {% for e in object_list %}
+            {% with e.title as project_title %}
+                <a id="project-{{ e.id }}" class="grid-cell ratio centered"
+                   href="{% url 'exhibition:project-detail-url' e.owner__slug e.project_id %}"
+                   title="{{ project_title }}">
+                    <figure>
+                        {% with cover=e.project_cover %}
+                            {% if cover %}
+                                {% thumbnail cover "100x100" crop="center" quality=75 as mini %}
+                                    {% thumbnail cover "320" as xs %}
+                                        {% thumbnail cover "576" as sm %}
+                                            <img class="project-cover lazyload"
+                                                 src="{{ mini.url }}"
+                                                 data-src="{{ sm.url }}"
+                                                 data-srcset="{{ xs.url }} {{ xs.x }}w, {{ sm.url }} {{ sm.x }}w"
+                                                 data-sizes="auto"
+                                                 loading="lazy"
+                                                 alt="
+                                                         {% if project_title %}{{ project_title }}. {% endif %}Автор проекта: {{ e.owner__slug }}"
+                                            >
+                                        {% endthumbnail %}
+                                    {% endthumbnail %}
+                                {% endthumbnail %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <figcaption class="d-flex-column">
+                            {% if project_title %}
+                                <h3 class="project-title">{{ project_title }}</h3>
+                            {% endif %}
+
+                            {#                                {% if e.nominations__title %}#}
+                            {#                                    <div class="subtitle nomination-title mb-1"><b>{{ e.nominations__title }}</b></div>#}
+                            {#                                {% endif %}#}
+
+                            {% if e.owner__name %}
+                                <div class="subtitle owner-name">{{ e.owner__name }}</div>
+                            {% endif %}
+
+                            <div class="extra d-flex justify-between">
+                                {% if e.win_year %}
+                                    <div class="portfolio-award d-flex">
+                                        <svg class="award">
+                                            <use xlink:href="#award-icon"></use>
+                                        </svg>
+                                        <span>{{ e.win_year }}</span>
+                                    </div>
+                                {% endif %}
+
+                                {% if e.average > 0 %}
+                                    <div class="portfolio-rate d-flex">
+                                        <span class="rate-counter">{{ e.average|stringformat:".1f" }}</span>
+                                        <svg class="rate-star">
+                                            <use xlink:href="#star-icon"></use>
+                                        </svg>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </figcaption>
+                    </figure>
+                </a>
+            {% endwith %}
+
+        {% endfor %}
+
+        <a id="preloader" class="ratio centered fade {% if next_page %}show{% endif %}"
+           href="{{ action_url }}">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </a>
+
+    </div>
+
+{% else %}
+    <h4>Список пустой</h4>
+{% endif %}

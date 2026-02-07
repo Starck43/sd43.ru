@@ -40,5 +40,5 @@ def common_context(request):
 		'scheme': scheme,
 		# 'page_url': site_url + request.path,
 		'default_meta': meta,
-		'no_image_placeholder': settings.DEFAULT_NO_IMAGE
+		'default_placeholder': getattr(settings, 'DEFAULT_NO_IMAGE', ''),
 	}

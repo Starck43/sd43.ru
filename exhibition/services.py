@@ -3,6 +3,26 @@ import unicodedata
 
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
+from django.db.models import Subquery, OuterRef, Avg, When, Q, CharField, Case
+
+
+class ProjectsQueryService:
+
+	@staticmethod
+	def get_cover_with_rating(queryset):
+		from exhibition.models import Image
+		cover_subquery = Subquery(
+			Image.objects.filter(portfolio=OuterRef('pk')).values('file')[:1]
+		)
+
+		return queryset.annotate(
+			average=Avg('ratings__star'),
+			project_cover=Case(
+				When(Q(cover__isnull=True) | Q(cover=''), then=cover_subquery),
+				default='cover',
+				output_field=CharField()
+			)
+		)
 
 
 def delete_cached_fragment(fragment_name, *args):

@@ -255,6 +255,19 @@ h3, h4
 		+mixins.media-min(xxl)
 			width: 100% - $col-width-xxl*2
 
+	.project &
+		gap: 0
+
+.flex-content
+	+mixins.media-min(lg)
+		margin: 0 $col-width-lg !important
+
+	+mixins.media-min(xl)
+		margin: 0 $col-width-xl !important
+
+	+mixins.media-min(xxl)
+		margin: 0 $col-width-xxl !important
+
 .home
 	.content
 		//max-width: 1000px

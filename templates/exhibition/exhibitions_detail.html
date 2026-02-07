@@ -318,7 +318,7 @@
                                 {% thumbnail e.file "150x150" crop="center" as photo %}
                                     <img class="lazyload" data-src="{{ photo.url }}" alt="">
                                 {% empty %}
-                                    <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                    <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                 {% endthumbnail %}
                             </a>
                         {% endfor %}
@@ -357,7 +357,7 @@
                                                  alt="{% if img.title %}{{ img.title }}{% endif %}"
                                             >
                                         {% empty %}
-                                            <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                            <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                         {% endthumbnail %}
                                     {% endthumbnail %}
                                 {% endthumbnail %}

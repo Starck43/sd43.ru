@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ImageField, FileField
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils.timezone import now
+from sorl.thumbnail import get_thumbnail
 
 from ads.models import Banner
 from .forms import ImageInlineForm, ImageInlineFormSet
@@ -261,6 +263,56 @@ class ExhibitionsYearsMixin:
 		context['exh_year'] = self.kwargs.get('exh_year')
 		context['is_all_years'] = self.is_all_years_page
 		return context
+
+
+class ProjectsLazyLoadMixin:
+	PAGE_SIZE = getattr(settings, 'PORTFOLIO_COUNT_PER_PAGE', 20)
+
+	def init_pagination(self, request):
+		self.page = int(request.GET.get('page', 1))
+		self.is_next_page = False
+
+	def paginate_queryset(self, queryset):
+		start = (self.page - 1) * self.PAGE_SIZE
+		limit = self.PAGE_SIZE + 1
+
+		items = list(queryset[start:start + limit])
+		self.is_next_page = len(items) > self.PAGE_SIZE
+
+		return items[:self.PAGE_SIZE]
+
+	@staticmethod
+	def enrich_queryset_with_thumbnails(queryset):
+		default_quality = getattr(settings, 'THUMBNAIL_QUALITY', 85)
+
+		for item in queryset:
+			cover = item.get('project_cover')
+			if not cover:
+				continue
+
+			mini = get_thumbnail(cover, '100x100', crop='center', quality=75)
+			xs = get_thumbnail(cover, '320', quality=default_quality)
+			sm = get_thumbnail(cover, '576', quality=default_quality)
+
+			item.update({
+				'thumb_mini': settings.MEDIA_URL + str(mini),
+				'thumb_xs': settings.MEDIA_URL + str(xs),
+				'thumb_sm': settings.MEDIA_URL + str(sm),
+				'thumb_xs_w': 320,
+				'thumb_sm_w': 576,
+			})
+
+		return queryset
+
+	def build_projects_response(self, queryset):
+		queryset = self.enrich_queryset_with_thumbnails(queryset)
+
+		return JsonResponse({
+			'current_page': self.page,
+			'next_page': self.is_next_page,
+			'projects_list': list(queryset),
+			'default_placeholder': settings.MEDIA_URL + getattr(settings, 'DEFAULT_NO_IMAGE', ''),
+		})
 
 
 class BannersMixin:

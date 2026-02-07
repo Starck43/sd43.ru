@@ -40,7 +40,7 @@
                             {% thumbnail person.logo "300" as logo %}
                                 <img src="{{ logo.url }}" alt="{{ person.name }}">
                             {% empty %}
-                                <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                             {% endthumbnail %}
                         </div>
                     {% endif %}
@@ -106,7 +106,7 @@
                                             {% thumbnail obj.project_cover "100x100" crop="center" quality=75 as cover %}
                                                 <img src="{{ cover.url }}" alt="{{ obj.title }}">
                                             {% empty %}
-                                                <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                                <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                             {% endthumbnail %}
                                         </div>
                                         <div class="account-meta d-flex-column">
@@ -162,7 +162,7 @@
                                         {% thumbnail obj.project_cover "100x100" crop="center" quality=75 as cover %}
                                             <img src="{{ cover.url }}" alt="{{ obj.title }}">
                                         {% empty %}
-                                            <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                            <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                         {% endthumbnail %}
                                     </div>
                                     <div class="account-meta">
@@ -246,7 +246,7 @@
                                     {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
                                         <img src="{{ logo.url }}">
                                     {% empty %}
-                                       <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                       <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                     {% endthumbnail %}
                                 </div>
                                 <div class="meta account-meta">
@@ -272,7 +272,7 @@
                                     {% thumbnail obj.logo "100x100" crop="center" quality=75 as logo %}
                                         <img src="{{ logo.url }}">
                                     {% empty %}
-                                        <img src="{% get_media_prefix %}{{ no_image_placeholder }}" alt="">
+                                        <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                                     {% endthumbnail %}
                                 </div>
                                 <div class="meta account-meta">
