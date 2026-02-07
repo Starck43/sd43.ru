@@ -36,33 +36,28 @@
 {% block sidebar %}
     {% with list_all_url='exhibition:'|add:absolute_url|add:'-list-all' %}
         {% with list_year_url='exhibition:'|add:absolute_url|add:'-list-year' %}
-
-            <div class="years-filters sidebar-inner">
-                <ul class="years-list nav d-flex-column">
-                    <li class="nav-title mb-2 {% if is_all_years %}active{% endif %}">
-                        {% if not is_all_years %}
-                            <a href="{% url list_all_url %}">
-                                все годы
-                            </a>
+            <ul class="years-list sidebar-inner nav d-flex-column">
+                <li class="nav-title {% if is_all_years %}active{% endif %}">
+                    {% if not is_all_years %}
+                        <a href="{% url list_all_url %}">
+                            все годы
+                        </a>
+                    {% else %}
+                        <span class="active-link">все годы</span>
+                    {% endif %}
+                </li>
+                {% for e in exhibitions_list %}
+                    <li class="nav-title {% if exh_year and exh_year == e.exh_year|stringformat:'s' %}active{% endif %}">
+                        {% if exh_year == e.exh_year|stringformat:'s' %}
+                            <span class="active-link">{{ e.exh_year }}</span>
                         {% else %}
-                            <span class="active-link">все годы</span>
+                            <a href="{% url list_year_url e.exh_year %}">
+                                {{ e.exh_year }}
+                            </a>
                         {% endif %}
                     </li>
-                    {% for e in exhibitions_list %}
-                        <li class="nav-title my-2
-                    {% if exh_year and exh_year == e.exh_year|stringformat:'s' %}active{% endif %}">
-                            {% if exh_year == e.exh_year|stringformat:'s' %}
-                                <span class="active-link">{{ e.exh_year }}</span>
-                            {% else %}
-                                <a href="{% url list_year_url e.exh_year %}">
-                                    {{ e.exh_year }}
-                                </a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
+                {% endfor %}
+            </ul>
         {% endwith %}
     {% endwith %}
 {% endblock sidebar %}

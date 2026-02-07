@@ -35,18 +35,20 @@
 		height: 100%
 		margin: 0
 
-		.years-list
-			margin: 0
-			padding: 0
+		&.years-list
+			width: auto
+			max-width: 130px
+			margin-right: 1rem
+			padding-right: 0 !important
 			+mixins.media-min(lg)
 				padding: $container-margin-lg 0
 				background-color: $highlight-block-bg
 				border-radius: $border-radius
-				border: $border-thickness solid $highlight-border-color
+				//border: $border-thickness solid $highlight-border-color
 
 			li
-				+mixins.push--auto
 				display: table
+				+mixins.push--auto
 				margin-bottom: 0.8rem
 
 	.banner-link

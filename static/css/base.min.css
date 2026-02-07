@@ -1216,22 +1216,23 @@ form:not(.nav-search) > * {
   height: 100%;
   margin: 0;
 }
-.sidebar-inner .years-list {
-  margin: 0;
-  padding: 0;
+.sidebar-inner.years-list {
+  width: auto;
+  max-width: 130px;
+  margin-right: 1rem;
+  padding-right: 0 !important;
 }
 @media (min-width: 992px) {
-  .sidebar-inner .years-list {
+  .sidebar-inner.years-list {
     padding: 2vw 0;
     background-color: ghostwhite;
     border-radius: 0.25rem;
-    border: 2px solid #cccccc;
   }
 }
-.sidebar-inner .years-list li {
+.sidebar-inner.years-list li {
+  display: table;
   margin-left: auto;
   margin-right: auto;
-  display: table;
   margin-bottom: 0.8rem;
 }
 .sidebar .banner-link {
