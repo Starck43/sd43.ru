@@ -15,35 +15,10 @@ from django.forms import ClearableFileInput, SelectMultiple
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
+from crm.captcha import CaptchaValidationMixin
 from .logic import is_image_file
 from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations, Gallery
 from .utils import set_user_group
-
-
-class AccountSignupForm(SignupForm):
-	""" Форма регистрации """
-	username = (forms.CharField(
-		label='Имя пользователя',
-		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя (латиницей)'}))
-	)
-	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
-	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
-	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
-	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
-
-	def __init__(self, *args, **kwargs):
-		self.field_order = ['first_name', 'last_name', 'username', 'email', 'exhibitor', 'password1', 'password2', ]
-		super().__init__(*args, **kwargs)
-		self.fields["password2"].widget.attrs['placeholder'] = 'Пароль повторно'
-
-	def save(self, request):
-		# .save() returns a User object.
-		user = super().save(request)
-		user = set_user_group(request, user)
-		user.is_active = False
-		user.save()
-
-		return user
 
 
 class MultipleFileInput(forms.ClearableFileInput):
@@ -91,32 +66,6 @@ class CategoriesAdminForm(forms.ModelForm):
 		widgets = {
 			'logo': forms.FileInput(attrs={'accept': '.svg'})
 		}
-
-
-class CustomSocialSignupForm(SocialSignupForm):
-	""" Форма регистрации """
-	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
-	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
-
-	username = forms.CharField(
-		label='Имя пользователя',
-		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя (уникальный ник)'})
-	)
-	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
-	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
-
-	def __init__(self, *args, **kwargs):
-		self.field_order = ['first_name', 'last_name', 'username', 'email', 'exhibitor', ]
-		super().__init__(*args, **kwargs)
-
-	def save(self, request):
-		# .save() returns a User object.
-		user = super().save(request)
-		user = set_user_group(request, user)
-		user.is_active = False
-		user.save()
-
-		return user
 
 
 class DeactivateUserForm(forms.Form):
@@ -747,3 +696,63 @@ class UsersListForm(forms.Form):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+
+
+class CustomSocialSignupForm(CaptchaValidationMixin, SocialSignupForm):
+	"""Форма регистрации через соцсети с капчей"""
+
+	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
+	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
+	username = forms.CharField(
+		label='Имя пользователя',
+		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя (уникальный ник)'})
+	)
+	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
+	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
+	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
+
+	def __init__(self, *args, **kwargs):
+		self.field_order = ['first_name', 'last_name', 'username', 'email', 'exhibitor', 'smart_token']
+		super().__init__(*args, **kwargs)
+		# Сохраняем request для получения IP
+		if 'request' in kwargs:
+			self.request = kwargs['request']
+
+	def save(self, request):
+		user = super().save(request)
+		user = set_user_group(request, user)
+		user.is_active = False
+		user.save()
+		return user
+
+
+class AccountSignupForm(CaptchaValidationMixin, SignupForm):
+	"""Форма обычной регистрации с капчей"""
+
+	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
+	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
+	username = forms.CharField(
+		label='Имя пользователя',
+		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя в качестве логина (латиницей)'})
+	)
+	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
+	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
+	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
+
+	def __init__(self, *args, **kwargs):
+		self.field_order = [
+			'first_name', 'last_name', 'username', 'email', 'exhibitor',
+			'password1', 'password2', 'smart_token'
+		]
+		super().__init__(*args, **kwargs)
+		self.fields["password2"].widget.attrs['placeholder'] = 'Пароль повторно'
+		# Сохраняем request для получения IP
+		if 'request' in kwargs:
+			self.request = kwargs['request']
+
+	def save(self, request):
+		user = super().save(request)
+		user = set_user_group(request, user)
+		user.is_active = False
+		user.save()
+		return user

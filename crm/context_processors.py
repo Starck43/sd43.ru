@@ -42,3 +42,10 @@ def common_context(request):
 		'default_meta': meta,
 		'default_placeholder': getattr(settings, 'DEFAULT_NO_IMAGE', ''),
 	}
+
+
+def yandex_captcha(request):
+	"""Добавляет ключ капчи в контекст всех шаблонов"""
+	return {
+		'YANDEX_CAPTCHA_CLIENT_KEY': getattr(settings, 'YANDEX_CAPTCHA_CLIENT_KEY', ''),
+	}

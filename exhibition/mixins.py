@@ -1,5 +1,7 @@
+import requests
+
 from django.conf import settings
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import ImageField, FileField
 from django.http import JsonResponse
 from django.shortcuts import redirect

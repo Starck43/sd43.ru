@@ -4,17 +4,66 @@
 
 {% block page_title %}{% trans "Sign Up" %}{% endblock %}
 
+{% block extra_head %}
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
+    <style>
+		#captcha-container {
+			min-height: 100px;
+			margin: 20px 0;
+		}
+    </style>
+{% endblock %}
+
 {% block content %}
 
-<p>{% blocktrans %}Already have an account? Then please <a href="{{ login_url }}">sign in</a>.{% endblocktrans %}</p>
+    <p>Если Вы уже регистрировались ранее, то перейдите по <a href="{{ login_url }}">ссылке</a>.</p>
 
-<form class="account-form signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
-	{% csrf_token %}
-	{{ form|crispy }}
-	{% if redirect_field_value %}
-	<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
-	{% endif %}
-	<button class="btn btn-outline" type="submit">{% trans "Sign Up" %}</button>
-</form>
+    <form class="account-form signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
+        {% csrf_token %}
+        {{ form|crispy }}
+
+        <!-- Контейнер для капчи -->
+        <div id="captcha-container"></div>
+        <input type="hidden" name="smart_token" id="smart-token">
+
+        {% if redirect_field_value %}
+            <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+        {% endif %}
+
+        <button class="btn btn-primary" type="submit" id="submit-btn">{% trans "Sign Up" %}</button>
+    </form>
+
+    <script>
+        // Ждем загрузки скрипта капчи
+        function initCaptcha() {
+            // Проверяем, загрузилась ли библиотека
+            if (typeof window.smartCaptcha === 'undefined') {
+                console.error('Скрипт Яндекс.Капчи не загрузился');
+                return;
+            }
+
+            // Инициализируем капчу
+            try {
+                window.smartCaptcha.render('captcha-container', {
+                    sitekey: '{{ YANDEX_CAPTCHA_CLIENT_KEY }}',
+                    hl: 'ru',
+                    callback: function (token) {
+                        document.getElementById('smart-token').value = token;
+                        console.log('Капча пройдена, токен:', token);
+                    }
+                });
+                console.log('Капча инициализирована');
+            } catch (error) {
+                console.error('Ошибка инициализации капчи:', error);
+            }
+        }
+
+        // Запускаем инициализацию
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCaptcha);
+        } else {
+            initCaptcha();
+        }
+    </script>
 
 {% endblock content %}
