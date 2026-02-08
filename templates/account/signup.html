@@ -4,15 +4,35 @@
 
 {% block page_title %}{% trans "Sign Up" %}{% endblock %}
 
-{% block extra_head %}
-    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
+{% block script %}
+    {{ block.super }}
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js"></script>
+    <script>
+        function initCaptcha() {
+            if (!window.smartCaptcha || !window.smartCaptcha.render) {
+                setTimeout(initCaptcha, 100);
+                return;
+            }
+
+            window.smartCaptcha.render('captcha-container', {
+                sitekey: '{{ YANDEX_CAPTCHA_CLIENT_KEY }}',
+                hl: 'ru',
+                callback: function (token) {
+                    document.getElementById('smart-token').value = token;
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initCaptcha);
+    </script>
+
     <style>
 		#captcha-container {
 			min-height: 100px;
 			margin: 20px 0;
 		}
     </style>
-{% endblock %}
+{% endblock script %}
 
 {% block content %}
 
@@ -32,38 +52,5 @@
 
         <button class="btn btn-primary" type="submit" id="submit-btn">{% trans "Sign Up" %}</button>
     </form>
-
-    <script>
-        // Ждем загрузки скрипта капчи
-        function initCaptcha() {
-            // Проверяем, загрузилась ли библиотека
-            if (typeof window.smartCaptcha === 'undefined') {
-                console.error('Скрипт Яндекс.Капчи не загрузился');
-                return;
-            }
-
-            // Инициализируем капчу
-            try {
-                window.smartCaptcha.render('captcha-container', {
-                    sitekey: '{{ YANDEX_CAPTCHA_CLIENT_KEY }}',
-                    hl: 'ru',
-                    callback: function (token) {
-                        document.getElementById('smart-token').value = token;
-                        console.log('Капча пройдена, токен:', token);
-                    }
-                });
-                console.log('Капча инициализирована');
-            } catch (error) {
-                console.error('Ошибка инициализации капчи:', error);
-            }
-        }
-
-        // Запускаем инициализацию
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initCaptcha);
-        } else {
-            initCaptcha();
-        }
-    </script>
 
 {% endblock content %}
