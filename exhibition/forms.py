@@ -36,36 +36,12 @@ class AccountSignupForm(SignupForm):
 		super().__init__(*args, **kwargs)
 		self.fields["password2"].widget.attrs['placeholder'] = 'Пароль повторно'
 
-	# class Meta:
-	# 	model = User
-	# 	fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2', 'exhibitor',]
-
-	# 	widgets = {
-	# 		'first_name' : forms.TextInput(attrs={'placeholder': 'Имя'}),
-	# 		'last_name' : forms.TextInput(attrs={'placeholder': 'Фамилия'}),
-	# 	}
-
-	# error_messages = {
-	# 'duplicate_username': ("Имя пользователя уже существует")
-	# }
-
-	# def _generate_username(self):
-	# 	username = self.cleaned_data["username"]
-	# 	if self.instance.username == username:
-	# 		return username
-
-	# 	try:
-	# 		User._default_manager.get(username=username)
-	# 	except User.DoesNotExist:
-	# 		return username
-	# 	raise forms.ValidationError(
-	# 			self.error_messages['duplicate_username'],
-	# 			code='duplicate_username',
-	# 		)
 	def save(self, request):
 		# .save() returns a User object.
 		user = super().save(request)
 		user = set_user_group(request, user)
+		user.is_active = False
+		user.save()
 
 		return user
 
@@ -137,6 +113,8 @@ class CustomSocialSignupForm(SocialSignupForm):
 		# .save() returns a User object.
 		user = super().save(request)
 		user = set_user_group(request, user)
+		user.is_active = False
+		user.save()
 
 		return user
 

@@ -2,17 +2,95 @@
 
 <html lang="ru">
 <head>
-	<meta charset="UTF-8">
-	<title>Сообщение с сайта!!!</title>
+    <meta charset="UTF-8">
+    <title>Новый пользователь на sd43.ru</title>
+    <style>
+		body {
+			font-family: Arial, sans-serif;
+			line-height: 1.6;
+		}
+
+		.message-field {
+			margin: 10px 0;
+			padding: 5px;
+		}
+
+		.label {
+			font-weight: bold;
+			color: #333;
+		}
+
+		.value {
+			color: #666;
+		}
+
+		.status-active {
+			color: green;
+			font-weight: bold;
+		}
+
+		.status-inactive {
+			color: orange;
+			font-weight: bold;
+		}
+    </style>
 </head>
 <body>
-<h1>Новый пользователь</h1>
+<h1>🔔 Новый пользователь на sd43.ru</h1>
 
-<p>На сайте sd43.ru зарегистрировался новый пользователь.</p>
-<div class="message-field">Имя: <b>{{name}}</b></div>
-<div class="message-field">E-mail: <b>{{email}}</b></div>
-<div class="message-field">Группа: <b>{{group|to_string}}</b></div>
+<p>На сайте зарегистрировался новый пользователь. Требуется подтверждение администратора.</p>
+
+<div class="message-field">
+    <span class="label">ФИО:</span>
+    <span class="value">
+            {% if user.get_full_name %}
+                {{ user.get_full_name }}
+            {% else %}
+                Без имени
+            {% endif %}
+        </span>
+</div>
+
+<div class="message-field">
+    <span class="label">Имя пользователя:</span>
+    <span class="value">{{ user.username }}</span>
+</div>
+
+<div class="message-field">
+    <span class="label">E-mail:</span>
+    <span class="value">{{ user.email }}</span>
+</div>
+
+<div class="message-field">
+    <span class="label">Группы:</span>
+    <span class="value">
+            {% if user.groups.all %}
+                {% for group in user.groups.all %}
+                    {{ group.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            {% else %}
+                Не назначены
+            {% endif %}
+        </span>
+</div>
+
+<div class="message-field">
+    <span class="label">Статус:</span>
+    <span class="{% if user.active %}status-active{% else %}status-inactive{% endif %}">
+            {% if user.active %}Активен
+            {% else %}
+                <i>Не активен (требуется активация)</i>.
+                <a href="{{ host_url }}/admin/auth/user/{{ user.id }}/change/">
+                    Перейти в админку для модерации
+                </a>
+                <br/>
+                <span style="font-size: 13px; color: #888; margin-top: 15px;">
+                    ⓘ В админке: поставьте галочку "Активный" в профиле пользователя или удалите пользователя, а потом сохраните.
+                </span>
+
+            {% endif %}
+        </span>
+</div>
+
 </body>
 </html>
-
-

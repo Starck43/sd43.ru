@@ -45,7 +45,7 @@ def set_user_group(request, user):
 	try:
 		group = Group.objects.get(name=group_name)
 		user.groups.add(group)
-		user.save()
+
 	except Group.DoesNotExist:
 		pass
 

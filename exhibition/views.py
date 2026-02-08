@@ -1245,11 +1245,12 @@ def portfolio_upload(request, **kwargs):
 def user_signed_up_(request, user, **kwargs):
 	""" Подслушаем событие регистрации нового пользователя и отправим письмо администратору """
 	user = set_user_group(request, user)
-	template = render_to_string('account/admin_email_confirm.html', {
-		'name': '%s %s (%s)' % (user.first_name, user.last_name, user.username),
-		'email': user.email,
-		'group': list(user.groups.all().values_list('name', flat=True)),
-	})
+	user.is_active = False
+	user.save()
+	protocol = 'https' if request.is_secure() else 'http'
+	host_url = "{0}://{1}".format(protocol, request.get_host())
+
+	template = render_to_string('account/admin_email_confirm.html', {'user': user, host_url: host_url})
 	send_email_async('Регистрация нового пользователя на сайте sd43.ru!', template)
 
 
