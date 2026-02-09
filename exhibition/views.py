@@ -1,9 +1,9 @@
+import logging
 import math
 from collections import defaultdict
 from os import SEEK_END
 
 from allauth.account.models import EmailAddress
-from allauth.account.signals import user_signed_up
 from allauth.account.views import PasswordResetView
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.signals import social_account_removed
@@ -31,11 +31,13 @@ from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
 from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
-from .logic import send_email, send_email_async
+from .logic import send_email
 from .mixins import BannersMixin, MetaSeoMixin, ExhibitionsYearsMixin, ProjectsLazyLoadMixin
 from .models import *
 from .services import ProjectsQueryService
-from .utils import is_exhibitor_of_exhibition, is_jury_member, set_user_group
+from .utils import is_exhibitor_of_exhibition, is_jury_member
+
+logger = logging.getLogger(__name__)
 
 
 def success_message(request):
@@ -1214,7 +1216,7 @@ def portfolio_upload(request, **kwargs):
 					return redirect('/account')
 			else:
 				# Если formset невалиден, возвращаем ошибки
-				print(formset.errors)
+				logger.error(formset.errors)
 				if is_ajax:
 					return JsonResponse({
 						'status': 'error',
@@ -1238,20 +1240,6 @@ def portfolio_upload(request, **kwargs):
 		'upload.html',
 		{'form': form, "formset": formset, 'portfolio_id': pk, 'formset_helper': formset_helper}
 	)
-
-
-# dispatch_uid: some.unique.string.id.for.allauth.user_signed_up
-@receiver(user_signed_up, dispatch_uid="new_user")
-def user_signed_up_(request, user, **kwargs):
-	""" Подслушаем событие регистрации нового пользователя и отправим письмо администратору """
-	user = set_user_group(request, user)
-	user.is_active = False
-	user.save()
-	protocol = 'https' if request.is_secure() else 'http'
-	host_url = "{0}://{1}".format(protocol, request.get_host())
-
-	template = render_to_string('account/admin_email_confirm.html', {'user': user, host_url: host_url})
-	send_email_async('Регистрация нового пользователя на сайте sd43.ru!', template)
 
 
 class HealthCheckView(View):
@@ -1333,8 +1321,6 @@ def __404__(request, exception):
 
 	except Exception as e:
 		# Простой fallback
-		import logging
-		logger = logging.getLogger(__name__)
 		logger.error(f"Ошибка в __404__: {e}")
 
 		return HttpResponseNotFound("404 - Страница не найдена")

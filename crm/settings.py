@@ -63,8 +63,8 @@ MIDDLEWARE = [
 	'watson.middleware.SearchContextMiddleware',
 	'crm.middleware.AjaxMiddleware',
 	'crm.middleware.FixPermissionMiddleware',
-	# 'designers.middleware.SubdomainMiddleware',
 	'allauth.account.middleware.AccountMiddleware',
+	# 'designers.middleware.SubdomainMiddleware',
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -156,19 +156,31 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SITE_ID = 1
-ACCOUNT_LOGIN_METHODS = {'username', 'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 14
-ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
-ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
+
+# Основные настройки ALLAUTH
+ACCOUNT_LOGIN_METHODS = {'email', 'username'}  # Можно логиниться по email или username
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Поля при регистрации
+ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_MIN_LENGTH = 4
 ACCOUNT_MAX_EMAIL_ADDRESSES = 2
+
+# Email верификация
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 14
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
+
+# Социальные аккаунты
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = "optional"
-SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# Перенаправления
 LOGIN_REDIRECT_URL = "/account/"
-ACCOUNT_LOGOUT_ON_GET = True
-ACCOUNT_ADAPTER = "exhibition.adapter.CustomPasswordResetAdapter"
+ACCOUNT_LOGOUT_ON_GET = True  # Можно оставить, но есть риски CSRF
+
+# Адаптеры и формы
+ACCOUNT_ADAPTER = 'exhibition.adapter.CustomAccountAdapter'
 ACCOUNT_FORMS = {
 	'signup': 'exhibition.forms.AccountSignupForm',
 }
@@ -193,11 +205,11 @@ if EMAIL_URL:
 EMAIL_RECIPIENTS = os.getenv('EMAIL_RECIPIENTS', 'saloon.as@gmail.com').split(',')
 ADMINS = [('Starck', email) for email in EMAIL_RECIPIENTS]
 
-YANDEX_CAPTCHA_CLIENT_KEY = os.getenv('YANDEX_CAPTCHA_CLIENT_KEY', ''),  # Публичный ключ
-YANDEX_CAPTCHA_SERVER_KEY = os.getenv('YANDEX_CAPTCHA_SERVER_KEY', ''),  # Секретный ключ
+YANDEX_CAPTCHA_CLIENT_KEY = os.getenv('YANDEX_CAPTCHA_CLIENT_KEY', '')  # Публичный ключ
+YANDEX_CAPTCHA_SERVER_KEY = os.getenv('YANDEX_CAPTCHA_SERVER_KEY', '')  # Секретный ключ
 YANDEX_CAPTCHA_URL = "https://smartcaptcha.yandexcloud.net/validate"
 DISABLE_CAPTCHA_IN_DEBUG = True  # Отключать капчу в режиме отладки
-CAPTCHA_FAIL_SILENTLY = False    # Что делать при ошибке проверки (True = пропустить)
+CAPTCHA_FAIL_SILENTLY = False  # Что делать при ошибке проверки (True = пропустить)
 
 FILE_UPLOAD_HANDLERS = [
 	"django.core.files.uploadhandler.MemoryFileUploadHandler",

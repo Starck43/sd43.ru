@@ -721,7 +721,7 @@ class CustomSocialSignupForm(CaptchaValidationMixin, SocialSignupForm):
 	def save(self, request):
 		user = super().save(request)
 		user = set_user_group(request, user)
-		user.is_active = False
+		user.is_active = True
 		user.save()
 		return user
 
@@ -753,6 +753,6 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 	def save(self, request):
 		user = super().save(request)
 		user = set_user_group(request, user)
-		user.is_active = False
+		user.is_active = True
 		user.save()
 		return user

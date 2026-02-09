@@ -76,20 +76,19 @@
 
 <div class="message-field">
     <span class="label">Статус:</span>
-    <span class="{% if user.active %}status-active{% else %}status-inactive{% endif %}">
-            {% if user.active %}Активен
-            {% else %}
-                <i>Не активен (требуется активация)</i>.
-                <a href="{{ host_url }}/admin/auth/user/{{ user.id }}/change/">
-                    Перейти в админку для модерации
-                </a>
-                <br/>
-                <span style="font-size: 13px; color: #888; margin-top: 15px;">
-                    ⓘ В админке: поставьте галочку "Активный" в профиле пользователя или удалите пользователя, а потом сохраните.
-                </span>
-
-            {% endif %}
-        </span>
+    <div class="{% if user.active %}status-active{% else %}status-inactive{% endif %}">
+        {% if user.active %}Активен
+        {% else %}
+            <i>Не активен (требуется активация)</i>.
+            <br/>
+            <span style="font-size: 13px; color: #888; margin-top: 15px;">
+                ⓘ В админке: поставьте галочку "Активный" в профиле пользователя или удалите пользователя, а потом сохраните.
+            </span>
+        {% endif %}
+    </div>
+    <a href="{{ admin_url }}">
+        Перейти к пользователю
+    </a>
 </div>
 
 </body>

@@ -1,38 +1,21 @@
-{% extends "base.html" %}
+{% extends "account/base.html" %}
 {% load crispy_forms_tags %}
 {% load i18n %}
 
 {% block page_title %}{% trans "Sign Up" %}{% endblock %}
 
-{% block script %}
+{% block styles %}
     {{ block.super }}
-    <script src="https://smartcaptcha.yandexcloud.net/captcha.js"></script>
-    <script>
-        function initCaptcha() {
-            if (!window.smartCaptcha || !window.smartCaptcha.render) {
-                setTimeout(initCaptcha, 100);
-                return;
-            }
-
-            window.smartCaptcha.render('captcha-container', {
-                sitekey: '{{ YANDEX_CAPTCHA_CLIENT_KEY }}',
-                hl: 'ru',
-                callback: function (token) {
-                    document.getElementById('smart-token').value = token;
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', initCaptcha);
-    </script>
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
 
     <style>
 		#captcha-container {
+            width: max-content;
 			min-height: 100px;
 			margin: 20px 0;
 		}
     </style>
-{% endblock script %}
+{% endblock styles %}
 
 {% block content %}
 
@@ -42,9 +25,15 @@
         {% csrf_token %}
         {{ form|crispy }}
 
-        <!-- Контейнер для капчи -->
-        <div id="captcha-container"></div>
-        <input type="hidden" name="smart_token" id="smart-token">
+        {% if not DISABLE_CAPTCHA_IN_DEBUG %}
+            <!-- Контейнер для капчи -->
+            <div
+                    style="height: 100px"
+                    id="captcha-container"
+                    class="smart-captcha"
+                    data-sitekey="{{ YANDEX_CAPTCHA_CLIENT_KEY }}"
+            ></div>
+        {% endif %}
 
         {% if redirect_field_value %}
             <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>

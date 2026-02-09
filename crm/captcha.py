@@ -1,13 +1,15 @@
+import json
 import logging
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+
 logger = logging.getLogger(__name__)
 
 
 class CaptchaValidationMixin:
-	"""Миксин для проверки Яндекс.Капчи"""
+	"""Миксин для проверки Яндекс SmartCaptcha."""
 
 	def get_remote_ip(self):
 		"""Получение IP пользователя"""
@@ -23,69 +25,83 @@ class CaptchaValidationMixin:
 		return ip
 
 	def verify_captcha(self, token):
-		"""Проверка Яндекс.Капчи"""
-		if not token:
-			return False
+		"""Проверяет токен через API Яндекс SmartCaptcha."""
+		skip_on_error = getattr(settings, 'CAPTCHA_FAIL_SILENTLY', False)
 
-		# В режиме разработки можно отключить проверку
-		if settings.DEBUG and getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', True):
+		# 1. Пропустить проверку если нужно
+		if getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False):
+			logger.info(f"[INFO] Проверка капчи пропущена. Токен: {token}")
 			return True
 
-		# URL для проверки (можно переопределить в settings)
-		url = getattr(settings, 'YANDEX_CAPTCHA_URL', 'https://smartcaptcha.yandexcloud.net/validate')
-
-		# Получаем ключ из настроек
+		# 2. Получить секретный ключ из настроек
 		server_key = getattr(settings, 'YANDEX_CAPTCHA_SERVER_KEY', '')
 		if not server_key:
-			# Если ключ не установлен, пропускаем проверку с предупреждением
-			logger.warning('YANDEX_CAPTCHA_SERVER_KEY не установлен, пропускаем проверку')
-			return True
+			logger.warning("[WARNING] Секретный ключ капчи не найден.")
+			return skip_on_error or False
 
+		# 3. Получить IP-адрес пользователя
+		user_ip = self.get_remote_ip()  # Ваш существующий метод
+
+		# 4. Выполнить запрос к API Яндекс SmartCaptcha (как в примере)
 		try:
-			params = {
-				'secret': server_key,
-				'token': token,
-				'ip': self.get_remote_ip(),
-			}
-
-			response = requests.get(url, params=params, timeout=10)
-			response.raise_for_status()  # Проверяем HTTP ошибки
-
-			result = response.json()
-			return result.get('status') == 'ok'
-
-		except requests.exceptions.RequestException as e:
-			# Логируем ошибку сети, но пропускаем пользователя
-			import logging
-			logger = logging.getLogger(__name__)
-			logger.error(f'Ошибка при проверке капчи: {e}')
-			return getattr(settings, 'CAPTCHA_FAIL_SILENTLY', False)
-
-		except Exception as e:
-			import logging
-			logger = logging.getLogger(__name__)
-			logger.error(f'Неожиданная ошибка при проверке капчи: {e}')
-			return getattr(settings, 'CAPTCHA_FAIL_SILENTLY', False)
-
-	def clean(self):
-		"""Добавляем проверку капчи к валидации формы"""
-		cleaned_data = super().clean()
-
-		# Получаем токен капчи (поле может называться по-разному)
-		token = cleaned_data.get('smart_token') or \
-		        cleaned_data.get('captcha_token') or \
-		        getattr(self, 'cleaned_captcha_token', None)
-
-		if not token:
-			# Пробуем получить из request.POST напрямую
-			request = getattr(self, 'request', None)
-			if request:
-				token = request.POST.get('smart-token') or request.POST.get('captcha_token')
-
-		if not self.verify_captcha(token):
-			raise ValidationError(
-				'Пройдите проверку безопасности. Обновите страницу и попробуйте снова.',
-				code='invalid_captcha'
+			resp = requests.get(
+				getattr(settings, 'YANDEX_CAPTCHA_URL', "https://smartcaptcha.yandexcloud.net/validate"),
+				params={
+					"secret": server_key,
+					"token": token,
+					"ip": user_ip
+				},
+				timeout=5
 			)
 
+			server_output = resp.content.decode()
+
+			# 5. Обработать ответ (логика из примера)
+			if resp.status_code != 200:
+				# В случае ошибки сервера капчи решаем "пропустить" человека
+				logger.error(f"[ERROR] Ошибка API Яндекс.Капчи. Код: {resp.status_code}, Ответ: {server_output}")
+				# Возвращаем True, чтобы не блокировать пользователей из-за сбоев у Яндекса
+				return skip_on_error or True
+
+			# 6. Проверить статус в ответе
+			result = json.loads(server_output)
+			is_ok = result.get("status") == "ok"
+
+			if settings.DEBUG:
+				print(f"[DEBUG] Ответ капчи: {result}. Успех: {is_ok}")
+			return is_ok
+
+		except requests.exceptions.RequestException as e:
+			# Ошибка сети или таймаута
+			logger.error(f"[ERROR] Не удалось проверить капчу (сетевая ошибка): {e}")
+			# В случае сбоя лучше пропустить проверку, чем заблокировать легитимных пользователей
+			return skip_on_error or True
+		except json.JSONDecodeError as e:
+			logger.error(f"[ERROR] Не удалось разобрать ответ от сервера капчи: {e}")
+			return skip_on_error or True
+
+	def clean(self):
+		cleaned_data = super().clean()
+
+		all_errors = []
+
+		for field, error_list in self.errors.items():
+
+			for i, error in enumerate(error_list):
+				error_str = str(error).strip()
+
+				if error_str:
+					all_errors.append(error_str)
+
+		if all_errors:
+			raise ValidationError(all_errors)
+
+		if not getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False):
+			# Проверка капчи
+			token = cleaned_data.get('smart_token')
+			if not self.verify_captcha(token):
+				ValidationError('Пройдите проверку безопасности.')
+
 		return cleaned_data
+
+

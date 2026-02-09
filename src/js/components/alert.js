@@ -104,13 +104,29 @@ export class Alert {
  * @param {string} [options.position='top-right'] - Позиция на экране (top-right, top-center, bottom-right, bottom-center)
  * @returns {Alert|null} - Экземпляр Alert или null в случае ошибки
  */
-export function alertHandler(html, options = {}) {
+export function alertHandler(content, options = {}) {
     const config = {
         type: 'info',
         duration: 3000,
         position: 'top-right',
         ...options
     };
+
+    let htmlContent;
+    if (Array.isArray(content)) {
+        // Если передан массив - создаем список
+        htmlContent = '<ul>';
+        content.forEach(item => {
+            htmlContent += `<li>${item}</li>`;
+        });
+        htmlContent += '</ul>';
+    } else if (typeof content === 'string' && content.includes('<ul')) {
+        // Если это уже готовый HTML - используем как есть
+        htmlContent = content;
+    } else {
+        // Обычный текст или HTML
+        htmlContent = content;
+    }
 
     // Создаем alert элемент
     const alertElement = document.createElement('div');
@@ -123,7 +139,7 @@ export function alertHandler(html, options = {}) {
                 <use xlink:href="#close-icon"></use>
             </svg>
         </button>
-        <div class="alert-body">${html}</div>
+        <div class="alert-body">${htmlContent}</div>
     `;
 
     // Добавляем сразу в body

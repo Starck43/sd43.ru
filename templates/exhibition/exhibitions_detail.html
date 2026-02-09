@@ -207,7 +207,7 @@
         {% if object.jury.count %}
 
             <div id="jury" class="jury-block">
-                <h2 class="exhibitors-title exh-title">{{ object.jury.first|verbose_name_plural }}</h2>
+                <h2 class="exhibitors-title exh-title">{{ object.jury.first|verbose_name_plural }} и гости</h2>
                 <ol class="d-flex-column">
                     {% for item in object.jury.all %}
                         <li data-accordion>

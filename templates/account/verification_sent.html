@@ -1,10 +1,110 @@
-{% extends "base.html" %}
+{% extends "account/base.html" %}
 {% load i18n %}
+{% load account %}
 
-{% block page_title %}{% trans "Verify Your E-mail Address" %}{% endblock %}
+{% block page_title %}{% trans "Требуется подтверждение email" %}{% endblock %}
+
+{% user_display user %}
 
 {% block content %}
 
-    <p>{% blocktrans %}We have sent an e-mail to you for verification. Follow the link provided to finalize the signup process. Please contact us if you do not receive it within a few minutes.{% endblocktrans %}</p>
+    <div class="verification-sent-page d-flex-column align-center">
+        <div class="verification-header text-center mb-5">
+            <div class="icon-large mb-3">✉️</div>
+            <h2 class="mb-3">✅ Регистрация успешно выполнена!</h2>
+            <p class="lead text-muted">
+                Остался последний шаг — подтвердите ваш email
+            </p>
+        </div>
 
-{% endblock content %}
+        <div class="verification-steps">
+            <div class="step-card active mb-4">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4 class="mb-2">Проверьте вашу почту</h4>
+                    <p class="mb-1">
+                        Мы отправили письмо на почтовый ящик {{ account_email }}<br/>
+                        Откройте письмо и перейдите по ссылке для подтверждения.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step-card mb-4">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4 class="mb-2">Подтвердите email</h4>
+                    <p class="mb-0">
+                        После подтверждения email Вы сможете войти в личный кабинет.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="verification-actions mt-5">
+            <div class="row gap-1">
+                <a href="{% url 'account_login' %}" class="btn btn-outline-dark w-100">Войти в аккаунт</a>
+                <a href="/" class="btn btn-primary w-100">На главную</a>
+            </div>
+
+        </div>
+
+        <div class="support-info mt-5 pt-4 border-top">
+            <h4 class="mt-4">❓ Если письмо не пришло:</h4>
+            <ul class="list-unstyled">
+                <li class="mb-1">Проверьте папку <strong>«Спам»</strong> или <strong>«Рассылки»</strong></li>
+                <li class="mb-1">Убедитесь что email указан правильно
+                    <code class="ml-1">{{ email }}</code>
+                </li>
+                <li class="mb-1">Подождите несколько минут — письма иногда приходят с задержкой</li>
+            </ul>
+            <a href="{% url 'account_email' %}" class="btn btn-link btn-sm">
+                🔄 Отправить письмо повторно
+            </a>
+
+        </div>
+    </div>
+
+    <style>
+		.verification-steps {
+			max-width: 600px;
+		}
+
+		.step-card {
+			display: flex;
+			align-items: flex-start;
+			padding: 1.5rem;
+			border: 1px solid #dee2e6;
+			border-radius: 8px;
+			background: #fff;
+		}
+
+		.step-card.active {
+			border-color: #0d6efd;
+			background: #f8f9fa;
+		}
+
+		.step-number {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 36px;
+			height: 36px;
+			background: #0d6efd;
+			color: white;
+			border-radius: 50%;
+			font-weight: bold;
+			margin-right: 1rem;
+			flex-shrink: 0;
+		}
+
+		.step-content {
+			flex: 1;
+		}
+
+		.icon-large {
+			font-size: 3rem;
+		}
+
+    </style>
+{% endblock %}

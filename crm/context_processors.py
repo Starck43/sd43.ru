@@ -48,4 +48,5 @@ def yandex_captcha(request):
 	"""Добавляет ключ капчи в контекст всех шаблонов"""
 	return {
 		'YANDEX_CAPTCHA_CLIENT_KEY': getattr(settings, 'YANDEX_CAPTCHA_CLIENT_KEY', ''),
+		'DISABLE_CAPTCHA_IN_DEBUG': getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False),
 	}
