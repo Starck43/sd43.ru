@@ -653,7 +653,7 @@ class Portfolio(BaseImageModel):
 		return first_image.file if first_image else None
 
 	def get_rating_stats(self):
-		"""Получение статистики рейтингов в виде словаря"""
+		"""Получение статистики рейтингов"""
 
 		aggregates = self.ratings.aggregate(
 			total=models.Sum('star'),
@@ -662,16 +662,18 @@ class Portfolio(BaseImageModel):
 		)
 
 		jury_aggregates = self.ratings.filter(is_jury_rating=True).aggregate(
+			jury_total=models.Sum('star'),
 			jury_average=models.Avg('star'),
 			jury_count=models.Count('star')
 		)
 
 		return {
-			'total': aggregates.get('total') or 0,
-			'average': aggregates.get('average') or 0.0,
-			'count': aggregates.get('count') or 0,
-			'jury_average': jury_aggregates.get('jury_average') or 0.0,
-			'jury_count': jury_aggregates.get('jury_count') or 0
+			'total': aggregates['total'] or 0,
+			'average': aggregates['average'] or 0.0,
+			'count': aggregates['count'] or 0,
+			'jury_total': jury_aggregates['jury_total'] or 0,
+			'jury_average': jury_aggregates['jury_average'] or 0.0,
+			'jury_count': jury_aggregates['jury_count'] or 0,
 		}
 
 	def root_comments(self):

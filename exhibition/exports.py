@@ -36,13 +36,11 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 		if object_id:
 			extra_context['show_export_button'] = True
 			info = self.model._meta.app_label, self.model._meta.model_name
-			extra_context['export_url'] = reverse(
-				'admin:%s_%s_export_jury_ratings' % info,
-				args=[object_id]
-			)
+			extra_context['export_url'] = reverse('admin:%s_%s_export_jury_ratings' % info, args=[object_id])
 		return super().changeform_view(request, object_id, form_url, extra_context)
 
-	def _get_ratings_map(self, exhibition):
+	@staticmethod
+	def _get_ratings_map(exhibition):
 		ratings = (
 			Rating.objects
 			.filter(
@@ -168,20 +166,21 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 			portfolios = portfolios_by_nom.get(nomination.id, [])
 
 			for portfolio in portfolios:
-				total = 0
 				jury_scores = {}
 
 				for jury in jury_list:
 					score = ratings_map.get((portfolio.id, jury.user.id))
 					jury_scores[jury.id] = score
 					if score is not None:
-						total += score
 						jury_vote_counter[jury.id] += 1
+
+				stats = portfolio.get_rating_stats()
 
 				projects_data.append({
 					'portfolio': portfolio,
-					'jury_scores': jury_scores,
-					'total_score': total
+					'jury_scores': jury_scores,  # ← оставляем, если нужен Excel поимённо
+					'total_score': stats['jury_average'],
+					'votes': stats['jury_count'],
 				})
 
 			# победители (логика сохранена)
