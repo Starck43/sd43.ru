@@ -574,7 +574,10 @@ class Portfolio(BaseImageModel):
 	owner = models.ForeignKey(Exhibitors, on_delete=models.CASCADE, verbose_name='Участник')
 	exhibition = models.ForeignKey(
 		Exhibitions,
-		on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Выставка',
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+		verbose_name='Выставка',
 		help_text='Выберите год, если проект будет участвовать в конкурсе'
 	)
 

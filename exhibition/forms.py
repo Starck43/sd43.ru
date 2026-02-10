@@ -642,6 +642,13 @@ class ImageFormHelper(FormHelper):
 		)
 
 
+class PrepareWinnersForm(forms.Form):
+	exhibition = forms.ModelChoiceField(
+		queryset=Exhibitions.objects.all(),
+		label='Выставка'
+	)
+
+
 class FeedbackForm(forms.Form):
 	name = forms.CharField(
 		label='Имя', required=True, widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'})

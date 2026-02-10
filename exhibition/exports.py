@@ -183,19 +183,18 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 					'votes': stats['jury_count'],
 				})
 
-			# победители (логика сохранена)
+			# Формирование победителей для итоговой таблицы
 			winners = []
-			total_possible = len(jury_list) * len(projects_data)
-			actual_votes = sum(jury_vote_counter.values())
 
-			if projects_data and actual_votes == total_possible:
-				max_score = max(p['total_score'] for p in projects_data)
+			if projects_data:
+				max_score = projects_data[0]['total_score']
+
 				winners = [{
 					'portfolio': p['portfolio'],
 					'score': p['total_score'],
 					'medal': 'gold',
 					'position': 1
-				} for p in projects_data if p['total_score'] == max_score]
+				} for p in projects_data if p['total_score'] == max_score and p['total_score'] > 0]
 
 			# не проголосовавшие
 			for jury in jury_list:
@@ -351,7 +350,7 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 			# ---- Header ----
 			headers = ['Проект']
 			headers += [jury.name or jury.user_name for jury in jury_list]
-			headers.append('Итого')
+			headers.append('Ср.балл')
 			headers.append('Макс.')
 			headers.append('Победитель')
 
@@ -382,21 +381,21 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 					score_cells.append(cell.coordinate)
 					col += 1
 
-				# SUM
-				sum_cell = ws.cell(
+				# AVERAGE CELL
+				avg_cell = ws.cell(
 					row=row,
 					column=col,
-					value=f"=SUM({score_cells[0]}:{score_cells[-1]})"
+					value=f"=IFERROR(AVERAGE({score_cells[0]}:{score_cells[-1]}),0)"
 				)
-				sum_cell.alignment = center
-				sum_cell.border = border
+				avg_cell.alignment = center
+				avg_cell.border = border
 				col += 1
 
 				row += 1
 
 			end_projects_row = row - 1
 
-			# ---- MAX column ----
+			# ---- TOTAL column ----
 			total_col = len(jury_list) + 2
 			max_col = total_col + 1
 			winner_col = max_col + 1

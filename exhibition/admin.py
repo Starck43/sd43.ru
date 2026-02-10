@@ -1,22 +1,27 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.shortcuts import redirect, render
+from django.urls import path
 from django.utils.html import format_html
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
 from .exports import ExportExhibitionAdmin
 from .forms import (
-	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, PortfolioAdminForm
+	ExhibitionsForm, ImageForm, MetaSeoFieldsForm, MetaSeoForm, PortfolioAdminForm, PrepareWinnersForm
 )
-from .mixins import ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin, ImagePreviewMixin, ImagesInlineAdminMixin
+from .mixins import (
+	ProfileAdminMixin, PersonAdminMixin, MediaWidgetMixin, ImagePreviewMixin, ImagesInlineAdminMixin
+)
 from .models import (
 	Categories, Exhibitors, Organizer, Jury, Partners, Events, Nominations, Exhibitions, Winners,
 	Portfolio, PortfolioAttributes, Gallery, Image, MetaSEO
 )
-from .services import delete_cached_fragment
+from .services import delete_cached_fragment, WinnersService
 
 admin.site.unregister(User)  # чтобы снять с регистрации модель User
 
@@ -315,6 +320,8 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	date_hierarchy = 'exhibition__date_start'
 	ordering = ('-exhibition__date_start',)
 
+	change_list_template = 'admin/exhibition/winners/change_list.html'
+
 	list_per_page = 20
 	save_as = True
 	save_on_top = True  # adding the Save button on top bar
@@ -344,6 +351,126 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 		delete_cached_fragment('exhibition_content', obj.exhibition.slug)
 		delete_cached_fragment('participant_detail', obj.portfolio.id)
+
+	def get_urls(self):
+		urls = super().get_urls()
+		custom = [
+			path(
+				'prepare/',
+				self.admin_site.admin_view(self.prepare_winners),
+				name='exhibition_winners_prepare'
+			),
+			path(
+				'confirm/',
+				self.admin_site.admin_view(self.confirm_winners),
+				name='exhibition_winners_confirm'
+			),
+		]
+		return custom + urls
+
+	def prepare_winners(self, request):
+		form = PrepareWinnersForm(request.POST or None)
+
+		if request.method == 'POST' and form.is_valid():
+			exhibition = form.cleaned_data['exhibition']
+
+			exhibition = Exhibitions.objects.prefetch_related(
+				'exhibition_for_winner'
+			).get(id=exhibition.id)
+
+			preview = WinnersService.build_winners_preview(exhibition)
+
+			if not preview['conflicts']:
+				WinnersService.save_winners(preview)
+				self.message_user(request, 'Победители успешно сформированы')
+				return redirect('..')
+
+			request.session['winners_preview'] = WinnersService.serialize_preview(preview)
+			# Правильный формат имени для admin URL
+			return redirect('admin:exhibition_winners_confirm')
+
+		context = {
+			**self.admin_site.each_context(request),
+			'title': 'Формирование победителей',
+			'form': form,
+		}
+		return render(request, 'admin/exhibition/winners/prepare.html', context)
+
+	def confirm_winners(self, request):
+		# читаем preview из сессии
+		preview_data = request.session.get('winners_preview')
+		if not preview_data:
+			self.message_user(request, 'Нет данных для подтверждения', level='warning')
+			return redirect('..')
+
+		warning_message = None
+
+		# Десериализуем данные для шаблона
+		preview = WinnersService.deserialize_preview(preview_data)
+
+		# Проверяем существующих победителей
+		if request.method == 'GET':
+			exhibition = preview['exhibition']
+			winners_count = exhibition.exhibition_for_winner.count()
+
+			if winners_count:
+				warning_message = (
+					f'ВНИМАНИЕ: Для выставки "{exhibition.title}" уже есть победители! Всего: {winners_count}. '
+					f'При сохранении они будут перезаписаны.'
+				)
+
+			# Собираем статистику
+			total_nominations = len(preview['items'])
+			nominations_with_winners = 0
+			nominations_incomplete = 0
+
+			for item in preview['items']:
+				if item.get('winners'):
+					nominations_with_winners += 1
+				if item.get('incomplete') or item.get('no_participants') or item.get('no_qualified_votes'):
+					nominations_incomplete += 1
+
+			stats = {
+				'total_nominations': total_nominations,
+				'nominations_with_winners': nominations_with_winners,
+				'nominations_incomplete': nominations_incomplete,
+				'nominations_conflicted': len(preview['conflicts']),
+			}
+
+		else:
+			# Извлекаем ручной выбор победителей для равных баллов
+			manual_selection = {
+				key.replace('nomination_', ''): value
+				for key, value in request.POST.items()
+				if key.startswith('nomination_')
+			}
+
+			try:
+				WinnersService.save_winners(preview, manual_selection)
+				# Очищаем сессию
+				if 'winners_preview' in request.session:
+					del request.session['winners_preview']
+
+				self.message_user(request, 'Победители успешно сохранены')
+				return redirect('..')
+
+			except ValidationError as e:
+				self.message_user(request, str(e), level='error')
+				return redirect('..')
+
+			except Exception as e:
+				self.message_user(request, f'Ошибка: {str(e)}', level='error')
+				return redirect('..')
+
+		context = {
+			**self.admin_site.each_context(request),
+			'title': 'Подтверждение победителей',
+			'conflicts': preview['conflicts'],
+			'warning_message': warning_message,
+			'preview': preview,
+			'stats': stats,
+		}
+		return render(request, 'admin/exhibition/winners/confirm.html', context)
 
 
 @admin.register(Events)

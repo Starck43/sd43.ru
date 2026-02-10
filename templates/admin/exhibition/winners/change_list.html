@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+
+    <li>
+        <a href="{% url 'admin:exhibition_winners_prepare' %}"
+           class="btn btn-danger">
+            🏆 Сформировать победителей
+        </a>
+    </li>
+{% endblock %}
