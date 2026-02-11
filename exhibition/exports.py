@@ -1,12 +1,11 @@
-from urllib.parse import quote
 from io import BytesIO
+from urllib.parse import quote
 
 from django.contrib import admin
+from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import path, reverse
-from django.db import models
-
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -115,7 +114,33 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 		)
 
 	def _get_report_data(self, exhibition, projects_per_nomination):
+		from django.db.models import Avg, Count
+
 		jury_list = list(exhibition.jury.select_related('user'))
+		jury_ids = [j.user_id for j in jury_list]
+
+		# --- Агрегированные оценки жюри по всем проектам сразу ---
+		jury_stats_map = {
+			item['portfolio_id']: {
+				'avg': item['avg'] or 0,
+				'count': item['count'] or 0,
+			}
+			for item in (
+				Rating.objects
+				.filter(
+					portfolio__exhibition=exhibition,
+					is_jury_rating=True,
+					user_id__in=jury_ids
+				)
+				.values('portfolio_id')
+				.annotate(
+					avg=Avg('star'),
+					count=Count('star')
+				)
+			)
+		}
+
+		# --- Карта индивидуальных оценок (для Excel поимённо) ---
 		ratings_map = self._get_ratings_map(exhibition)
 
 		portfolios = (
@@ -144,46 +169,67 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 			}
 		}
 
-		# jury stats
-		for jury in jury_list:
-			count = Rating.objects.filter(
-				user=jury.user,
+		# --- Статистика по жюри ---
+		jury_vote_totals = (
+			Rating.objects
+			.filter(
+				portfolio__exhibition=exhibition,
 				is_jury_rating=True,
-				portfolio__exhibition=exhibition
-			).count()
+				user_id__in=jury_ids
+			)
+			.values('user_id')
+			.annotate(count=Count('id'))
+		)
 
-			report_data['jury_stats'][jury.id] = {'name': jury.name or jury.user_name}
+		jury_vote_map = {item['user_id']: item['count'] for item in jury_vote_totals}
+
+		for jury in jury_list:
+			count = jury_vote_map.get(jury.user_id, 0)
+
+			report_data['jury_stats'][jury.id] = {
+				'name': jury.name or jury.user_name
+			}
+
 			report_data['total_stats']['total_ratings'] += count
+
 			report_data['not_voted_jury'][jury.id] = {
 				'jury': jury,
 				'nominations': [],
 				'total_missing': 0
 			}
 
+		# --- По номинациям ---
 		for nomination in exhibition.nominations.all():
 			projects_data = []
 			jury_vote_counter = {j.id: 0 for j in jury_list}
-			portfolios = portfolios_by_nom.get(nomination.id, [])
 
-			for portfolio in portfolios:
+			portfolios_in_nom = portfolios_by_nom.get(nomination.id, [])
+
+			for portfolio in portfolios_in_nom:
+				stats = jury_stats_map.get(portfolio.id, {'avg': 0, 'count': 0})
+
+				# исключаем проекты без голосов
+				# if stats['count'] == 0:
+				# 	continue
+
 				jury_scores = {}
-
 				for jury in jury_list:
 					score = ratings_map.get((portfolio.id, jury.user.id))
 					jury_scores[jury.id] = score
 					if score is not None:
 						jury_vote_counter[jury.id] += 1
 
-				stats = portfolio.get_rating_stats()
-
 				projects_data.append({
 					'portfolio': portfolio,
-					'jury_scores': jury_scores,  # ← оставляем, если нужен Excel поимённо
-					'total_score': stats['jury_average'],
-					'votes': stats['jury_count'],
+					'jury_scores': jury_scores,
+					'total_score': round(stats['avg'], 2),
+					'votes': stats['count'],
 				})
 
-			# Формирование победителей для итоговой таблицы
+			# --- Сортировка ---
+			projects_data.sort(key=lambda x: (x['total_score'], x['votes']), reverse=True)
+
+			# --- Победители ---
 			winners = []
 
 			if projects_data:
@@ -194,12 +240,15 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 					'score': p['total_score'],
 					'medal': 'gold',
 					'position': 1
-				} for p in projects_data if p['total_score'] == max_score and p['total_score'] > 0]
+				} for p in projects_data
+					if p['total_score'] == max_score and p['votes'] > 0
+				]
 
-			# не проголосовавшие
+			# --- Контроль непроголосовавших ---
 			for jury in jury_list:
 				expected = len(projects_data)
 				actual = jury_vote_counter[jury.id]
+
 				if actual < expected:
 					report_data['not_voted_jury'][jury.id]['nominations'].append({
 						'nomination': nomination,
@@ -208,8 +257,6 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 						'missing': expected - actual
 					})
 					report_data['not_voted_jury'][jury.id]['total_missing'] += expected - actual
-
-			projects_data.sort(key=lambda x: x['total_score'], reverse=True)
 
 			report_data['nominations'].append({
 				'title': nomination.title,
@@ -222,6 +269,7 @@ class ExportExhibitionAdmin(admin.ModelAdmin):
 
 			report_data['total_stats']['total_projects'] += len(projects_data)
 
+		# убрать тех, у кого нет пропусков
 		report_data['not_voted_jury'] = {
 			k: v for k, v in report_data['not_voted_jury'].items()
 			if v['total_missing'] > 0
