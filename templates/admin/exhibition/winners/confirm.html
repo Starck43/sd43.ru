@@ -1,24 +1,30 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags custom_tags %}
 
 {% block content %}
     <h1>Подтверждение победителей</h1>
 
     {% if warning_message %}
-        <div class="alert status-warning centered py-2">
-            {{ warning_message }}
+        <div class="alert status-warning centered py-2 px-1">
+            <span class="mt-2">
+                {{ warning_message }}
+            </span>
         </div>
     {% endif %}
 
-    <p class="text-muted">
-        В некоторых номинациях несколько работ набрали одинаковый средний балл.
-        Выберите одного победителя.
-    </p>
+    {% if stats.nominations_conflicted %}
+        <div class="alert status-warning centered pb-2 px-1">
+            <span class="mt-2">
+                В некоторых номинациях несколько работ набрали одинаковый средний балл.
+                Выберите одного победителя для каждой конфликтной номинации.
+            </span>
+        </div>
+    {% endif %}
 
     {% if stats.total_nominations %}
         <div class="status-info">
-            <ul class="m-2">
+            <ul class="list-style-none m-2">
                 <li>Всего номинаций: {{ stats.total_nominations }}</li>
                 {% if stats.nominations_with_winners %}
                     <li>Номинаций с победителями: {{ stats.nominations_with_winners }}</li>
@@ -33,74 +39,70 @@
         </div>
     {% endif %}
 
-    {% for item in preview.items %}
-        <div class="card mb-3 {% if item.incomplete %}border-warning{% elif item.winners %}border-success{% else %}border-secondary{% endif %}">
-            <div class="card-header {% if item.incomplete %}bg-warning{% elif item.winners %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
-                <strong>{{ item.nomination.title }}</strong>
-                {% if item.incomplete %}
-                    <span class="badge bg-dark">Не все проекты оценены</span>
-                {% elif not item.winners %}
-                    <span class="badge bg-dark">Нет подходящих победителей</span>
-                {% elif item.winners|length > 1 %}
-                    <span class="badge bg-warning text-dark">Конфликт: {{ item.winners|length }} претендента</span>
-                {% else %}
-                    <span class="badge bg-light text-dark">Победитель определен</span>
-                {% endif %}
-            </div>
-
-            <div class="card-body">
-                {% if item.winners %}
-                    <ul>
-                        {% for w in item.winners %}
-                            <li>
-                                {{ w.portfolio.title }}
-                                <small class="text-muted">
-                                    (ср. балл: {{ w.avg|floatformat:2 }}, голосов: {{ w.votes }})
-                                </small>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% elif item.incomplete %}
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-exclamation-circle text-warning"></i>
-                        Не все проекты в этой номинации получили оценки жюри.
-                    </p>
-                {% else %}
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-info-circle"></i>
-                        Нет проектов с подходящими оценками жюри.
-                    </p>
-                {% endif %}
-            </div>
-        </div>
-    {% endfor %}
-
     <form method="post">
         {% csrf_token %}
 
-        {% for item in conflicts %}
-            <div class="card mb-4">
-                <div class="card-header status-warning">
-                    <strong>Конфликт: {{ item.nomination.title }}</strong>
+        {% for item in preview.items %}
+            <div class="card mb-3">
+                <div class="card-header {% if item.incomplete %}status-warning{% endif %}">
+                    <strong>{{ item.nomination.title }}</strong>
+                    {% if item.incomplete %}
+                        <span class="status-warning">Не все проекты оценены</span>
+                    {% elif not item.winners %}
+                        <span class="status-warning">Нет подходящих победителей</span>
+                    {% elif item.winners|length > 1 %}
+                        <span class="status-error">Конфликт: {{ item.winners|length }} претендента</span>
+                    {% endif %}
                 </div>
 
-                <div class="card-body status-warning">
-                    {% for w in item.winners %}
-                        <div class="form-check">
-                            <input class="form-check-input"
-                                   type="radio"
-                                   name="nomination_{{ item.nomination.id }}"
-                                   value="{{ w.portfolio.id }}"
-                                   required>
+                <div class="card-body">
+                    {% if item.winners %}
+                        {% with conflict=conflicts_dict|get_item:item.nomination.id %}
+                            {% if conflict %}
+                                <!-- Конфликтная номинация - радио-кнопки -->
+                                <p class="mb-2" style="{% if conflict %}color:darkred{% endif %}">Выберите победителя:</p>
+                                {% for w in item.winners %}
+                                    <div class="form-check d-flex align-center">
+                                        <input class="form-check-input"
+                                               type="radio"
+                                               name="nomination_{{ item.nomination.id }}"
+                                               value="{{ w.portfolio.id }}"
+                                               id="winner_{{ item.nomination.id }}_{{ w.portfolio.id }}"
+                                               required>
+                                        <label class="form-check-label d-flex"
+                                               for="winner_{{ item.nomination.id }}_{{ w.portfolio.id }}">
+                                            {{ w.portfolio.title }}
+                                            <span class="text-muted">
+                                                (ср. балл: {{ w.avg|floatformat:2 }}, голосов: {{ w.votes }})
+                                            </span>
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <ul class="list-style-none">
+                                    {% for w in item.winners %}
+                                        <li class="mb-0">
+                                            {{ w.portfolio.title }}
+                                            <span class="text-muted">
+                                                (ср. балл: {{ w.avg|floatformat:2 }}, голосов: {{ w.votes }})
+                                            </span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        {% endwith %}
 
-                            <label class="form-check-label">
-                                {{ w.portfolio.title }}
-                                <span class="text-muted">
-                                    (ср. балл: {{ w.avg|floatformat:2 }}, голосов: {{ w.votes }})
-                                </span>
-                            </label>
-                        </div>
-                    {% endfor %}
+                    {% elif item.incomplete %}
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-exclamation-circle text-warning"></i>
+                            Не все проекты в этой номинации получили оценки жюри.
+                        </p>
+                    {% else %}
+                        <p class="text-muted m-0">
+                            <i class="fas fa-info-circle"></i>
+                            Нет проектов с подходящими оценками жюри.
+                        </p>
+                    {% endif %}
                 </div>
             </div>
         {% endfor %}
@@ -109,8 +111,7 @@
             <button type="submit" class="btn btn-success">
                 Подтвердить
             </button>
-
-            <a href="../" class="btn btn-secondary ms-2">
+            <a href="../" class="btn btn-secondary ml-2">
                 Отмена
             </a>
         </div>

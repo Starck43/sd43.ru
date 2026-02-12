@@ -1,5 +1,5 @@
 from allauth.account.models import EmailAddress
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -440,38 +440,29 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		return render(request, 'admin/exhibition/winners/prepare.html', context)
 
 	def confirm_winners(self, request):
-		# читаем preview из сессии
 		preview_data = request.session.get('winners_preview')
 		if not preview_data:
 			self.message_user(request, 'Нет данных для подтверждения', level='warning')
 			return redirect('..')
 
+		preview = WinnersService.deserialize_preview(preview_data)
 		warning_message = None
 
-		# Десериализуем данные для шаблона
-		preview = WinnersService.deserialize_preview(preview_data)
-
-		# Проверяем существующих победителей
 		if request.method == 'GET':
 			exhibition = preview['exhibition']
 			winners_count = exhibition.exhibition_for_winner.count()
-
 			if winners_count:
 				warning_message = (
 					f'ВНИМАНИЕ: Для выставки "{exhibition.title}" уже есть победители! Всего: {winners_count}. '
 					f'При сохранении они будут перезаписаны.'
 				)
 
-			# Собираем статистику
+			# Простая статистика
 			total_nominations = len(preview['items'])
-			nominations_with_winners = 0
-			nominations_incomplete = 0
-
-			for item in preview['items']:
-				if item.get('winners'):
-					nominations_with_winners += 1
-				if item.get('incomplete') or item.get('no_participants') or item.get('no_qualified_votes'):
-					nominations_incomplete += 1
+			nominations_with_winners = sum(1 for item in preview['items'] if item.get('winners'))
+			nominations_incomplete = sum(1 for item in preview['items']
+			                             if item.get('incomplete') or item.get('no_participants') or item.get(
+				'no_qualified_votes'))
 
 			stats = {
 				'total_nominations': total_nominations,
@@ -481,7 +472,7 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 			}
 
 		else:
-			# Извлекаем ручной выбор победителей для равных баллов
+			# POST - сохраняем с ручным выбором
 			manual_selection = {
 				key.replace('nomination_', ''): value
 				for key, value in request.POST.items()
@@ -490,28 +481,21 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 			try:
 				WinnersService.save_winners(preview, manual_selection)
-				# Очищаем сессию
 				if 'winners_preview' in request.session:
 					del request.session['winners_preview']
-
 				self.message_user(request, 'Победители успешно сохранены')
-				return redirect('..')
-
-			except ValidationError as e:
-				self.message_user(request, str(e), level='error')
-				return redirect('..')
-
 			except Exception as e:
 				self.message_user(request, f'Ошибка: {str(e)}', level='error')
-				return redirect('..')
+
+			return redirect('..')
 
 		context = {
 			**self.admin_site.each_context(request),
 			'title': 'Подтверждение победителей',
-			'conflicts': preview['conflicts'],
-			'warning_message': warning_message,
 			'preview': preview,
 			'stats': stats,
+			'warning_message': warning_message,
+			'conflicts_dict': {c['nomination'].id: c for c in preview['conflicts']},  # для быстрого поиска
 		}
 		return render(request, 'admin/exhibition/winners/confirm.html', context)
 

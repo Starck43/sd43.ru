@@ -586,7 +586,7 @@ class WinnerProjectDetail(MetaSeoMixin, BannersMixin, DetailView):
 			context['user_score'] = None
 
 		context['average_rate'] = round(total_rate, 1)
-		context['user_rate'] = math.ceil(total_rate)
+		context['round_rate'] = math.ceil(total_rate)
 		context['extra_rate_percent'] = int((total_rate - int(total_rate)) * 100)
 		context['rating_form'] = RatingForm(
 			initial={'star': int(total_rate)},
