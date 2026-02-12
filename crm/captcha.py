@@ -96,23 +96,15 @@ class CaptchaValidationMixin:
 		if all_errors:
 			raise ValidationError(all_errors)
 
-		# Проверка капчи
-		if not getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False):
-			token = None
-			if hasattr(self, 'request'):
-				token = self.request.POST.get('smart-token')  # С дефисом!
-				if not token:
-					token = self.request.POST.get('smart_token')  # С подчеркиванием
-				if not token:
-					token = cleaned_data.get('smart_token', '')
+		token = cleaned_data.get("smart_token")
 
-			logger.info(f'Проверка Яндекс капчи (токен: {token[:20] if token else "пустой"}...). IP: {remote_ip}')
+		if not token:
+			raise ValidationError(
+				"Токен капчи не получен сервером."
+			)
 
-			if not token:
-				raise ValidationError('Токен капчи не получен. Пожалуйста, обновите страницу и попробуйте снова.')
-
-			if not self.verify_captcha(token):
-				raise ValidationError('Пройдите проверку безопасности.')
+		if not self.verify_captcha(token):
+			raise ValidationError("Пройдите проверку безопасности.")
 
 		return cleaned_data
 

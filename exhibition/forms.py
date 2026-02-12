@@ -739,7 +739,7 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
 	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
 	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
-	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
+	smart_token = forms.CharField(widget=forms.HiddenInput(attrs={'name': 'smart-token'}), required=False)
 
 	def __init__(self, *args, **kwargs):
 		self.field_order = [
@@ -749,8 +749,8 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 		super().__init__(*args, **kwargs)
 		self.fields["password2"].widget.attrs['placeholder'] = 'Пароль повторно'
 		# Сохраняем request для получения IP
-		if 'request' in kwargs:
-			self.request = kwargs['request']
+		if not hasattr(self, "request"):
+			self.request = kwargs.get("request")
 
 	def save(self, request):
 		user = super().save(request)

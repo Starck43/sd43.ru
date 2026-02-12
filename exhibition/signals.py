@@ -60,63 +60,6 @@ def portfolio_victory_changed(sender, instance, **kwargs):
 	invalidate_portfolio_cache(instance.portfolio)
 
 
-@receiver(post_save, sender=User)
-def sync_user_email_to_allauth(sender, instance, created, **kwargs):
-	"""
-	Синхронизация User.email → allauth EmailAddress
-	Только для пользователей, созданных НЕ через allauth (админка, импорт и т.д.)
-	"""
-
-	from allauth.account.models import EmailAddress
-
-	# Если есть связанный SocialAccount - это соцсеть
-	if hasattr(instance, 'socialaccount_set') and instance.socialaccount_set.exists():
-		# Это вход через соцсети - allauth сам создаст EmailAddress
-		return
-
-	# Если пользователь создан через форму регистрации allauth,
-	# у него уже будет EmailAddress после вызова сигнала user_signed_up
-	if not instance.email:
-		EmailAddress.objects.filter(user=instance).delete()
-		return
-
-	email = instance.email.strip().lower()
-
-	# Проверяем, существует ли уже EmailAddress для этого пользователя
-	existing = EmailAddress.objects.filter(user=instance).first()
-
-	if not existing:
-		# Создаем только если его нет (для админки)
-		EmailAddress.objects.get_or_create(
-			user=instance,
-			email=email,
-			defaults={
-				"verified": True,
-				"primary": True,
-			}
-		)
-	else:
-		# Обновляем существующий
-		updated = False
-
-		if existing.email != email:
-			existing.email = email
-			updated = True
-
-		if not existing.verified:
-			existing.verified = True
-			updated = True
-
-		if not existing.primary:
-			# Сначала сбрасываем primary у всех
-			EmailAddress.objects.filter(user=instance).update(primary=False)
-			existing.primary = True
-			updated = True
-
-		if updated:
-			existing.save()
-
-
 @receiver(user_signed_up, dispatch_uid="new_user_notification")
 def user_signed_up_(request, user, sociallogin=None, **kwargs):
 	"""Обработчик регистрации нового пользователя"""

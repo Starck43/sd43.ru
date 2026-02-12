@@ -641,15 +641,18 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 			rate = ratings_aggregate.get('average') or 0.0
 			jury_avg = ratings_aggregate.get('jury_average') or 0.0
 			jury_count = ratings_aggregate.get('jury_count') or 0
+			context['round_rate'] = 0
+
 			if rate:
 				context['average_rate'] = round(rate, 1)
 				context['round_rate'] = math.ceil(rate)
 				context['extra_rate_percent'] = int((rate - int(rate)) * 100)
+
 		else:
 			rate = 0.0
 			jury_avg = 0.0
 			jury_count = 0
-			context['round_rate'] = None
+			context['round_rate'] = 0
 			context['extra_rate_percent'] = 0
 
 		context['exhibition'] = self.object.exhibition
