@@ -6,40 +6,61 @@
 
 {% block styles %}
     {{ block.super }}
-    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
-
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" async defer></script>
     <style>
-		#captcha-container {
-            width: max-content;
+		.smart-captcha {
 			min-height: 100px;
 			margin: 20px 0;
+			max-width: max-content;
 		}
     </style>
 {% endblock styles %}
 
 {% block content %}
-
     <p>Если Вы уже регистрировались ранее, то перейдите по <a href="{{ login_url }}">ссылке</a>.</p>
 
     <form class="account-form signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
         {% csrf_token %}
         {{ form|crispy }}
 
-        {% if not DISABLE_CAPTCHA_IN_DEBUG %}
+        {% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}
             <!-- Контейнер для капчи -->
             <div
-                    style="height: 100px"
                     id="captcha-container"
                     class="smart-captcha"
                     data-sitekey="{{ YANDEX_CAPTCHA_CLIENT_KEY }}"
+                    data-hl="ru"
+                    data-callback="callback"
+                    data-expired-callback="expiredCallback"
+                    data-challenge-page="true"
             ></div>
+
+            <script>
+                function callback(token) {
+                    // Находим существующее поле из формы
+                    const tokenField = document.getElementById('id_smart_token');
+                    if (tokenField) {
+                        tokenField.value = token;
+                        document.getElementById('submit-btn').disabled = false;
+                    }
+                }
+
+                function expiredCallback() {
+                    const tokenField = document.getElementById('id_smart_token');
+                    if (tokenField) {
+                        tokenField.value = '';
+                        document.getElementById('submit-btn').disabled = true;
+                    }
+                }
+            </script>
         {% endif %}
 
         {% if redirect_field_value %}
             <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
         {% endif %}
 
-        <button class="btn btn-primary" type="submit" id="submit-btn">{% trans "Sign Up" %}</button>
+        <button class="btn btn-primary" type="submit" id="submit-btn" disabled>
+            {% trans "Sign Up" %}
+        </button>
     </form>
-
 {% endblock content %}

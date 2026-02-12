@@ -737,10 +737,6 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 
 	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
 	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
-	# username = forms.CharField(
-	# 	label='Имя пользователя',
-	# 	widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя в качестве логина (латиницей)'})
-	# )
 	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
 	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
 	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
@@ -756,3 +752,8 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 		if 'request' in kwargs:
 			self.request = kwargs['request']
 
+	def save(self, request):
+		user = super().save(request)
+		user = set_user_group(request, user)
+		user.save()
+		return user

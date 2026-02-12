@@ -208,6 +208,7 @@ ADMINS = [('Starck', email) for email in EMAIL_RECIPIENTS]
 YANDEX_CAPTCHA_CLIENT_KEY = os.getenv('YANDEX_CAPTCHA_CLIENT_KEY', '')  # Публичный ключ
 YANDEX_CAPTCHA_SERVER_KEY = os.getenv('YANDEX_CAPTCHA_SERVER_KEY', '')  # Секретный ключ
 YANDEX_CAPTCHA_URL = "https://smartcaptcha.yandexcloud.net/validate"
+INVISIBLE_CAPTCHA = os.getenv('INVISIBLE_CAPTCHA', False)
 DISABLE_CAPTCHA_IN_DEBUG = False  # Отключать капчу в режиме отладки
 CAPTCHA_FAIL_SILENTLY = False  # Что делать при ошибке проверки (True = пропустить)
 

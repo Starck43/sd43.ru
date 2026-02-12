@@ -49,4 +49,5 @@ def yandex_captcha(request):
 	return {
 		'YANDEX_CAPTCHA_CLIENT_KEY': getattr(settings, 'YANDEX_CAPTCHA_CLIENT_KEY', ''),
 		'DISABLE_CAPTCHA_IN_DEBUG': getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False),
+		'INVISIBLE_CAPTCHA': getattr(settings, 'INVISIBLE_CAPTCHA', False),
 	}

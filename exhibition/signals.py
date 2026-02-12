@@ -64,39 +64,57 @@ def portfolio_victory_changed(sender, instance, **kwargs):
 def sync_user_email_to_allauth(sender, instance, created, **kwargs):
 	"""
 	Синхронизация User.email → allauth EmailAddress
-	Используется для пользователей, созданных/отредактированных в админке
+	Только для пользователей, созданных НЕ через allauth (админка, импорт и т.д.)
 	"""
 
-	# ❗ Нет email — allauth не нужен
+	from allauth.account.models import EmailAddress
+
+	# Если есть связанный SocialAccount - это соцсеть
+	if hasattr(instance, 'socialaccount_set') and instance.socialaccount_set.exists():
+		# Это вход через соцсети - allauth сам создаст EmailAddress
+		return
+
+	# Если пользователь создан через форму регистрации allauth,
+	# у него уже будет EmailAddress после вызова сигнала user_signed_up
 	if not instance.email:
 		EmailAddress.objects.filter(user=instance).delete()
 		return
 
 	email = instance.email.strip().lower()
 
-	email_addr, created_email = EmailAddress.objects.get_or_create(
-		user=instance,
-		email=email,
-		defaults={
-			"verified": True,
-			"primary": True,
-		},
-	)
+	# Проверяем, существует ли уже EmailAddress для этого пользователя
+	existing = EmailAddress.objects.filter(user=instance).first()
 
-	if not created_email:
+	if not existing:
+		# Создаем только если его нет (для админки)
+		EmailAddress.objects.get_or_create(
+			user=instance,
+			email=email,
+			defaults={
+				"verified": True,
+				"primary": True,
+			}
+		)
+	else:
+		# Обновляем существующий
 		updated = False
 
-		if not email_addr.verified:
-			email_addr.verified = True
+		if existing.email != email:
+			existing.email = email
 			updated = True
 
-		if not email_addr.primary:
+		if not existing.verified:
+			existing.verified = True
+			updated = True
+
+		if not existing.primary:
+			# Сначала сбрасываем primary у всех
 			EmailAddress.objects.filter(user=instance).update(primary=False)
-			email_addr.primary = True
+			existing.primary = True
 			updated = True
 
 		if updated:
-			email_addr.save()
+			existing.save()
 
 
 @receiver(user_signed_up, dispatch_uid="new_user_notification")

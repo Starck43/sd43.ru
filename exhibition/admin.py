@@ -56,10 +56,10 @@ class UserAdmin(BaseUserAdmin):
 	# form = CustomSignupForm
 	# add_form = CustomSignupForm
 
-	list_display = ('username', 'email', 'first_name', 'last_name', 'is_active')
+	list_display = ('username', 'email', 'first_name', 'last_name', 'date_joined', 'is_active')
 	list_filter = ('is_staff', 'is_active', 'groups')
 	search_fields = ('username', 'first_name', 'last_name', 'email')
-	ordering = ('-date_joined',)
+	ordering = ('-id',)
 
 	fieldsets = (
 		(None, {'fields': ('username', 'password', 'is_active')}),
