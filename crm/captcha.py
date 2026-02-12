@@ -37,19 +37,19 @@ class CaptchaValidationMixin:
 		server_key = getattr(settings, 'YANDEX_CAPTCHA_SERVER_KEY', '')
 		if not server_key:
 			logger.warning("[WARNING] Секретный ключ капчи не найден.")
-			return skip_on_error or False
+			return skip_on_error
 
 		# 3. Получить IP-адрес пользователя
 		user_ip = self.get_remote_ip()  # Ваш существующий метод
 
-		# 4. Выполнить запрос к API Яндекс SmartCaptcha (как в примере)
+		# 4. Выполнить запрос к API Яндекс SmartCaptcha
 		try:
 			resp = requests.get(
 				getattr(settings, 'YANDEX_CAPTCHA_URL', "https://smartcaptcha.yandexcloud.net/validate"),
-				params={
+				{
 					"secret": server_key,
 					"token": token,
-					"ip": user_ip
+					"ip": str(user_ip)
 				},
 				timeout=5
 			)
@@ -61,7 +61,7 @@ class CaptchaValidationMixin:
 				# В случае ошибки сервера капчи решаем "пропустить" человека
 				logger.error(f"[ERROR] Ошибка API Яндекс.Капчи. Код: {resp.status_code}, Ответ: {server_output}")
 				# Возвращаем True, чтобы не блокировать пользователей из-за сбоев у Яндекса
-				return skip_on_error or True
+				return skip_on_error
 
 			# 6. Проверить статус в ответе
 			result = json.loads(server_output)
@@ -74,16 +74,17 @@ class CaptchaValidationMixin:
 		except requests.exceptions.RequestException as e:
 			# Ошибка сети или таймаута
 			logger.error(f"[ERROR] Не удалось проверить капчу (сетевая ошибка): {e}")
-			# В случае сбоя лучше пропустить проверку, чем заблокировать легитимных пользователей
-			return skip_on_error or True
+
 		except json.JSONDecodeError as e:
 			logger.error(f"[ERROR] Не удалось разобрать ответ от сервера капчи: {e}")
-			return skip_on_error or True
+
+		return skip_on_error
 
 	def clean(self):
 		cleaned_data = super().clean()
 
 		all_errors = []
+		remote_ip = self.get_remote_ip()
 
 		for field, error_list in self.errors.items():
 
@@ -99,6 +100,7 @@ class CaptchaValidationMixin:
 		if not getattr(settings, 'DISABLE_CAPTCHA_IN_DEBUG', False):
 			# Проверка капчи
 			token = cleaned_data.get('smart_token')
+			logger.info(f'Проверка Яндекс капчи (ключ: {token}). IP: {remote_ip}')
 			if not self.verify_captcha(token):
 				ValidationError('Пройдите проверку безопасности.')
 

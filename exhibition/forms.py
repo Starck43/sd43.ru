@@ -705,21 +705,20 @@ class UsersListForm(forms.Form):
 		super().__init__(*args, **kwargs)
 
 
-class CustomSocialSignupForm(CaptchaValidationMixin, SocialSignupForm):
+class CustomSocialSignupForm(SocialSignupForm):
 	"""Форма регистрации через соцсети с капчей"""
 
 	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
 	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
-	username = forms.CharField(
-		label='Имя пользователя',
-		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя (уникальный ник)'})
-	)
+	# username = forms.CharField(
+	# 	label='Имя пользователя',
+	# 	widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя (уникальный ник)'})
+	# )
 	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
 	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
-	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
 
 	def __init__(self, *args, **kwargs):
-		self.field_order = ['first_name', 'last_name', 'username', 'email', 'exhibitor', 'smart_token']
+		self.field_order = ['first_name', 'last_name', 'email', 'exhibitor']
 		super().__init__(*args, **kwargs)
 		# Сохраняем request для получения IP
 		if 'request' in kwargs:
@@ -728,7 +727,7 @@ class CustomSocialSignupForm(CaptchaValidationMixin, SocialSignupForm):
 	def save(self, request):
 		user = super().save(request)
 		user = set_user_group(request, user)
-		user.is_active = True
+		#  user.is_active = True
 		user.save()
 		return user
 
@@ -738,17 +737,17 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 
 	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
 	last_name = forms.CharField(label='Фамилия', widget=forms.TextInput(attrs={'placeholder': 'Фамилия'}))
-	username = forms.CharField(
-		label='Имя пользователя',
-		widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя в качестве логина (латиницей)'})
-	)
+	# username = forms.CharField(
+	# 	label='Имя пользователя',
+	# 	widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя в качестве логина (латиницей)'})
+	# )
 	email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'placeholder': 'Email адрес'}))
 	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
 	smart_token = forms.CharField(widget=forms.HiddenInput(), required=False)
 
 	def __init__(self, *args, **kwargs):
 		self.field_order = [
-			'first_name', 'last_name', 'username', 'email', 'exhibitor',
+			'first_name', 'last_name', 'email', 'exhibitor',
 			'password1', 'password2', 'smart_token'
 		]
 		super().__init__(*args, **kwargs)
@@ -757,9 +756,3 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 		if 'request' in kwargs:
 			self.request = kwargs['request']
 
-	def save(self, request):
-		user = super().save(request)
-		user = set_user_group(request, user)
-		user.is_active = True
-		user.save()
-		return user
