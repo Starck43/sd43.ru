@@ -84,7 +84,6 @@ class CaptchaValidationMixin:
 		cleaned_data = super().clean()
 
 		all_errors = []
-		remote_ip = self.get_remote_ip()
 
 		# Собираем все ошибки полей
 		for field, error_list in self.errors.items():
@@ -99,9 +98,7 @@ class CaptchaValidationMixin:
 		token = cleaned_data.get("smart_token")
 
 		if not token:
-			raise ValidationError(
-				"Токен капчи не получен сервером."
-			)
+			raise ValidationError("Токен капчи не получен сервером.")
 
 		if not self.verify_captcha(token):
 			raise ValidationError("Пройдите проверку безопасности.")

@@ -161,13 +161,12 @@ SITE_ID = 1
 ACCOUNT_LOGIN_METHODS = {'email', 'username'}  # Можно логиниться по email или username
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Поля при регистрации
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_MIN_LENGTH = 4
 ACCOUNT_MAX_EMAIL_ADDRESSES = 2
 
 # Email верификация
 ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 14
-ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = False
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
 # Социальные аккаунты

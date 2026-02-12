@@ -1,4 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.models import EmailAddress
+from django.core.exceptions import ValidationError
 
 from .models import Exhibitors
 
@@ -27,3 +29,27 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 		except Exception:
 			pass
 
+	def pre_login(self, request, user, **kwargs):
+		"""
+		Блокируем вход, если email не подтвержден.
+		Но не блокируем автоматический вход после регистрации.
+		"""
+
+		# 1️⃣ Если это auto-login после signup — разрешаем
+		if kwargs.get("signup"):
+			return super().pre_login(request, user, **kwargs)
+
+		# 2️⃣ Проверяем primary email
+		email_address = (
+			EmailAddress.objects
+			.filter(user=user, primary=True)
+			.first()
+		)
+
+		# 3️⃣ Если email есть и не подтвержден — блокируем
+		if email_address and not email_address.verified:
+			raise ValidationError(
+				"Подтвердите email перед входом в систему."
+			)
+
+		return super().pre_login(request, user, **kwargs)

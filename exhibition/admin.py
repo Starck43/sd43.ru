@@ -1,3 +1,4 @@
+from allauth.account.models import EmailAddress
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm
@@ -86,6 +87,48 @@ class UserAdmin(BaseUserAdmin):
 			defaults['form'] = UserCreationForm
 		defaults.update(kwargs)
 		return super().get_form(request, obj, **defaults)
+
+	def save_model(self, request, obj, form, change):
+		"""Синхронизация User.email → allauth EmailAddress"""
+
+		super().save_model(request, obj, form, change)
+
+		# Если email пустой — удаляем связанные EmailAddress
+		if not obj.email:
+			EmailAddress.objects.filter(user=obj).delete()
+			return
+
+		email = obj.email.strip().lower()
+
+		# Получаем текущий primary email
+		existing = EmailAddress.objects.filter(user=obj).first()
+
+		if not existing:
+			EmailAddress.objects.create(
+				user=obj,
+				email=email,
+				primary=True,
+				verified=True,  # считаем подтвержденным
+			)
+			return
+
+		updated = False
+
+		if existing.email != email:
+			existing.email = email
+			updated = True
+
+		if not existing.primary:
+			EmailAddress.objects.filter(user=obj).update(primary=False)
+			existing.primary = True
+			updated = True
+
+		if not existing.verified:
+			existing.verified = True
+			updated = True
+
+		if updated:
+			existing.save()
 
 
 class MetaSeoFieldsAdmin:

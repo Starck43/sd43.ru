@@ -874,39 +874,14 @@ def send_reset_password_email(request):
 
 
 @login_required
-# @method_decorator(csrf_exempt, name='dispatch')
 def deactivate_user(request):
-	""" Удаление аккаунта пользователя """
 	if request.method == 'POST':
 		form = DeactivateUserForm(request.POST)
 		if form.is_valid():
-			try:
-				user_allauth = EmailAddress.objects.get(user__username=request.user.username)
-				user_allauth.delete()
-			except EmailAddress.DoesNotExist:
-				pass
-
-			try:
-				social_account = SocialAccount.objects.get(user__username=request.user.username)
-				social_account.delete()
-				social_account_removed.send(
-					sender=SocialAccount,
-					request=request,
-					socialaccount=social_account
-				)
-			except SocialAccount.DoesNotExist:
-				pass
-
-			# User Deactivation
 			request.user.is_active = False
 			request.user.save()
-			# Log user out.
-			# logout(request)
-			# Give them a success message
-			# messages.success(request, 'Аккаунт удален!')
-			# return redirect(reverse('index'))
-			return HttpResponseRedirect(reverse_lazy('account_logout'))
 
+			return redirect('account_logout')
 	else:
 		form = DeactivateUserForm()
 

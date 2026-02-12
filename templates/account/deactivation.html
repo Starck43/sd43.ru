@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "account/base.html" %}
 {% load i18n %}
 {% load crispy_forms_tags %}
 
@@ -7,14 +7,17 @@
 
 {% block content %}
 
-<form method="post" action="{% url 'account_logout' %}">
+    <h1>Удаление аккаунта</h1>
+    <form method="post" action="{% url 'deactivate-user' %}">
 
-	{% csrf_token %}
-    {{form|crispy}}
+        {% csrf_token %}
+        {{ form|crispy }}
 
-	<button class="btn btn-outline-dark" type="submit">{% trans 'Confirm' %}</button>
- 	<a href="{{request.META.HTTP_REFERER}}" class="btn btn-outline-primary">Вернуться</a>
+        <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-primary" type="submit">{% trans 'Confirm' %}</button>
+            <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-outline-primary">Вернуться</a>
+        </div>
 
-</form>
+    </form>
 
 {% endblock content %}
