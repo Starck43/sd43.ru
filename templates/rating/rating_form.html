@@ -2,11 +2,11 @@
 {% load custom_tags %}
 
 <form class="rating-form flex-content
-             {% if not user_can_rate and not exhibition_ended %}disabled{% endif %}
+             {% if not user_can_rate and not exhibition_ended%}disabled{% endif %}
              {% if exhibition_ended %}show-rating{% endif %}"
       method="{% if user_can_rate %}post{% else %}get{% endif %}"
       action="{% url 'rating:add-rating' %}"
-      value="{% if user_score %}{{ user_score|floatformat:0 }}{% endif %}"
+      value="{% if user_rate %}{{ user_rate|floatformat:0 }}{% endif %}"
       name="rating"
       data-is-jury="{{ is_jury|yesno:'true,false' }}"
       data-user-authenticated="{{ user.is_authenticated|yesno:'true,false' }}"
@@ -14,36 +14,17 @@
       data-exhibition-ended="{{ exhibition_ended|yesno:'true,false' }}"
 >
 
-    {# ОДНО сообщение о причине невозможности голосования #}
-    {% if not user_can_rate %}
-        <div class="mb-2">
-            <small class="text-muted">
-                {% if not user.is_authenticated %}
-                    Войдите в систему, чтобы участвовать в оценке проектов
-                {% elif is_owner %}
-                    Вы не можете оценивать свои работы
-                {% elif is_jury %}
-                    {% if exhibition_ended %}
-                        Голосование жюри завершено
-                    {% else %}
-                        Срок голосования жюри истек
-                    {% endif %}
-                {% else %}
-                    {% if user_score %}
-                        Вы уже оценили эту работу
-                    {% else %}
-                        Оценка доступна после завершения выставки
-                    {% endif %}
-                {% endif %}
-            </small>
-        </div>
-    {% endif %}
+    <div class="mb-2">
+        <small class="text-muted">
+            {{ rate_message }}
+        </small>
+    </div>
 
     {% csrf_token %}
     <input type="hidden" value="{{ portfolio.id }}" name="portfolio">
 
     {# Заголовок для жюри ТОЛЬКО когда они могут голосовать #}
-    {% if is_jury and jury_can_rate %}
+    {% if is_jury and jury_voting_active %}
         <div class="rating-header d-flex align-center mb-2">
             <div class="jury-badge btn-sm ratio">
                 <svg class="icon jury-icon">
@@ -61,7 +42,7 @@
 
     <div class="total-rating-block d-flex align-items-center">
         <span class="me-2">
-            {% if is_jury and jury_can_rate %}
+            {% if is_jury and jury_voting_active %}
                 Выберите оценку:
             {% else %}
                 Рейтинг:
@@ -111,10 +92,10 @@
     </div>
 
     {# Личная оценка пользователя #}
-    {% if user_score %}
+    {% if user_rate %}
         <div class="personal-rating-block d-flex align-items-center mt-2">
             <span class="me-2">Ваша оценка:</span>
-            <b>{{ user_score }}.0</b>
+            <b>{{ user_rate }}.0</b>
         </div>
     {% endif %}
 </form>

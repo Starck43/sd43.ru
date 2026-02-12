@@ -5,21 +5,19 @@ from os import path, rename, rmdir, listdir
 from ckeditor.fields import RichTextField
 from ckeditor_uploader.fields import RichTextUploadingField
 from django.conf import settings
-from django.contrib.auth.models import User, UserManager
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import RegexValidator
-from django.db import transaction
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 # from django.utils.text import slugify
 from django.urls import reverse  # Used to generate URLs by reversing the URL patterns
+from django.utils import timezone
 from django.utils.timezone import now
 from smart_selects.db_fields import ChainedForeignKey
 # from django.core.files.base import ContentFile
 from sorl.thumbnail import delete
-from uuslug import uuslug, slugify
+from uuslug import uuslug
 
 from crm import models
 from .base_models import UserModel, BaseImageModel
@@ -285,8 +283,8 @@ class Exhibitions(BaseImageModel):
 		blank=True
 	)
 	description = RichTextUploadingField('Описание выставки', blank=True)
-	date_start = models.DateField('Начало выставки', unique=True)
-	date_end = models.DateField('Окончание выставки', unique=True)
+	date_start = models.DateTimeField('Начало выставки', unique=True)
+	date_end = models.DateTimeField('Окончание выставки', unique=True)
 	location = models.CharField('Расположение выставки', max_length=200, blank=True)
 	exhibitors = models.ManyToManyField(
 		Exhibitors,
@@ -353,37 +351,38 @@ class Exhibitions(BaseImageModel):
 	@classmethod
 	def get_unfinished_exhibition(cls):
 		"""Получить текущую или предстоящую выставку (не завершенную)"""
-		today = now().date()
-
-		# Ищем выставки, которые еще не завершены (date_end >= today)
-		return cls.objects.filter(date_end__gte=today).order_by('date_start').first()
-
-	@property
-	def status(self):
-		today = now().date()
-		return 'upcoming' if today < self.date_start else 'active' if today <= self.date_end else 'finished'
-
-	@property
-	def rating_deadline(self):
-		"""Дедлайн для обычных пользователей (после выставки)"""
-		return self.date_end - timedelta(days=1)
+		return (
+			cls.objects
+			.filter(date_end__gte=now)
+			.order_by('date_start')
+			.first()
+		)
 
 	@property
 	def jury_deadline(self):
-		"""Дедлайн для жюри (до начала выставки)"""
-		return self.date_start
+		return (
+				self.date_start
+				.replace(hour=0, minute=0, second=0, microsecond=0)
+				+ timedelta(days=1)
+		)
 
 	@property
 	def is_jury_voting_active(self):
 		"""Активно ли голосование жюри (до начала выставки)"""
-		today = now().date()
-		return today < self.jury_deadline
+		return timezone.now() < self.jury_deadline
+
+	@property
+	def is_users_voting_active(self):
+		"""Дедлайн для всех пользователей (после выставки)"""
+		return timezone.now() >= self.date_end
+
+	@property
+	def is_exhibition_active(self):
+		return self.date_start <= timezone.now() < self.date_end
 
 	@property
 	def is_exhibition_ended(self):
-		"""Завершилась ли выставка для обычных пользователей"""
-		today = now().date()
-		return today > self.rating_deadline
+		return timezone.now() >= self.date_end
 
 	@property
 	def exh_year(self):
@@ -530,20 +529,26 @@ class PortfolioAttributes(models.Model):
 
 
 class PortfolioManager(models.Manager):
-	def get_visible_projects(self, user=None):
+	def get_visible_projects(self, user=None, exhibition=None):
 		"""Возвращает видимые проекты в зависимости от прав пользователя"""
-		queryset = self.get_queryset().filter(status=True, exhibition__isnull=False)
-		today = now().date()
+
+		today = timezone.now()
+		exh_query = models.Q(exhibition=exhibition) if exhibition else models.Q(exhibition__isnull=False)
+		queryset = self.get_queryset().filter(
+			models.Q(status=True) &
+			models.Q(exh_query)
+		)
+
+		if exhibition:
+			queryset = queryset.select_related('owner').prefetch_related('nominations')
 
 		if not user or not user.is_authenticated:
-			# Неавторизованные пользователи видят только:
-			# - проекты без выставки
-			# - проекты с начавшейся или завершенной выставкой
-			return queryset.filter(exhibition__date_start__lte=today)
+			# Неавторизованные пользователи видят только проекты завершенных выставок
+			return queryset.filter(exhibition__date_end__lt=today)
 
-		# Staff и жюри видят все проекты
 		from .utils import is_jury_member, get_exhibitor_for_user
 
+		# Staff и жюри видят все проекты
 		if user.is_staff or is_jury_member(user):
 			return queryset
 
@@ -552,15 +557,15 @@ class PortfolioManager(models.Manager):
 
 		if exhibitor:
 			# Владелец видит:
-			# 1. Все свои проекты (даже с upcoming выставками)
-			# 2. Проекты других участников, которые доступны всем
+			# 1. Все свои проекты (включая проекты активной выставки)
+			# 2. Все чужие проекты, если выставка завершена
 			return queryset.filter(
 				models.Q(owner=exhibitor) |  # Свои проекты без ограничений
-				models.Q(exhibition__date_start__lte=today)  # Проекты с начавшейся/завершенной выставкой
+				models.Q(exhibition__date_end__lt=today)  # Проекты завершенных выставок
 			)
 
 		# Обычные авторизованные пользователи (не staff, не жюри, не участник)
-		return queryset.filter(exhibition__date_start__lte=today)
+		return queryset.filter(exhibition__date_end__lt=today)
 
 
 class Portfolio(BaseImageModel):

@@ -14,7 +14,7 @@ class Rating(models.Model):
 		(4, '4 звезды'),
 		(5, '5 звезд'),
 	)
-	user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Пользователь')
+	user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Кто оценивал')
 	portfolio = models.ForeignKey(
 		Portfolio,
 		related_name='ratings',
@@ -69,14 +69,6 @@ class Rating(models.Model):
 				return False, "Вы уже оценивали эту работу"
 
 		return True, "Можно оценивать"
-
-	@classmethod
-	def can_jury_rate_now(cls, portfolio):
-		"""Проверяет, может ли жюри выставлять оценки сейчас"""
-		if not portfolio.exhibition:
-			return False, "Работа не участвует в выставке"
-
-		return portfolio.exhibition.is_jury_voting_active, "Можно оценивать"
 
 	def calculate(self):
 		"""Обновление атрибутов экземпляра рейтинга"""

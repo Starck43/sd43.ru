@@ -35,7 +35,7 @@ from .logic import send_email
 from .mixins import BannersMixin, MetaSeoMixin, ExhibitionsYearsMixin, ProjectsLazyLoadMixin
 from .models import *
 from .services import ProjectsQueryService
-from .utils import is_exhibitor_of_exhibition, is_jury_member
+from .utils import is_exhibitor_of_exhibition, is_jury_member, get_exhibitor_for_user, can_rate_portfolio
 
 logger = logging.getLogger(__name__)
 
@@ -452,52 +452,25 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		exhibition = self.object
 		user = self.request.user
 		is_jury = is_jury_member(user)
+		is_exhibitor = get_exhibitor_for_user(user)
 
-		# Определяем статус выставки
-		context['exhibition_status'] = exhibition.status
+		context['is_exhibitor'] = is_exhibitor_of_exhibition(user, exhibition)
+		context['exhibition_ended'] = exhibition.is_exhibition_ended
+		context['win_nominations'] = None
 
-		# Для upcoming выставок: участник может видеть только свои проекты
-		# Для active/finished выставок: все видят все проекты
+		# Проекты доступны для:
+		# 1. участников, жюри и сотрудников - всегда
+		# 2. для остальных - после завершения текущей выставки
 		context['show_projects'] = (
 				user.is_staff or
 				is_jury or
-				context['exhibition_status'] in ['active', 'finished']
+				is_exhibitor or
+				context['exhibition_ended']
 		)
-
-		context['is_exhibitor'] = is_exhibitor_of_exhibition(user, exhibition)
-
-		# Если выставка upcoming и пользователь не staff/жюри,
-		# но является участником этой выставки - показываем только его проекты
-		if context['exhibition_status'] == 'upcoming' and not (user.is_staff or is_jury):
-			context['show_projects'] = context['is_exhibitor']
-
-		portfolios = Portfolio.objects.get_visible_projects(user).filter(
-			exhibition=exhibition
-		).select_related('owner').prefetch_related('nominations')
-
-		# Если upcoming выставка и пользователь участник (но не staff/жюри)
-		# показываем только его проекты
-		if (
-				context['exhibition_status'] == 'upcoming' and
-				context['is_exhibitor'] and
-				not (user.is_staff or is_jury)
-		):
-			portfolios = portfolios.filter(owner__user=user)
-
-		# Для завершенной выставки - показываем победителей
-		if context['exhibition_status'] == 'finished':
-			context['win_nominations'] = exhibition.nominations.filter(
-				nomination_for_winner__exhibition_id=exhibition.id
-			).annotate(
-				exhibitor_name=F('nomination_for_winner__exhibitor__name'),
-				exhibitor_slug=F('nomination_for_winner__exhibitor__slug'),
-				project_id=F('nomination_for_winner__portfolio__project_id'),
-			).values('id', 'exhibitor_name', 'exhibitor_slug', 'project_id', 'title', 'slug')
-		else:
-			context['win_nominations'] = None
 
 		# Загружаем проекты для показа
 		if context['show_projects']:
+			portfolios = Portfolio.objects.get_visible_projects(user, exhibition=exhibition)
 
 			# Группируем проекты по номинациям вручную
 			projects_by_nomination = {}
@@ -524,7 +497,15 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 			context['banner_height'] = f"{exhibition.banner.height / exhibition.banner.width * 100}%"
 
 		# Для завершенной выставки добавляем фото победителей в слайдер
-		if context['exhibition_status'] == 'finished' and context['win_nominations']:
+		if context['exhibition_ended']:
+			context['win_nominations'] = exhibition.nominations.filter(
+				nomination_for_winner__exhibition_id=exhibition.id
+			).annotate(
+				exhibitor_name=F('nomination_for_winner__exhibitor__name'),
+				exhibitor_slug=F('nomination_for_winner__exhibitor__slug'),
+				project_id=F('nomination_for_winner__portfolio__project_id'),
+			).values('id', 'exhibitor_name', 'exhibitor_slug', 'project_id', 'title', 'slug')
+
 			for nom in context['win_nominations']:
 				cover = Image.objects.filter(
 					portfolio__exhibition=exhibition.id,
@@ -541,7 +522,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		context['last_exh'] = self.model.objects.only('slug').first().slug
 		context['exh_year'] = self.kwargs['exh_year']
 		context['model_name'] = self.model.__name__.lower()
-		context['today'] = now().today()
+		context['today'] = timezone.now()
 		context['cache_timeout'] = 2592000
 
 		return context
@@ -590,10 +571,10 @@ class WinnerProjectDetail(MetaSeoMixin, BannersMixin, DetailView):
 		context['exh_year'] = self.kwargs['exh_year']
 		context['parent_link'] = '/exhibition/%s/' % self.kwargs['exh_year']
 
-		rate = 0
+		total_rate = 0
 		if portfolio:
 			stats = portfolio.get_rating_stats()
-			rate = stats['average']
+			total_rate = stats['average']
 
 		if self.request.user.is_authenticated:
 			context['user_score'] = Rating.objects.filter(
@@ -604,11 +585,11 @@ class WinnerProjectDetail(MetaSeoMixin, BannersMixin, DetailView):
 		else:
 			context['user_score'] = None
 
-		context['average_rate'] = round(rate, 2)
-		context['round_rate'] = math.ceil(rate)
-		context['extra_rate_percent'] = int((rate - int(rate)) * 100)
+		context['average_rate'] = round(total_rate, 1)
+		context['user_rate'] = math.ceil(total_rate)
+		context['extra_rate_percent'] = int((total_rate - int(total_rate)) * 100)
 		context['rating_form'] = RatingForm(
-			initial={'star': int(rate)},
+			initial={'star': int(total_rate)},
 			user=self.request.user,
 			score=context['user_score']
 		)
@@ -623,8 +604,6 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 	model = Portfolio
 	context_object_name = 'portfolio'
 	template_name = 'exhibition/portfolio_detail.html'
-
-	# slug_url_kwarg = 'slug'
 
 	def get_object(self, queryset=None):
 		if self.kwargs.get('owner') and self.kwargs.get('project_id'):
@@ -641,6 +620,7 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
+		user = self.request.user
 
 		context['victories'] = Winners.objects.filter(
 			portfolio=self.object.id,
@@ -656,107 +636,60 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 		# Пересчитываем статистику рейтингов
 		if self.object:
-			ratings_aggregate = self.object.ratings.aggregate(
-				average=Avg('star'),
-				count=Count('id'),
-				jury_average=Avg('star', filter=Q(is_jury_rating=True)),
-				jury_count=Count('id', filter=Q(is_jury_rating=True))
-			)
+			ratings_aggregate = self.object.get_rating_stats()
 
 			rate = ratings_aggregate.get('average') or 0.0
 			jury_avg = ratings_aggregate.get('jury_average') or 0.0
 			jury_count = ratings_aggregate.get('jury_count') or 0
+			if rate:
+				context['average_rate'] = round(rate, 1)
+				context['round_rate'] = math.ceil(rate)
+				context['extra_rate_percent'] = int((rate - int(rate)) * 100)
 		else:
 			rate = 0.0
 			jury_avg = 0.0
 			jury_count = 0
+			context['round_rate'] = None
+			context['extra_rate_percent'] = 0
 
-		# Проверяем текущую оценку пользователя
-		user_rating = None
-		if self.request.user.is_authenticated:
-			user_rating = self.object.ratings.filter(user=self.request.user).first()
-			context['user_score'] = user_rating.star if user_rating else None
-		else:
-			context['user_score'] = None
+		context['exhibition'] = self.object.exhibition
+		if self.object and self.object.exhibition:
+			context['exhibition_ended'] = self.object.exhibition.is_exhibition_ended
+			context['jury_voting_active'] = self.object.exhibition.is_jury_voting_active
+			context['jury_deadline'] = self.object.exhibition.jury_deadline
 
-		context['is_jury'] = is_jury_member(self.request.user)
+		context['is_jury'] = is_jury_member(user)
 		context['jury_avg'] = round(jury_avg, 2)
 		context['jury_count'] = jury_count
 
-		# Определяем возможность голосования и дедлайны
-		if self.object and self.object.exhibition:
-			context['exhibition_ended'] = self.object.exhibition.is_exhibition_ended
-
-			# Используем свойства модели
-			context['rating_deadline'] = self.object.exhibition.rating_deadline
-			context['jury_deadline'] = self.object.exhibition.jury_deadline
-
-			# Жюри могут голосовать только в период голосования жюри
-			if context['is_jury']:
-				context['jury_can_rate'] = self.object.exhibition.is_jury_voting_active
-			else:
-				context['jury_can_rate'] = False
-		else:
-			context['jury_can_rate'] = False
-			context['rating_deadline'] = now().date()
-			context['jury_deadline'] = now().date()
-
 		# Определяем, может ли пользователь голосовать
-		context['user_can_rate'] = False
-		if self.request.user.is_authenticated:
-			if context['is_jury']:
-				# Жюри могут голосовать только в период голосования жюри
-				context['user_can_rate'] = context['jury_can_rate']
-			else:
-				# Обычные пользователи (включая staff)
-				# НЕ может голосовать если уже голосовал
-				if context['user_score']:
-					context['user_can_rate'] = False
-				elif self.object and self.object.exhibition:
-					# Может голосовать если выставка завершена
-					# Это ОСНОВНАЯ ЛОГИКА для прошедших выставок!
-					context['user_can_rate'] = self.object.exhibition.is_exhibition_ended
-				else:
-					# Если нет выставки - можно голосовать
-					context['user_can_rate'] = True
+		res = can_rate_portfolio(user, self.object, context['is_jury'])
+		context['user_can_rate'], context['rate_message'], context['user_rate'] = res
 
-		# Определяем, какую оценку показывать
-		# Staff всегда видят среднюю оценку
-		if self.request.user.is_staff:
-			display_rate = rate
-			context['round_rate'] = math.ceil(rate)
-			context['extra_rate_percent'] = int((rate - int(rate)) * 100)
-			context['show_average'] = True
-
-		# Жюри видят свою оценку если могут еще голосовать, иначе видят среднюю
-		elif context['is_jury'] and user_rating and context['jury_can_rate']:
-			display_rate = user_rating.star
-			context['round_rate'] = display_rate
-			context['extra_rate_percent'] = 0
+		# Определяем, как показывать средний рейтинг
+		# 1. Сотрудники всегда видят среднюю оценку
+		# 2. Жюри видят свою оценку если могут еще голосовать, иначе видят среднюю
+		if context['is_jury'] and self.object.exhibition.is_jury_voting_active:
+			rate = context['user_rate']
+			context['round_rate'] = context['user_rate']
+			context['average_rate'] = 0
 			context['show_average'] = False
-
 		else:
-			# Все остальные видят среднюю оценку
-			display_rate = rate
-			context['round_rate'] = math.ceil(rate)
-			context['extra_rate_percent'] = int((rate - int(rate)) * 100)
 			context['show_average'] = True
-
-		context['average_rate'] = round(display_rate, 2)
 
 		# Форма рейтинга
 		context['rating_form'] = RatingForm(
-			initial={'star': int(display_rate) if display_rate else 0},
-			user=self.request.user,
-			score=context['user_score']
+			initial={'star': int(rate) if rate else 0},
+			user=user,
+			score=context['round_rate']
 		)
 
 		context['html_classes'] = ['project']
 		context['owner'] = self.kwargs['owner']
-		context['is_owner'] = self.request.user.is_authenticated and self.object.owner.user == self.request.user
+		context['is_owner'] = user and user.is_authenticated and self.object.owner.user == user
 		context['project_id'] = self.kwargs['project_id']
 		context['cache_timeout'] = 86400
-		context['today'] = now().date()
+		context['today'] = timezone.now()
 
 		return context
 
@@ -1262,9 +1195,6 @@ class HealthCheckView(View):
 def __404__(request, exception):
 	"""Кастомный обработчик 404"""
 	from django.http import HttpResponseNotFound
-	from django.shortcuts import render
-	from django.utils.timezone import now
-	from datetime import timedelta
 
 	# Для статики - простой 404
 	if request.path.startswith('/static/') or request.path.startswith('/media/'):
@@ -1302,18 +1232,18 @@ def __404__(request, exception):
 
 					if project.exhibition:
 						context['exhibitions_url'] = project.exhibition.get_absolute_url()
-						today = now().date()
+						today = timezone.now()
 						if today < project.exhibition.date_start:
 							context['title'] = 'Проект временно закрыт для публичного доступа'
 							context['message'] = f'Проект участвует в будущей выставке "{project.exhibition.title}".'
 							context['reason'] = 'future_exhibition'
-							context['available_date'] = project.exhibition.date_start
+							context['available_date'] = project.exhibition.date_end
 
-						elif today <= project.exhibition.rating_deadline:
+						elif not project.exhibition.is_users_voting_active:
 							context['title'] = 'Доступ ограничен'
 							context['message'] = f'Проект участвует в выставке "{project.exhibition.title}".'
 							context['reason'] = 'active_exhibition'
-							context['available_date'] = project.exhibition.rating_deadline + timedelta(days=1)
+							context['available_date'] = project.exhibition.date_end
 			except (Portfolio.DoesNotExist, ValueError):
 				pass
 

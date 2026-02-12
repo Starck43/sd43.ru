@@ -1,11 +1,11 @@
-import requests
-
 from django.conf import settings
-from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.contrib import admin
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ImageField, FileField
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.utils.timezone import now
+from django.utils import timezone
+from django.utils.html import format_html
 from sorl.thumbnail import get_thumbnail
 
 from ads.models import Banner
@@ -13,9 +13,6 @@ from .forms import ImageInlineForm, ImageInlineFormSet
 from .models import MetaSEO, Exhibitors, Jury, Partners
 from .services import delete_cached_fragment
 from .widgets import MediaWidget
-
-from django.contrib import admin
-from django.utils.html import format_html
 
 
 class ImagePreviewMixin:
@@ -243,7 +240,7 @@ class ExhibitionsYearsMixin:
 			# Ленивый импорт внутри метода
 			from exhibition.models import Exhibitions
 
-			today = now().date()
+			today = timezone.now()
 			current_exhibition = Exhibitions.objects.filter(
 				date_end__gte=today
 			).order_by('date_start').first()
