@@ -6,16 +6,16 @@
     <h1>Подтверждение победителей</h1>
 
     {% if warning_message %}
-        <div class="alert status-warning centered py-2 px-1">
-            <span class="mt-2">
+        <div class="alert status-warning d-flex align-center p-2">
+            <span class="mt-1">
                 {{ warning_message }}
             </span>
         </div>
     {% endif %}
 
     {% if stats.nominations_conflicted %}
-        <div class="alert status-warning centered pb-2 px-1">
-            <span class="mt-2">
+        <div class="alert status-warning d-flex align-center p-2">
+            <span class="mt-1">
                 В некоторых номинациях несколько работ набрали одинаковый средний балл.
                 Выберите одного победителя для каждой конфликтной номинации.
             </span>
@@ -23,20 +23,22 @@
     {% endif %}
 
     {% if stats.total_nominations %}
-        <div class="status-info">
-            <ul class="list-style-none m-2">
-                <li>Всего номинаций: {{ stats.total_nominations }}</li>
-                {% if stats.nominations_with_winners %}
-                    <li>Номинаций с победителями: {{ stats.nominations_with_winners }}</li>
-                {% endif %}
-                {% if stats.nominations_incomplete %}
-                    <li>Номинаций без полных оценок: {{ stats.nominations_incomplete }}</li>
-                {% endif %}
-                {% if stats.nominations_conflicted %}
-                    <li>Номинаций с конфликтами: {{ stats.nominations_conflicted }}</li>
-                {% endif %}
-            </ul>
-        </div>
+        <ul class="stats_container d-flex-column gap-2 list-style-none text-xl my-2">
+            <li class="d-flex-column justify-between align-center status-info">Всего номинаций<br/><span
+                    class="stats_amount">{{ stats.total_nominations }}</span></li>
+            {% if stats.nominations_with_winners %}
+                <li class="d-flex-column justify-between align-center status-info">Номинаций с победителями<br/><span
+                        class="stats_amount">{{ stats.nominations_with_winners }}</span></li>
+            {% endif %}
+            {% if stats.nominations_incomplete %}
+                <li class="d-flex-column justify-between align-center status-info">Номинаций без полных оценок<br/><span
+                        class="stats_amount">{{ stats.nominations_incomplete }}</span></li>
+            {% endif %}
+            {% if stats.nominations_conflicted %}
+                <li class="d-flex-column justify-between align-center status-info ">Номинаций с конфликтами<br/><span
+                        class="stats_amount">{{ stats.nominations_conflicted }}</span></li>
+            {% endif %}
+        </ul>
     {% endif %}
 
     <form method="post">
@@ -44,15 +46,8 @@
 
         {% for item in preview.items %}
             <div class="card mb-3">
-                <div class="card-header {% if item.incomplete %}status-warning{% endif %}">
-                    <strong>{{ item.nomination.title }}</strong>
-                    {% if item.incomplete %}
-                        <span class="status-warning">Не все проекты оценены</span>
-                    {% elif not item.winners %}
-                        <span class="status-warning">Нет подходящих победителей</span>
-                    {% elif item.winners|length > 1 %}
-                        <span class="status-error">Конфликт: {{ item.winners|length }} претендента</span>
-                    {% endif %}
+                <div class="card-header status-{% if item.incomplete or not item.winners %}warning{% elif item.winners|length > 1 %}error{% else %}success{% endif %}">
+                    <h3 class="m-0">{{ item.nomination.title }}</h3>
                 </div>
 
                 <div class="card-body">
@@ -60,7 +55,8 @@
                         {% with conflict=conflicts_dict|get_item:item.nomination.id %}
                             {% if conflict %}
                                 <!-- Конфликтная номинация - радио-кнопки -->
-                                <p class="mb-2" style="{% if conflict %}color:darkred{% endif %}">Выберите победителя:</p>
+                                <p class="mb-2" style="{% if conflict %}color:darkred{% endif %}">Выберите
+                                    победителя:</p>
                                 {% for w in item.winners %}
                                     <div class="form-check d-flex align-center">
                                         <input class="form-check-input"
@@ -117,3 +113,25 @@
         </div>
     </form>
 {% endblock %}
+
+{% block styles %}
+    <style>
+		.stats_container li {
+            height: 100%;
+            flex: 1 1 100%;
+            padding: 1rem;
+            text-align: center;
+		}
+
+		.stats_amount {
+			font-weight: bold;
+			font-size: xxx-large;
+		}
+
+        @media (min-width: 576px) {
+            .stats_container {
+                flex-direction: row;
+            }
+        }
+    </style>
+{% endblock styles %}
