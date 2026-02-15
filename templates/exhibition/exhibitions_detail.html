@@ -152,13 +152,13 @@
                 </h2>
                 <ol class="d-flex-column">
                     {% for nomination in object.nominations.all %}
-                        <li class="nomination-item" {% if show_projects %}data-accordion{% endif %}>
-                            <h3 class="exh-title subtitle">{{ nomination.title }}</h3>
+                        {% with nomination_projects=projects_by_nomination|get_item:nomination.id %}
+                            {% if nomination_projects|length > 0 %}
+                                <li class="nomination-item" {% if show_projects %}data-accordion{% endif %}>
+                                    <h3 class="exh-title subtitle">{{ nomination.title }}</h3>
 
-                            {% if show_projects %}
-                                <ul class="projects-list nomination-projects-list">
-                                    {% with nomination_projects=projects_by_nomination|get_item:nomination.id %}
-                                        {% if nomination_projects %}
+                                    {% if show_projects %}
+                                        <ul class="projects-list nomination-projects-list">
                                             {% for project in nomination_projects %}
                                                 <li class="mb-0">
                                                     <a href="{% url 'exhibition:project-detail-url' project.owner_slug project.project_id %}"
@@ -168,19 +168,11 @@
                                                     </a>
                                                 </li>
                                             {% endfor %}
-                                        {% else %}
-                                            <span class="text-muted">
-                                                {% if is_exhibitor %}
-                                                    Вы не принимаете участие в номинации
-                                                {% else %}
-                                                    Пока нет проектов в этой номинации
-                                                {% endif %}
-                                            </span>
-                                        {% endif %}
-                                    {% endwith %}
-                                </ul>
+                                        </ul>
+                                    {% endif %}
+                                </li>
                             {% endif %}
-                        </li>
+                        {% endwith %}
                     {% endfor %}
                 </ol>
             {% endif %}
@@ -278,21 +270,21 @@
                 <h2 class="events-title exh-title">{{ events_title }}</h2>
                 <ol class="d-flex-column gap-2">
                     {% for item in object.events.all %}
-                            <li data-accordion>
-                                <h3 class="subtitle exh-title">{{ item.title }}</h3>
-                                <div class="event-datetime excerpt">
-                                    {% if item.description %}
-                                        <div class="event-details-description description">{{ item.description|safe }}</div>
-                                    {% endif %}
-                                    {% if item.location %}<p><span>Площадка: </span>{{ item.location }}</p>{% endif %}
-                                    {% if item.hoster %}<p><span>Организатор: </span>{{ item.hoster }}</p>{% endif %}
-                                    {% if item.lector %}<p><span>Ведущий: </span>{{ item.lector }}</p>{% endif %}
-                                </div>
-                                <div class="event-details" data-static>
-                                    <p>{{ item.date_event }}</p>
-                                    <p>{{ item.time_event }}</p>
-                                </div>
-                            </li>
+                        <li data-accordion>
+                            <h3 class="subtitle exh-title">{{ item.title }}</h3>
+                            <div class="event-datetime excerpt">
+                                {% if item.description %}
+                                    <div class="event-details-description description">{{ item.description|safe }}</div>
+                                {% endif %}
+                                {% if item.location %}<p><span>Площадка: </span>{{ item.location }}</p>{% endif %}
+                                {% if item.hoster %}<p><span>Организатор: </span>{{ item.hoster }}</p>{% endif %}
+                                {% if item.lector %}<p><span>Ведущий: </span>{{ item.lector }}</p>{% endif %}
+                            </div>
+                            <div class="event-details" data-static>
+                                <p>{{ item.date_event }}</p>
+                                <p>{{ item.time_event }}</p>
+                            </div>
+                        </li>
                     {% endfor %}
                 </ol>
             </div>

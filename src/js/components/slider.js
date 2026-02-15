@@ -67,7 +67,7 @@ const getSwiperConfig = (type, slidesCount = Infinity) => {
             modules: [Navigation, Pagination, Keyboard, Zoom],
             loop: false,
             speed: 300,
-            zoom: isMobile ? {maxRatio: 3, minRatio: 1} : false,
+            zoom: isMobile ? {maxRatio: 3, minRatio: 1, toggle: true} : false,
         }
     };
 

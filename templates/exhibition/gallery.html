@@ -5,21 +5,24 @@
 
     <div class="slides-block swiper-wrapper">
         {% for img in portfolio.images.all %}
-            <figure class="swiper-slide swiper-zoom-container">
+            <figure class="swiper-slide">
 
                 {% thumbnail img.file "576" as sm %}
                     {% thumbnail img.file "992" as md %}
                         {% thumbnail img.file "1200" as xl %}
-                            <img class="slide-img lazyload"
-                                 src="{{ sm.url }}"
-                                 data-src="{{ img.file.url }}"
-                                 data-srcset="{{ sm.url }} {{ sm.x }}w, {{ md.url }} {{ md.x }}w, {{ xl.url }} {{ xl.x }}w, {{ img.file.url }} {{ img.file.width }}w"
-                                 data-sizes="auto"
-                                 data-expand="50"
-                                 loading="lazy"
-                                 style="max-width: {{ img.file.width }}px"
-                                 alt="{% if img.title %}{{ img.title }}{% endif %}"
-                            >
+                            <div class="swiper-zoom-container">
+                                <img class="slide-img lazyload"
+                                     src="{{ sm.url }}"
+                                     data-src="{{ img.file.url }}"
+                                     data-srcset="{{ sm.url }} {{ sm.x }}w, {{ md.url }} {{ md.x }}w, {{ xl.url }} {{ xl.x }}w, {{ img.file.url }} {{ img.file.width }}w"
+                                     data-sizes="auto"
+                                     data-expand="50"
+                                     loading="lazy"
+                                     style="max-width: {{ img.file.width }}px"
+                                     alt="{% if img.title %}{{ img.title }}{% endif %}"
+                                >
+                            </div>
+
                         {% empty %}
                             <img src="{% get_media_prefix %}{{ default_placeholder }}" alt="">
                         {% endthumbnail %}
@@ -38,7 +41,6 @@
                         {% endif %}
                     </figcaption>
                 {% endif %}
-
             </figure>
         {% endfor %}
     </div>

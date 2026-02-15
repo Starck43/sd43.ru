@@ -141,7 +141,7 @@ export function initModals() {
 
         // Create modal instance if not exists
         if (!window.modalInstances.has(targetSelector)) {
-            window.modalInstances.set(targetSelector, new Modal(target));
+            window.modalInstances.set(targetSelector, new Modal(target, {}));
         }
 
         trigger.addEventListener('click', (e) => {

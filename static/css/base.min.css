@@ -1440,6 +1440,11 @@ form:not(.nav-search) > * {
 .controls-block .btn-nav:hover svg {
   stroke-width: 2;
 }
+@media (max-width: 575.99px) {
+  .controls-block .btn-nav {
+    display: none;
+  }
+}
 .controls-block .btn-close {
   position: absolute;
   top: 0;
@@ -1448,11 +1453,6 @@ form:not(.nav-search) > * {
   height: calc(3em + 0.3vw) !important;
   margin: 5px;
   color: white;
-}
-@media (max-width: 575.99px) {
-  .controls-block {
-    display: none;
-  }
 }
 .swiper-pagination {
   position: absolute;
