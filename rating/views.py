@@ -7,9 +7,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.base import View
 
 from exhibition.models import Portfolio
-from .models import Rating, Reviews
-from exhibition.utils import is_jury_member
 from exhibition.services import delete_cached_fragment
+from exhibition.utils import is_jury_member, get_client_ip
+from .models import Rating, Reviews
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -65,7 +65,7 @@ class AddRating(View):
 				defaults={
 					'star': score,
 					'is_jury_rating': is_jury,
-					'ip': self.get_client_ip(request)
+					'ip': get_client_ip(request)
 				}
 			)
 
@@ -109,15 +109,6 @@ class AddRating(View):
 		}
 
 		return JsonResponse(response_data, safe=False)
-
-	@staticmethod
-	def get_client_ip(request):
-		x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-		if x_forwarded_for:
-			ip = x_forwarded_for.split(',')[0]
-		else:
-			ip = request.META.get('REMOTE_ADDR')
-		return ip
 
 
 @csrf_exempt

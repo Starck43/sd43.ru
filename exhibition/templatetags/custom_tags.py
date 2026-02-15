@@ -84,6 +84,8 @@ def count_range(value, start_index=0):
 
 @register.filter
 def get_item(dictionary, key):
+	if not isinstance(dictionary, dict):
+		return []
 	return dictionary.get(key, [])
 
 

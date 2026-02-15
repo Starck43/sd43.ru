@@ -3,10 +3,22 @@ from allauth.account.models import EmailAddress
 from django.core.exceptions import ValidationError
 
 from .models import Exhibitors
+from .utils import get_client_ip
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
 	""" Hook for overriding the send_mail method of the account adapter """
+
+	def get_client_ip(self, request):
+		"""
+		Override to handle cases where client IP cannot be determined.
+		Instead of raising PermissionDenied, return None or a default IP.
+		"""
+		client_ip = get_client_ip(request)
+		if not client_ip:
+			# Return a default IP to avoid rate limiting issues, or None
+			return '127.0.0.1'  # Or return None if rate limiting should be skipped
+		return client_ip
 
 	def send_mail(self, template_prefix, email, context):
 		if not email or not context['user'].email:
