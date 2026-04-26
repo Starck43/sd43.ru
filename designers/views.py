@@ -35,7 +35,7 @@ class MainPage(MetaSeoMixin, DetailView):
 	def get_context_data(self, **kwargs):
 		designer = self.object
 
-		exh_portfolio = self.object.exh_portfolio.filter(status=True).annotate(
+		portfolio = self.object.exh_portfolio.filter(status=True).annotate(
 			exh_year=F('exhibition__slug'),
 			win_year=Subquery(Winners.objects.filter(portfolio_id=OuterRef('pk')).values('exhibition__slug')[:1]),
 			project_cover=Case(
@@ -48,6 +48,18 @@ class MainPage(MetaSeoMixin, DetailView):
 			)
 		).order_by('-exh_year')
 
+		if not portfolio:
+			portfolio = self.object.add_portfolio.filter(status=True).annotate(
+				project_cover=Case(
+					When(
+						Q(cover__exact='') | Q(cover__isnull=True),
+						then=Subquery(Image.objects.filter(portfolio_id=OuterRef('pk')).values('file')[:1])
+					),
+					default='cover',
+					output_field=CharField()
+				)
+			).order_by('order')
+
 		victories = Nominations.objects.prefetch_related('nomination_for_winner').filter(
 			nomination_for_winner__exhibitor=designer.owner).annotate(
 			exh_year=F('nomination_for_winner__exhibition__slug')
@@ -59,7 +71,7 @@ class MainPage(MetaSeoMixin, DetailView):
 		context = super().get_context_data(**kwargs)
 		context['html_classes'] = ['designer-page']
 		context['about'] = self.object.about if self.object.about else self.object.owner.description
-		context['portfolio_list'] = exh_portfolio
+		context['portfolio_list'] = portfolio
 		context['exh_victories_list'] = victories
 		context['competitions'] = competitions
 		context['publications'] = publications

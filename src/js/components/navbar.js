@@ -90,7 +90,7 @@ export function navbarOffset(elem) {
     // Добавим смещение следующему после меню элементу
     const header = elem.nextElementSibling;
     if (header) {
-        header.style.marginTop = navHeight + 'px';
+        //header.style.marginTop = navHeight + 'px';
         const headerHeight = header.clientHeight;
 
         const container = header.nextElementSibling;

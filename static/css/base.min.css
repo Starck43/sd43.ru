@@ -1123,6 +1123,7 @@ form:not(.nav-search) > * {
   }
   .navbar .navbar-toggler,
   .navbar .nav-search-link .search-icon {
+    color: #160D32;
     stroke: #160D32;
   }
   .navbar ul.nav-items {
@@ -2424,6 +2425,8 @@ label,
 :root {
   --bs-body-font-family: "Calibri";
   --bs-header-font-family: "Corbel";
+  --body-bg: #fff;
+  --body-color: #222;
   --main-color: #160D32;
   --primary-color: #d1bee1;
   --text-color: #222;
@@ -2450,6 +2453,10 @@ html {
   html {
     font-size: 17px;
   }
+}
+body {
+  color: var(--body-color);
+  background-color: var(--body-bg);
 }
 h1,
 h2,

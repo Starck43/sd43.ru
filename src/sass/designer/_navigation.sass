@@ -10,20 +10,21 @@
 		justify-content: center
 
 	.navbar-toggler
-		stroke: var(--bs-body-color)
+		color: var(--main-color)
 
 	ul.navbar-items
+		display: flex
+		flex-direction: column
+		flex: 1
 		margin: 0 auto
-		font-size: 1.2rem
 		height: 100%
 		padding: 4vh 1.5rem
-		flex: 1
+		font-size: 1rem
 		overflow-y: auto
-		flex-direction: column
 		list-style: none
 
 		li.nav-item
-			padding: 0.5rem 0
+			padding: 0.75rem 0
 
 			&:first-child
 				margin-top: auto
@@ -83,7 +84,7 @@
 			background-color: transparent
 
 			svg.icon
-				stroke: var(--menu-bg)
+				fill: var(--menu-bg)
 
 	&.navbar-expand-lg .container-fluid
 		margin: .6em 0
@@ -195,7 +196,7 @@
 .nav-link
 	color: var(--nav-link-color)
 	border: var(--border-thickness) solid transparent
-	text-transform: uppercase
+	text-transform: lowercase
 	user-select: none
 
 	&:focus

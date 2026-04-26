@@ -19,12 +19,14 @@
 
 
 :root
-	--gap: max(1rem, 3vw)
-	--separator-w: 5px
 	--bs-body-font-family: "#{$font-family-text}"
 	--bs-header-font-family: "#{$font-family-header}"
-	--bs-body-bg: #{$body-bg}
-	--bs-body-color: #{$text-color}
+	--gap: max(1rem, 3vw)
+	--blur: 0px
+	--separator-w: 5px
+
+	--body-bg: #{$body-bg}
+	--body-color: #{$text-color}
 	--main-color: #{$main-color}
 	--title-color: #{$header-color}
 	--bs-primary: #{$main-color}
@@ -34,7 +36,6 @@
 	--link-hover-color: #{$link-hover-color}
 	--nav-link-color: #{$nav-link-color}
 	--bs-nav-link-font-size: 0.8em
-	--blur: 0px
 	--light-color: #fff
 	--dark-color: #eee
 	--border-color: #{$dark-color}
@@ -60,12 +61,17 @@
 html
 	font-family: var(--bs-body-font-family), Arial, serif
 	font-size: 15px
+
 	+mixins.media-min(sm)
 		font-size: 16px
 	+mixins.media-min(lg)
 		font-size: 17px
 	+mixins.media-min(xl)
 		font-size: 18px
+
+body
+	color: var(--body-color)
+	background-color: var(--body-bg)
 
 h1, h2, h3, h4, button, a
 	font-family: var(--bs-header-font-family), Arial, serif
@@ -79,7 +85,7 @@ h1
 		display: block
 		font-size: .5em
 		font-style: italic
-		color: var(--bs-body-color)
+		color: var(--body-color)
 
 h2
 	flex: 100%
@@ -91,7 +97,7 @@ h2
 
 h3
 	margin-bottom: 1.5rem
-	font-size: calc(1.6em + 0.2vw)
+	font-size: calc(1.5em + 0.2vw)
 	text-transform: lowercase
 	+mixins.media-max(md)
 		font-size: calc(1.2em + 1vw)
@@ -102,16 +108,16 @@ h4
 
 h3, h4
 	min-height: 0
-	font-weight: 600
+	font-weight: 400
 
 
 .text-weight
-	font-weight: 600
+	font-weight: 400
 
 
 a, .btn
 	font-weight: 400
-	transition: all .15ms ease-in-out
+	transition: all .18ms ease-in-out
 
 	&:hover svg
 		fill: var(--link-hover-color) !important
@@ -123,6 +129,10 @@ svg.burger-icon, .social-link
 	width: 2rem
 	height: 2rem
 
+.brand-block h1
+	margin: 0
+	font-size: calc(1.6em + 0.2vw)
+
 figcaption
 	.title
 		flex: 1
@@ -132,7 +142,7 @@ figcaption
 
 	.meta
 		flex: 100%
-		color: var(--bs-body-color)
+		color: var(--body-color)
 		margin-top: auto
 		font-weight: normal
 
@@ -140,7 +150,7 @@ figcaption
 			line-height: 1.2
 
 		.category
-			margin-top: 1.5em
+			margin-top: 0.5em
 			font-size: 0.8em
 			opacity: 0.6
 
@@ -274,7 +284,7 @@ figcaption
 		text-align: left
 		text-transform: uppercase
 		font-size: 0.75em
-		color: var(--bs-body-color)
+		color: var(--body-color)
 		z-index: 1
 		svg
 			stroke: var(--main-color)
@@ -414,7 +424,7 @@ figcaption
 .navigation
 	position: relative
 	.nav-link
-		padding: 0.75em 1em
+		padding: 0.75em
 		font-size: 0.8rem
 		border-left: 0
 		border-right: 0
@@ -437,7 +447,8 @@ figcaption
 		flex: 0 1 auto
 		// min-width: 100px
 		height: 100%
-		font-size: 0.65rem
+		font-weight: 400
+
 		&.is-checked
 			color: var(--link-color)
 			font-weight: 600
@@ -448,7 +459,7 @@ figcaption
 	&::before
 		content: ""
 		+mixins.push--absolute(1px, 0, 1px, 0)
-		border: 1px solid var(--bs-body-color)
+		border: 1px solid var(--body-color)
 		opacity: 0.6
 		border-left: 0
 		border-right: 0
@@ -518,6 +529,7 @@ figcaption
 			border-right: 0
 			&:hover
 				border-color: var(--link-hover-color) !important
+				transform: none
 
 		+mixins.media-max(sm)
 			display: none
@@ -591,7 +603,7 @@ figcaption
 				img
 					object-fit: cover
 					width: 100%
-					height: 100%
+					//height: 100%
 
 			figure
 				display: flex
@@ -610,19 +622,26 @@ figcaption
 					//text-shadow: 1px 1px 2px white
 				.meta
 					padding-top: 0.15em
-					color: var(--bs-body-color)
+					color: var(--body-color)
 
 
 		.controls-block
-			margin-left: 10px
-			margin-right: 10px
-			width: 2rem
-			height: 2rem
-			padding: 0.5rem
+			position: absolute
+			inset: 0
+			display: flex
+			justify-content: space-between
+			width: 100%
+			height: calc(100% - 4rem)
+			padding: 0
+			margin: 0
 
 			svg.icon
+				width: 3rem
+				height: 3rem
 				stroke: var(--nav-link-color)
 				stroke-width: var(--border-thickness)
+				padding: 0.5rem
+
 				&:hover
 					background-color: transparent
 					border: solid 1px var(--main-color)
@@ -720,7 +739,7 @@ figcaption
 			align-items: center
 			flex: 1 1 auto
 			width: 100%
-			background-color: white
+			border: var(--border-thickness) solid var(--border-light-color)
 			border-radius: var(--border-radius)
 			overflow: hidden
 			min-height: 150px
@@ -746,7 +765,6 @@ figcaption
 				+mixins.media-max(sm)
 					max-width: 75px
 			.info
-				color: var(--section-customers-color) !important
 				height: auto
 				margin: auto
 
@@ -770,8 +788,6 @@ figcaption
 
 #site-footer
 	margin-top: auto
-	// border-top: var(--border-thickness) solid var(--bs-body-color)
-	background-color: var(--dark-color)
 
 #copyright
 	padding: 0.25rem

@@ -23,6 +23,8 @@
 :root
 	--bs-body-font-family: "#{$font-family-text}"
 	--bs-header-font-family: "#{$font-family-header}"
+	--body-bg: #{$body-bg}
+	--body-color: #{$body-color}
 	--main-color: #{$main-color}
 	--primary-color: #{$primary-color}
 	--text-color: #{$text-color}
@@ -42,6 +44,9 @@ html
 	+mixins.media-min(xl)
 		font-size: 17px
 
+body
+	color: var(--body-color)
+	background-color: var(--body-bg)
 
 h1, h2, h3, h4, .year-text, #main-title
 	font-family: var(--bs-header-font-family), Arial, serif
