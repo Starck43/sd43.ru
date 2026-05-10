@@ -1,5 +1,6 @@
 {% load static %}
 {% load custom_tags %}
+{% load designer_tags %}
 {% load crispy_forms_tags %}
 {% load i18n %}
 
@@ -24,16 +25,49 @@
 
     <link rel="canonical" href="{{ scheme }}://{{ site_host }}{{ page_path }}"/>
 
-    <link rel="icon" href="{% static 'designers/'|add:object.slug|add:'/favicons/favicon.svg' %}">
-    <link rel="shortcut icon" href="{% static 'designers/'|add:object.slug|add:'/favicons/apple-touch-icon.png' %}">
-    <link rel="icon" type="image/x-icon" href="{% static 'designers/'|add:object.slug|add:'/favicons/apple-touch-icon.png' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'designers/'|add:object.slug|add:'/favicons/apple-touch-icon.png' %}">
-    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'designers/'|add:object.slug|add:'/favicons/favicon-192x192.png' %}">
-    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'designers/'|add:object.slug|add:'/favicons/favicon-96x96.png' %}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'designers/'|add:object.slug|add:'/favicons/favicon-32x32.png' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'designers/'|add:object.slug|add:'/favicons/favicon-16x16.png' %}">
-    <link rel="manifest" href="{% static 'designers/'|add:object.slug|add:'/favicons/site.webmanifest' %}">
-    <link rel="mask-icon" href="{% static 'designers/'|add:object.slug|add:'/favicons/safari-pinned-tab.svg' %}">
+    <!-- Favicon - используем тег designer_static с проверкой существования -->
+    {% designer_static 'favicons/favicon.svg' object.slug as favicon_svg %}
+    {% if favicon_svg %}
+        <link rel="icon" href="{{ favicon_svg }}">
+    {% endif %}
+
+    {% designer_static 'favicons/apple-touch-icon.png' object.slug as favicon_apple %}
+    {% if favicon_apple %}
+        <link rel="shortcut icon" href="{{ favicon_apple }}">
+        <link rel="icon" type="image/x-icon" href="{{ favicon_apple }}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ favicon_apple }}">
+    {% endif %}
+
+    {% designer_static 'favicons/favicon-192x192.png' object.slug as favicon_192 %}
+    {% if favicon_192 %}
+        <link rel="icon" type="image/png" sizes="192x192" href="{{ favicon_192 }}">
+    {% endif %}
+
+    {% designer_static 'favicons/favicon-96x96.png' object.slug as favicon_96 %}
+    {% if favicon_96 %}
+        <link rel="icon" type="image/png" sizes="96x96" href="{{ favicon_96 }}">
+    {% endif %}
+
+    {% designer_static 'favicons/favicon-32x32.png' object.slug as favicon_32 %}
+    {% if favicon_32 %}
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ favicon_32 }}">
+    {% endif %}
+
+    {% designer_static 'favicons/favicon-16x16.png' object.slug as favicon_16 %}
+    {% if favicon_16 %}
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ favicon_16 }}">
+    {% endif %}
+
+    {% designer_static 'favicons/site.webmanifest' object.slug as manifest %}
+    {% if manifest %}
+        <link rel="manifest" href="{{ manifest }}">
+    {% endif %}
+
+    {% designer_static 'favicons/safari-pinned-tab.svg' object.slug as safari_pinned %}
+    {% if safari_pinned %}
+        <link rel="mask-icon" href="{{ safari_pinned }}">
+    {% endif %}
+
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="theme-color" content="#ffffff">
 
@@ -43,13 +77,30 @@
 
     <!-- CSS only -->
     <link href="{% md5url 'css/designer.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
-    <!-- Пользовательские стили по slug дизайнера -->
-    <link href="{% static 'designers/'|add:object.slug|add:'/css/custom.css' %}" rel="stylesheet" type="text/css" media="screen"/>
 
+    <!-- Пользовательские стили -->
+    {% designer_static 'css/custom.css' object.slug as custom_css %}
+    {% if custom_css %}
+        <link href="{{ custom_css }}" rel="stylesheet" type="text/css" media="screen"/>
+    {% endif %}
+
+    <!-- Шрифты -->
     <link rel="preload" href="{% static 'fonts/OrchideaPro-Light.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="{% static 'designers/'|add:object.slug|add:'/fonts/base-font-light.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="{% static 'designers/'|add:object.slug|add:'/fonts/base-font-regular.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="{% static 'designers/'|add:object.slug|add:'/fonts/base-font-bold.woff2' %}" as="font" type="font/woff2" crossorigin>
+
+    {% designer_static 'fonts/base-font-light.woff2' object.slug as font_light %}
+    {% if font_light %}
+        <link rel="preload" href="{{ font_light }}" as="font" type="font/woff2" crossorigin>
+    {% endif %}
+
+    {% designer_static 'fonts/base-font-regular.woff2' object.slug as font_regular %}
+    {% if font_regular %}
+        <link rel="preload" href="{{ font_regular }}" as="font" type="font/woff2" crossorigin>
+    {% endif %}
+
+    {% designer_static 'fonts/base-font-bold.woff2' object.slug as font_bold %}
+    {% if font_bold %}
+        <link rel="preload" href="{{ font_bold }}" as="font" type="font/woff2" crossorigin>
+    {% endif %}
 
     {% block styles %}{% endblock %}
 

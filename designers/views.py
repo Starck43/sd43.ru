@@ -13,24 +13,15 @@ from exhibition.logic import send_email
 from exhibition.mixins import MetaSeoMixin
 from exhibition.models import Categories, Nominations, Winners, Portfolio, Image
 from .forms import FeedbackForm
+from .mixins import DesignerAccessMixin
 from .models import Designer, Achievement
 
 
-class MainPage(MetaSeoMixin, DetailView):
+class MainPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 	""" Главная страница дизайнера """
 	model = Designer
 	template_name = 'designers/main_page.html'
 	form_class = FeedbackForm
-
-	def get(self, request, **kwargs):
-		try:
-			q = self.model.objects.get(slug=self.kwargs['slug'])
-			if q.status != 2:  # сайт не разрешен для доступа (на модерации или не оплачен)
-				return redirect(q.owner)
-		except self.model.DoesNotExist:
-			raise Http404('Страница с таким адресом не существует!')
-
-		return super().get(request, **kwargs)
 
 	def get_context_data(self, **kwargs):
 		designer = self.object
@@ -80,27 +71,17 @@ class MainPage(MetaSeoMixin, DetailView):
 		return context
 
 
-class PortfolioPage(MetaSeoMixin, DetailView):
+class PortfolioPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 	""" Страница с портфолио """
 	model = Designer
 	template_name = 'designers/portfolio_page.html'
 	form_class = FeedbackForm
 
-	def get(self, request, **kwargs):
-		try:
-			q = self.model.objects.get(slug=self.kwargs['slug'])
-			if q.status != 2:  # сайт не разрешен для доступа (на модерации или не оплачен)
-				return redirect(q.owner)
-		except self.model.DoesNotExist:
-			raise Http404('Страница с таким адресом не существует!')
-
-		return super().get(request, **kwargs)
-
 	def get_context_data(self, **kwargs):
-		# designer = self.object
+		designer = self.object
 
-		exh_ids = self.object.exh_portfolio.values_list('pk', flat=True)
-		add_ids = self.object.add_portfolio.values_list('pk', flat=True)
+		exh_ids = designer.exh_portfolio.values_list('pk', flat=True)
+		add_ids = designer.add_portfolio.values_list('pk', flat=True)
 		owner_portfolio_ids = list(chain(exh_ids, add_ids))
 
 		all_portfolio = Portfolio.objects.filter(pk__in=owner_portfolio_ids, status=True).prefetch_related(
@@ -120,11 +101,11 @@ class PortfolioPage(MetaSeoMixin, DetailView):
 			),
 		).order_by('order')
 
-		exh_category = self.object.exh_portfolio.prefetch_related('nominations__category').annotate(
+		exh_category = designer.exh_portfolio.prefetch_related('nominations__category').annotate(
 			category_slug=F('nominations__category__slug'),
 			category_name=F('nominations__category__title')
 		).values_list('category_slug', 'category_name')
-		add_category = self.object.add_portfolio.prefetch_related('categories').annotate(
+		add_category = designer.add_portfolio.prefetch_related('categories').annotate(
 			category_slug=F('categories__slug'),
 			category_name=F('categories__title')
 		).values_list('category_slug', 'category_name')
@@ -136,49 +117,43 @@ class PortfolioPage(MetaSeoMixin, DetailView):
 			filter(lambda x: x[0] is not None, set(tuple(exh_category) + tuple(add_category)))
 		)
 		context['page_url'] = self.request.build_absolute_uri()
-		context['parent_link'] = reverse('designers:designer-page-url', kwargs={'slug': self.object.slug})
-		context['page_path'] = reverse('designers:portfolio-page-url', kwargs={'slug': self.object.slug})
+		context['parent_link'] = reverse('designers:designer-page-url', kwargs={'slug': designer.slug})
+		context['page_path'] = reverse('designers:portfolio-page-url', kwargs={'slug': designer.slug})
 		context['form'] = FeedbackForm()
 		return context
 
 
-class PortfolioDetailPage(MetaSeoMixin, DetailView):
-	""" Страница с проектом """
+class PortfolioDetailPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 	model = Designer
 	template_name = 'designers/portfolio_detail.html'
 	form_class = FeedbackForm
 
-	def get_object(self, **kwargs):
-		try:
-			q = self.model.objects.get(slug=self.kwargs['slug'])
-			if q.status != 2:  # сайт не разрешен для доступа (на модерации или не оплачен)
-				return redirect(q.owner)
-			return q
-		except self.model.DoesNotExist:
-			raise Http404('Страница с таким адресом не существует!')
-
 	def get_context_data(self, **kwargs):
 		context = super().get_context_data(**kwargs)
+		designer = self.object
+		project_id = self.kwargs['project_id']
 
 		portfolio = Portfolio.objects.filter(
-			owner=self.object.owner,
-			project_id=self.kwargs['project_id'],
+			owner=designer.owner,
+			project_id=project_id,
 			status=True
 		).first()
+
+		if not portfolio:
+			raise Http404('Проект не найден')
 
 		context['html_classes'] = ['designer-page', 'project']
 		context['project'] = portfolio
 		context['page_url'] = self.request.build_absolute_uri()
 		context['page_path'] = reverse(
 			'designers:portfolio-detail-page-url',
-			kwargs={'slug': self.object.slug, 'project_id': self.kwargs['project_id']}
+			kwargs={'slug': designer.slug, 'project_id': project_id}
 		)
 		context['parent_link'] = reverse(
 			'designers:portfolio-page-url',
-			kwargs={'slug': self.object.slug}
+			kwargs={'slug': designer.slug}
 		)
-
-		context['cache_timeout'] = 86400  # one day
+		context['cache_timeout'] = 86400
 		context['form'] = FeedbackForm()
 		return context
 

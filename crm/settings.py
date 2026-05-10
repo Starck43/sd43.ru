@@ -63,8 +63,8 @@ MIDDLEWARE = [
 	'watson.middleware.SearchContextMiddleware',
 	'crm.middleware.AjaxMiddleware',
 	'crm.middleware.FixPermissionMiddleware',
-	'allauth.account.middleware.AccountMiddleware',
-	# 'designers.middleware.SubdomainMiddleware',
+	"designers.middleware.SubdomainMiddleware",
+	'allauth.account.middleware.AccountMiddleware'
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

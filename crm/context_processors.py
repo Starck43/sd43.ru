@@ -1,4 +1,5 @@
-from crm import settings
+from django.conf import settings
+
 from exhibition.apps import ExhibitionConfig
 from exhibition.services import is_mobile
 from exhibition.models import Exhibitions

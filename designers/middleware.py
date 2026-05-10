@@ -6,7 +6,7 @@ class SubdomainMiddleware:
 		self.get_response = get_response
 
 	def __call__(self, request):
-		host = request.get_host()
+		host = request.get_host().split(':')[0]  # Убираем порт
 
 		# 1. Определяем поддомен
 		if 'X-Subdomain' in request.META:
@@ -22,18 +22,18 @@ class SubdomainMiddleware:
 
 		request.subdomain = subdomain
 
-		# 2. Находим дизайнера по поддомену
+		# 2. Находим дизайнера по поддомену (с кешированием)
 		if subdomain:
 			try:
-				# Используем ваш статус=2 (опубликован)
-				request.designer = Designer.objects.get(
+				request.designer = Designer.objects.select_related('owner').get(
 					slug=subdomain.lower(),
-					status=2
+					status=2  # опубликован
 				)
-
 			except Designer.DoesNotExist:
 				request.designer = None
 		else:
 			request.designer = None
 
-		return self.get_response(request)
+		response = self.get_response(request)
+		return response
+

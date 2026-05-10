@@ -1,35 +1,31 @@
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.http import Http404
 
-from designers.models import Designer
 
+class DesignerAccessMixin:
+	"""Mixin для проверки доступа к дизайнеру"""
 
-class SubdomainMixin:
-	"""Mixin для работы с поддоменами"""
+	def dispatch(self, request, *args, **kwargs):
+		# Пробуем взять slug из разных источников
+		slug = kwargs.get('slug')
 
-	def get_object(self, **kwargs):
-		# Если есть request.designer (из middleware), используем его
-		if hasattr(self.request, 'designer') and self.request.designer:
-			return self.request.designer
+		if not slug and hasattr(request, 'subdomain'):
+			slug = request.subdomain
 
-		slug = self.kwargs.get('slug')
+		if not slug and request.GET.get('subdomain'):  # Для разработки
+			slug = request.GET.get('subdomain')
+
 		if not slug:
 			raise Http404('Дизайнер не найден')
 
-		designer = get_object_or_404(
-			Designer,
-			slug=slug.lower(),
-			status=2
-		)
+		try:
+			designer = self.model.objects.get(slug=slug)
+			if designer.status != 2:
+				return redirect(designer.owner)
 
-		# Проверяем доступ
-		if designer.status != 2:
-			return redirect(designer.owner)
+			self.object = designer
 
-		return designer
+		except self.model.DoesNotExist:
+			raise Http404('Страница с таким адресом не существует!')
 
-	def get_context_data(self, **kwargs):
-		context = super().get_context_data(**kwargs)
-		# Добавляем subdomain в контекст шаблона
-		context['subdomain'] = getattr(self.request, 'subdomain', None)
-		return context
+		return super().dispatch(request, *args, **kwargs)

@@ -16,7 +16,6 @@ from django.http import HttpResponse
 from django.conf import settings
 from django.core.mail import EmailMessage, BadHeaderError
 from django.core.files.storage import FileSystemStorage, default_storage
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 
@@ -31,6 +30,7 @@ DEFAULT_SIZE = getattr(settings, 'DJANGORESIZED_DEFAULT_SIZE', [1500, 1024])
 DEFAULT_QUALITY = getattr(settings, 'DJANGORESIZED_DEFAULT_QUALITY', 85)
 DEFAULT_KEEP_META = getattr(settings, 'DJANGORESIZED_DEFAULT_KEEP_META', False)
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'tiff', 'webp'}
+
 
 @dataclass
 class ProcessedImage:
