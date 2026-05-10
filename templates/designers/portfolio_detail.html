@@ -1,5 +1,6 @@
 {% extends 'designers/base.html' %}
 {% load static %}
+{% load designer_tags %}
 {% load custom_tags %}
 {% load cache %}
 {% load thumbnail %}
@@ -48,7 +49,7 @@
 {% block navigation %}
     <a
             class="back-link centered"
-            href="{% url 'designers:portfolio-page-url' slug=object.slug %}"
+            href="{% designer_url 'designers:portfolio-page-url' object.slug %}"
             onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
     >
         <svg class="icon arrow-icon arrow-left">

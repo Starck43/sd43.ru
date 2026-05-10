@@ -2,6 +2,8 @@ from django import template
 from django.conf import settings
 import os
 
+from django.urls import reverse
+
 register = template.Library()
 
 
@@ -40,3 +42,15 @@ def designer_static(context, path, slug):
 		return file_path
 
 	return ''
+
+
+@register.simple_tag(takes_context=True)
+def designer_url(context, view_name, slug):
+	request = context.get('request')
+	full_url = reverse(view_name, kwargs={'slug': slug})
+
+	# На поддомене - убираем префикс
+	if hasattr(request, 'subdomain') and request.subdomain and not settings.DEBUG:
+		return full_url.replace(f'/designers/{slug}/', '/')
+
+	return full_url

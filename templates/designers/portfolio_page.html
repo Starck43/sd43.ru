@@ -1,5 +1,6 @@
 {% extends 'designers/base.html' %}
 {% load static %}
+{% load designer_tags %}
 {% load custom_tags %}
 {% load cache %}
 {% load thumbnail %}
@@ -33,7 +34,7 @@
 {% endblock brand_block %}
 
 {% block navigation %}
-    <a class="back-link centered" href="{% url 'designers:designer-page-url' slug=object.slug %}">
+    <a class="back-link centered" href="{% designer_url 'designers:designer-page-url' object.slug %}">
         <svg class="icon arrow-icon arrow-left">
             <use xlink:href="#arrow-icon"></use>
         </svg>
