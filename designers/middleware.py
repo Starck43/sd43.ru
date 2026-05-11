@@ -1,3 +1,4 @@
+from django.contrib.sites.models import Site
 from .models import Designer
 
 
@@ -8,12 +9,22 @@ class SubdomainMiddleware:
 	def __call__(self, request):
 		host = request.get_host().split(':')[0]  # Убираем порт
 
+		# Получаем основной домен из Sites framework
+		try:
+			main_domain = Site.objects.get_current().domain
+		except:
+			# Fallback на случай ошибки
+			main_domain = None
+
 		# 1. Определяем поддомен
 		if 'X-Subdomain' in request.META:
 			subdomain = request.META['X-Subdomain']
-		elif host.endswith('.sd43.ru') and not host.startswith(('www.', 'sd43.ru')):
+		elif main_domain and host.endswith(main_domain) and not host.startswith(('www.', main_domain.split('.')[0])):
+			# Динамическая проверка: host заканчивается на main_domain
 			parts = host.split('.')
-			if len(parts) >= 3:
+			domain_parts = main_domain.split('.')
+			if len(parts) == len(domain_parts) + 1:
+				# Если частей на одну больше, чем в основном домене -> это поддомен
 				subdomain = parts[0]
 			else:
 				subdomain = None
@@ -22,13 +33,10 @@ class SubdomainMiddleware:
 
 		request.subdomain = subdomain
 
-		# 2. Находим дизайнера по поддомену (с кешированием)
+		# 2. Находим дизайнера по поддомену
 		if subdomain:
 			try:
-				request.designer = Designer.objects.select_related('owner').get(
-					slug=subdomain.lower(),
-					status=2  # опубликован
-				)
+				request.designer = Designer.objects.get_by_slug(subdomain.lower())
 			except Designer.DoesNotExist:
 				request.designer = None
 		else:
@@ -36,4 +44,3 @@ class SubdomainMiddleware:
 
 		response = self.get_response(request)
 		return response
-

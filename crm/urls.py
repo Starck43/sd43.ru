@@ -6,8 +6,9 @@ from django.conf.urls.static import static
 from django.views.generic.base import TemplateView
 
 from django.contrib.sitemaps.views import sitemap
-from exhibition.sitemap import sitemaps
-
+from exhibition.sitemap import sitemaps as exhibition_sitemaps
+from designers.sitemap import designer_sitemaps
+from exhibition.views import robots_txt
 
 handler404 = 'exhibition.views.__404__'
 
@@ -20,8 +21,12 @@ urlpatterns = [
 	path('', include('blog.urls')),
 	re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
 	re_path(r'^chaining/', include('smart_selects.urls')),
-	re_path(r'^sitemap\.xml$', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
-	path('robots.txt', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
+	# Sitemap для основного домена (выставка)
+	path('sitemap.xml', sitemap, {'sitemaps': exhibition_sitemaps}, name='exhibition-sitemap'),
+
+	# Sitemap для поддоменов дизайнеров
+	path('designers/<str:slug>/sitemap.xml', sitemap, {'sitemaps': designer_sitemaps}, name='designer-sitemap'),
+	path('robots.txt', robots_txt, name='robots-txt'),
 ]
 
 if settings.DEBUG:

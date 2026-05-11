@@ -3,22 +3,20 @@ import math
 from collections import defaultdict
 from os import SEEK_END
 
-from allauth.account.models import EmailAddress
 from allauth.account.views import PasswordResetView
-from allauth.socialaccount.models import SocialAccount
-from allauth.socialaccount.signals import social_account_removed
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.files.uploadhandler import FileUploadHandler
 from django.db import connection, OperationalError
-from django.db.models import Q, OuterRef, Subquery, Avg, CharField, Case, When, Count, Max
+from django.db.models import Q, OuterRef, Subquery, CharField, Case, When, Max
 from django.forms import inlineformset_factory
 from django.http import HttpResponse, JsonResponse, Http404
-from django.shortcuts import render, redirect, HttpResponseRedirect
+from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
-from django.urls import reverse_lazy
+from django.views.decorators.cache import cache_page
 # from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
@@ -27,6 +25,7 @@ from django.views.generic.list import ListView
 from watson.views import SearchMixin
 
 from blog.models import Article
+from crm.context_processors import common_context
 from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
@@ -1232,3 +1231,56 @@ def __404__(request, exception):
 		logger.error(f"Ошибка в __404__: {e}")
 
 		return HttpResponseNotFound("404 - Страница не найдена")
+
+
+@cache_page(3600)
+def robots_txt(request):
+	"""Динамический robots.txt для основного домена и поддоменов"""
+
+	lines = [
+		"User-agent: *",
+		"Allow: /*/",
+		"",
+		"Disallow: /admin",
+		"Disallow: /account",
+		"Disallow: /accounts",
+		"Disallow: */None",
+		"Disallow: */?",
+		"Disallow: /search/?q=",
+		"",
+		"Allow: /media",
+		"Disallow: /media/cache",
+		"Disallow: /assets",
+		"Disallow: /static",
+		""
+	]
+
+	# Определяем протокол
+	scheme = "https" if request.is_secure() else "http"
+
+	# Получаем основной домен из Sites framework
+	current_site = Site.objects.get_current()
+	main_domain = current_site.domain
+
+	# Определяем поддомен
+	host = request.get_host().split(':')[0]
+	subdomain = None
+
+	if '.' in host and not host.startswith('www.'):
+		parts = host.split('.')
+		if len(parts) >= 3:
+			subdomain = parts[0]
+
+	# Формируем sitemap
+	if subdomain:
+		if Designer.objects.published().filter(slug=subdomain).exists():
+			lines.append(f"Sitemap: {scheme}://{subdomain}.{main_domain}/sitemap.xml")
+		else:
+			lines.append(f"Sitemap: {scheme}://{main_domain}/sitemap.xml")
+	else:
+		lines.append(f"Sitemap: {scheme}://{main_domain}/sitemap.xml")
+
+		for designer in Designer.objects.published()[:100]:
+			lines.append(f"Sitemap: {scheme}://{designer.slug}.{main_domain}/sitemap.xml")
+
+	return HttpResponse("\n".join(lines), content_type="text/plain")

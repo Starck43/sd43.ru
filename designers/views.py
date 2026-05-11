@@ -18,17 +18,17 @@ from .models import Designer, Achievement
 
 
 class MainPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
-	""" Главная страница дизайнера """
 	model = Designer
 	template_name = 'designers/main_page.html'
 	form_class = FeedbackForm
 
-	def get_context_data(self, **kwargs):
-		designer = self.object
-
-		portfolio = self.object.exh_portfolio.filter(status=True).annotate(
+	def get_portfolio_with_cover(self, portfolio_queryset):
+		"""Общий метод для аннотации портфолио с обложкой"""
+		return portfolio_queryset.filter(status=True).annotate(
 			exh_year=F('exhibition__slug'),
-			win_year=Subquery(Winners.objects.filter(portfolio_id=OuterRef('pk')).values('exhibition__slug')[:1]),
+			win_year=Subquery(
+				Winners.objects.filter(portfolio_id=OuterRef('pk')).values('exhibition__slug')[:1]
+			),
 			project_cover=Case(
 				When(
 					Q(cover__exact='') | Q(cover__isnull=True),
@@ -37,56 +37,51 @@ class MainPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 				default='cover',
 				output_field=CharField()
 			)
-		).order_by('-exh_year')
-
-		if not portfolio:
-			portfolio = self.object.add_portfolio.filter(status=True).annotate(
-				project_cover=Case(
-					When(
-						Q(cover__exact='') | Q(cover__isnull=True),
-						then=Subquery(Image.objects.filter(portfolio_id=OuterRef('pk')).values('file')[:1])
-					),
-					default='cover',
-					output_field=CharField()
-				)
-			).order_by('order')
-
-		victories = Nominations.objects.prefetch_related('nomination_for_winner').filter(
-			nomination_for_winner__exhibitor=designer.owner).annotate(
-			exh_year=F('nomination_for_winner__exhibition__slug')
-		).values('title', 'slug', 'exh_year').order_by('-exh_year')
-
-		competitions = Achievement.objects.filter(Q(Q(designer=designer) & ~Q(group=2)))
-		publications = Achievement.objects.filter(designer=designer, group=2)
-
-		context = super().get_context_data(**kwargs)
-		context['html_classes'] = ['designer-page']
-		context['about'] = self.object.about if self.object.about else self.object.owner.description
-		context['portfolio_list'] = portfolio
-		context['exh_victories_list'] = victories
-		context['competitions'] = competitions
-		context['publications'] = publications
-		context['form'] = FeedbackForm()
-
-		return context
-
-
-class PortfolioPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
-	""" Страница с портфолио """
-	model = Designer
-	template_name = 'designers/portfolio_page.html'
-	form_class = FeedbackForm
+		)
 
 	def get_context_data(self, **kwargs):
 		designer = self.object
 
+		# Упрощаем: пробуем выставочные, если нет - дополнительное
+		portfolio = self.get_portfolio_with_cover(designer.exh_portfolio).order_by('-exh_year')
+
+		if not portfolio:
+			portfolio = self.get_portfolio_with_cover(designer.add_portfolio).order_by('order')
+
+		victories = Nominations.objects.filter(
+			nomination_for_winner__exhibitor=designer.owner
+		).prefetch_related('nomination_for_winner').annotate(
+			exh_year=F('nomination_for_winner__exhibition__slug')
+		).values('title', 'slug', 'exh_year').order_by('-exh_year')
+
+		context = super().get_context_data(**kwargs)
+		context.update({
+			'html_classes': ['designer-page'],
+			'about': designer.about or designer.owner.description,
+			'portfolio_list': portfolio,
+			'exh_victories_list': victories,
+			'competitions': designer.achievements.filter(~Q(group=2)),
+			'publications': designer.achievements.filter(group=2),
+			'form': self.form_class(),
+		})
+		return context
+
+
+class PortfolioPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
+	model = Designer
+	template_name = 'designers/portfolio_page.html'
+	form_class = FeedbackForm
+
+	def get_portfolio_with_details(self, designer):
+		"""Получить все портфолио"""
 		exh_ids = designer.exh_portfolio.values_list('pk', flat=True)
 		add_ids = designer.add_portfolio.values_list('pk', flat=True)
-		owner_portfolio_ids = list(chain(exh_ids, add_ids))
 
-		all_portfolio = Portfolio.objects.filter(pk__in=owner_portfolio_ids, status=True).prefetch_related(
-			Prefetch('nominations', queryset=Nominations.objects.order_by('slug'), to_attr='nominations_list')
+		return Portfolio.objects.filter(
+			pk__in=list(chain(exh_ids, add_ids)),
+			status=True
 		).prefetch_related(
+			Prefetch('nominations', queryset=Nominations.objects.order_by('slug'), to_attr='nominations_list'),
 			Prefetch('categories', queryset=Categories.objects.order_by('slug'), to_attr='categories_list')
 		).annotate(
 			exh_year=F('exhibition__slug'),
@@ -101,25 +96,33 @@ class PortfolioPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 			),
 		).order_by('order')
 
+	def get_filter_attributes(self, designer):
+		"""Получить категории для фильтрации"""
 		exh_category = designer.exh_portfolio.prefetch_related('nominations__category').annotate(
 			category_slug=F('nominations__category__slug'),
 			category_name=F('nominations__category__title')
 		).values_list('category_slug', 'category_name')
+
 		add_category = designer.add_portfolio.prefetch_related('categories').annotate(
 			category_slug=F('categories__slug'),
 			category_name=F('categories__title')
 		).values_list('category_slug', 'category_name')
 
+		return list(filter(lambda x: x[0] is not None, set(tuple(exh_category) + tuple(add_category))))
+
+	def get_context_data(self, **kwargs):
+		designer = self.object
 		context = super().get_context_data(**kwargs)
-		context['html_classes'] = ['designer-page', 'portfolio']
-		context['portfolio_list'] = all_portfolio
-		context['filter_attributes'] = list(
-			filter(lambda x: x[0] is not None, set(tuple(exh_category) + tuple(add_category)))
-		)
-		context['page_url'] = self.request.build_absolute_uri()
-		context['parent_link'] = reverse('designers:designer-page-url', kwargs={'slug': designer.slug})
-		context['page_path'] = reverse('designers:portfolio-page-url', kwargs={'slug': designer.slug})
-		context['form'] = FeedbackForm()
+
+		context.update({
+			'html_classes': ['designer-page', 'portfolio'],
+			'portfolio_list': self.get_portfolio_with_details(designer),
+			'filter_attributes': self.get_filter_attributes(designer),
+			'page_url': self.request.build_absolute_uri(),
+			'parent_link': designer.get_absolute_url(),
+			'page_path': designer.get_portfolio_url(),
+			'form': self.form_class(),
+		})
 		return context
 
 
@@ -145,14 +148,8 @@ class PortfolioDetailPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 		context['html_classes'] = ['designer-page', 'project']
 		context['project'] = portfolio
 		context['page_url'] = self.request.build_absolute_uri()
-		context['page_path'] = reverse(
-			'designers:portfolio-detail-page-url',
-			kwargs={'slug': designer.slug, 'project_id': project_id}
-		)
-		context['parent_link'] = reverse(
-			'designers:portfolio-page-url',
-			kwargs={'slug': designer.slug}
-		)
+		context['parent_link'] = designer.get_portfolio_url()
+		context['page_path'] = designer.get_project_url(project_id)
 		context['cache_timeout'] = 86400
 		context['form'] = FeedbackForm()
 		return context
@@ -162,7 +159,7 @@ class PortfolioDetailPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 def send_message(request, slug):
 	""" Отправка сообщения с формы обратной связи """
 	try:
-		designer = Designer.objects.get(slug=slug)
+		designer = Designer.objects.get_by_slug(slug=slug)
 		if designer.owner.email:
 			recipients = [designer.owner.email]
 		else:

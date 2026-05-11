@@ -1,5 +1,6 @@
 from ckeditor.fields import RichTextField
 from django.db import models
+from django.db.models import Count, Q
 from django.urls import reverse
 from smart_selects.db_fields import ChainedManyToManyField
 
@@ -10,6 +11,54 @@ from exhibition.models import Exhibitors, Partners, Portfolio
 LOGO_FOLDER = 'logos/'
 AVATAR_FOLDER = 'avatars/'
 COVER_FOLDER = 'covers/'
+
+
+class DesignerManager(models.Manager):
+	"""Менеджер для модели Designer"""
+
+	def published(self):
+		"""Только опубликованные дизайнеры (status=2)"""
+		return self.filter(status=2)
+
+	def get_by_slug(self, slug):
+		"""Получить дизайнера по slug (только опубликованного)"""
+		return self.published().select_related('owner').get(slug=slug.lower())
+
+	def get_by_natural_key(self, slug):
+		"""Для получения по slug """
+		return self.published().get(slug=slug.lower())
+
+	def with_portfolio(self):
+		"""Дизайнеры с портфолио (опубликованные + есть проекты)"""
+		return self.published().annotate(
+			exh_portfolio_count=Count('exh_portfolio', filter=Q(exh_portfolio__status=True)),
+			add_portfolio_count=Count('add_portfolio', filter=Q(add_portfolio__status=True))
+		).filter(
+			Q(exh_portfolio_count__gt=0) | Q(add_portfolio_count__gt=0)
+		)
+
+	def all_projects(self):
+		"""Все проекты всех дизайнеров для sitemap """
+		designers = self.with_portfolio().prefetch_related(
+			models.Prefetch('exh_portfolio', queryset=Portfolio.objects.filter(status=True)),
+			models.Prefetch('add_portfolio', queryset=Portfolio.objects.filter(status=True))
+		)
+
+		projects = []
+		for designer in designers:
+			for portfolio in designer.exh_portfolio.all():
+				projects.append({
+					'designer': designer,
+					'project': portfolio,
+					'url': f'/portfolio/{portfolio.project_id}/'
+				})
+			for portfolio in designer.add_portfolio.all():
+				projects.append({
+					'designer': designer,
+					'project': portfolio,
+					'url': f'/portfolio/{portfolio.project_id}/'
+				})
+		return projects
 
 
 class Designer(BaseImageModel):
@@ -95,6 +144,11 @@ class Designer(BaseImageModel):
 	pub_date_end = models.DateField('Окончание публикации', null=True, blank=True)
 	comment = models.CharField('Комментарий', max_length=255, blank=True)
 
+	objects = DesignerManager()
+
+	# Для обратной совместимости с существующим кодом
+	all_objects = models.Manager()
+
 	class Meta:
 		verbose_name = 'Страница дизайнера'
 		verbose_name_plural = 'Страницы дизайнеров'
@@ -132,12 +186,19 @@ class Designer(BaseImageModel):
 		self.original_background = self.background
 
 	def get_absolute_url(self):
-		"""Возвращает URL для портфолио дизайнера"""
-		return reverse('designers:portfolio-page-url', kwargs={'slug': self.slug.lower()})
+		"""URL главной страницы дизайнера"""
+		return reverse('designers:designer-page-url', kwargs={'slug': self.slug})
 
-	def get_main_url(self):
-		"""Возвращает URL главной страницы дизайнера"""
-		return reverse('designers:designer-page-url', kwargs={'slug': self.slug.lower()})
+	def get_portfolio_url(self):
+		"""URL страницы портфолио дизайнера"""
+		return reverse('designers:portfolio-page-url', kwargs={'slug': self.slug})
+
+	def get_project_url(self, project_id):
+		"""URL страницы проекта"""
+		return reverse('designers:portfolio-detail-page-url', kwargs={
+			'slug': self.slug,
+			'project_id': project_id
+		})
 
 	def __str__(self):
 		return self.owner.name

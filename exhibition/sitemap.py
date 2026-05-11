@@ -1,11 +1,7 @@
-from itertools import chain
-
 from django.contrib.sitemaps import Sitemap
-from django.db.models import Q, Count
 
-from designers.models import Designer
-from exhibition.models import *
 from blog.models import Article
+from exhibition.models import *
 
 
 class StaticViewSitemap(Sitemap):
@@ -102,50 +98,6 @@ class ArticleSitemap(Sitemap):
 		return Article.objects.all()
 
 
-class DesignersSitemap(Sitemap):
-	priority = 1
-	changefreq = 'weekly'
-
-	def items(self):
-		return Designer.objects.all()
-
-
-class DesignerPortfolioSitemap(Sitemap):
-	priority = 1.0
-	changefreq = 'weekly'
-
-	def items(self):
-		return Designer.objects.filter(status=2)
-
-	def location(self, item):
-		return reverse('designers:portfolio-page-url', args=[item.slug])
-
-
-class DesignersPortfolioSitemap(Sitemap):
-	priority = 1.0
-	changefreq = 'weekly'
-
-	def items(self):
-		portfolios = (
-			Designer.objects
-			.filter(status=2)
-			.prefetch_related('exh_portfolio', 'add_portfolio')
-			.annotate(
-				exh_portfolio_count=Count('exh_portfolio', filter=Q(exh_portfolio__status=True)),
-				add_portfolio_count=Count('add_portfolio', filter=Q(add_portfolio__status=True)),
-			)
-			.filter(
-				Q(exh_portfolio_count__gt=0) | Q(add_portfolio_count__gt=0)
-			)
-		)
-
-		return [(d, p) for d in portfolios for p in (d.exh_portfolio.all() | d.add_portfolio.all())]
-
-	def location(self, item):
-		designer, portfolio = item
-		return reverse('designers:portfolio-detail-page-url', args=[designer.slug, portfolio.project_id])
-
-
 sitemaps = {
 	'static': StaticViewSitemap,
 	'exhibitions': ExhibitionsSitemap,
@@ -156,8 +108,5 @@ sitemaps = {
 	'exhibitors': ExhibitorsSitemap,
 	'jury': JurySitemap,
 	'partners': PartnersSitemap,
-	'article': ArticleSitemap,
-	'designers': DesignersSitemap,
-	'designer_portfolio': DesignerPortfolioSitemap,
-	'portfolios': DesignersPortfolioSitemap,
+	'article': ArticleSitemap
 }

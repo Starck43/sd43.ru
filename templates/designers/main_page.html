@@ -1,6 +1,7 @@
 {% extends 'designers/base.html' %}
 {% load static %}
 {% load custom_tags %}
+{% load designer_tags %}
 {% load cache %}
 {% load thumbnail %}
 
@@ -50,7 +51,7 @@
     </nav>
     <div class="navigation centered">
         {% if portfolio_list %}
-            <a href="{% url 'designers:portfolio-page-url' slug=object.slug %}" class="nav-link">Портфолио</a>
+            <a href="{% designer_url 'designers:portfolio-page-url' object.slug %}" class="nav-link">Портфолио</a>
         {% endif %}
 
         {% if exh_victories_list or competitions or publications %}
@@ -106,7 +107,7 @@
                                 <a
                                         id="project-{{ e.id }}"
                                         class="gallery-photo swiper-slide"
-                                        href="{% url 'designers:portfolio-detail-page-url' slug=object.slug project_id=e.project_id %}"
+                                        href="{% designer_url 'designers:portfolio-detail-page-url' object.slug project_id=e.project_id %}"
                                 >
                                     <figure class="ratio ratio-4x3 swiper-slide-transform">
                                         {% thumbnail cover "320" as xs %}
@@ -153,7 +154,7 @@
                 </div>
             </div>
 
-            <a class="all-portfolio-link btn" href="{% url 'designers:portfolio-page-url' slug=object.slug %}">
+            <a class="all-portfolio-link btn" href="{% designer_url 'designers:portfolio-page-url' object.slug %}">
                 Смотреть все проекты
             </a>
         </section>
