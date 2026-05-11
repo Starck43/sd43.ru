@@ -34,6 +34,7 @@
 {% endblock brand_block %}
 
 {% block navigation %}
+    <!-- Кнопка "Назад" - на главную дизайнера -->
     <a class="back-link centered" href="{% designer_url 'designers:designer-page-url' object.slug %}">
         <svg class="icon arrow-icon arrow-left">
             <use xlink:href="#arrow-icon"></use>
@@ -65,10 +66,12 @@
 
                             {% with nominations=e.nominations_list %}
                                 {% with categories=e.categories_list %}
-                                    <a
-                                            href="{% url 'designers:portfolio-detail-page-url' slug=object.slug project_id=e.project_id %}"
-                                            id="project-{{ e.project_id }}"
-                                            class="grid-cell grid-item {% for n in nominations %}{% ifchanged %} {{ n.category.slug }}{% endifchanged %}{% endfor %} {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}"
+                                    <!-- Карточка проекта -->
+                                    <a href="{% designer_url 'designers:portfolio-detail-page-url' object.slug project_id=e.project_id %}"
+                                       id="project-{{ e.project_id }}"
+                                       class="grid-cell grid-item
+                                               {% for n in nominations %}{% ifchanged %} {{ n.category.slug }}{% endifchanged %}{% endfor %}
+                                               {% for c in categories %}{% ifchanged %} {{ c.slug }}{% endifchanged %}{% endfor %}"
                                     >
                                         <figure>
                                             {% thumbnail cover "320" crop="center" as xs %}

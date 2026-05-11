@@ -47,10 +47,10 @@
 
 
 {% block navigation %}
-    <a
-            class="back-link centered"
-            href="{% designer_url 'designers:portfolio-page-url' object.slug %}"
-            onclick="{% if request.META.HTTP_REFERER %}javascript:history.back(); return false;{% endif %}"
+    <!-- Кнопка "Назад" - на страницу портфолио -->
+    <a class="back-link centered"
+       href="{% designer_url 'designers:portfolio-page-url' object.slug %}"
+       onclick="if(document.referrer && document.referrer.indexOf(window.location.hostname) !== -1) { history.back(); return false; }"
     >
         <svg class="icon arrow-icon arrow-left">
             <use xlink:href="#arrow-icon"></use>

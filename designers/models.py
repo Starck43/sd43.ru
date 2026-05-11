@@ -13,7 +13,7 @@ COVER_FOLDER = 'covers/'
 
 
 class Designer(BaseImageModel):
-	IMAGE_FIELDS = ('logo','avatar', 'background')
+	IMAGE_FIELDS = ('logo', 'avatar', 'background')
 
 	""" Страница Дизайнера """
 	STATUS = (
@@ -132,7 +132,12 @@ class Designer(BaseImageModel):
 		self.original_background = self.background
 
 	def get_absolute_url(self):
+		"""Возвращает URL для портфолио дизайнера"""
 		return reverse('designers:portfolio-page-url', kwargs={'slug': self.slug.lower()})
+
+	def get_main_url(self):
+		"""Возвращает URL главной страницы дизайнера"""
+		return reverse('designers:designer-page-url', kwargs={'slug': self.slug.lower()})
 
 	def __str__(self):
 		return self.owner.name
@@ -206,7 +211,8 @@ class Achievement(BaseImageModel):
 	)
 	title = models.CharField('Заголовок', max_length=255)
 	description = models.TextField('Дополнительное описание', blank=True)
-	subtitle = models.CharField('Подзаголовок', max_length=100, null=True, blank=True, help_text='Например, название площадки или организатора')
+	subtitle = models.CharField('Подзаголовок', max_length=100, null=True, blank=True,
+	                            help_text='Например, название площадки или организатора')
 	link = models.URLField(
 		'Ссылка на источник', blank=True,
 		help_text='Внешняя ссылка для перехода к источнику информации'

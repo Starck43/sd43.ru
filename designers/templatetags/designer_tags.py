@@ -45,12 +45,25 @@ def designer_static(context, path, slug):
 
 
 @register.simple_tag(takes_context=True)
-def designer_url(context, view_name, slug):
+def designer_url(context, view_name, slug=None, **kwargs):
+	"""
+	Возвращает правильный URL для поддомена или основного домена
+	"""
 	request = context.get('request')
-	full_url = reverse(view_name, kwargs={'slug': slug})
 
-	# На поддомене - убираем префикс
-	if hasattr(request, 'subdomain') and request.subdomain and not settings.DEBUG:
-		return full_url.replace(f'/designers/{slug}/', '/')
+	# Формируем URL
+	if slug:
+		url = reverse(view_name, kwargs={'slug': slug, **kwargs})
+	else:
+		url = reverse(view_name, kwargs=kwargs)
 
-	return full_url
+	# На поддомене в продакшене - убираем /designers/{slug} из URL
+	is_subdomain = hasattr(request, 'subdomain') and request.subdomain and not settings.DEBUG
+
+	if is_subdomain and slug:
+		# Убираем префикс /designers/{slug}/
+		prefix = f'/designers/{slug}'
+		if url.startswith(prefix):
+			return url[len(prefix):]
+
+	return url
