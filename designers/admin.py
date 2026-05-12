@@ -69,7 +69,7 @@ class DesignerAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, adm
 		(
 			"Общая информация", {
 				"fields": (
-					'owner', 'slug', 'avatar', 'logo', 'title', 'about', 'background', 'whatsapp', 'telegram',
+					'owner', 'slug', 'avatar', 'logo', 'title', 'about', 'background', 'max', 'telegram',
 					'show_phone', 'show_email', 'status', 'pub_date_start', 'pub_date_end', 'comment',
 				),
 				"classes": ('',)

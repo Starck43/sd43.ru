@@ -278,7 +278,7 @@
                 {% endif %}
 
                 {% for name, label, value, link in object %}
-                    {% if link and name == 'whatsapp' or link and name == 'telegram' %}
+                    {% if link and name == 'max' or link and name == 'telegram' %}
                         <a href="{{ link }}" class="btn centered {{ name }}">
                             <svg class="icon {{ name }}-icon">
                                 <use xlink:href="#logo-{{ name }}"></use>

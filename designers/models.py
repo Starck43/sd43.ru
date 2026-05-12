@@ -128,9 +128,9 @@ class Designer(BaseImageModel):
 		Partners, verbose_name='Партнеры', blank=True,
 		help_text='Партнеры выставки, с которыми есть сотрудничество'
 	)
-	whatsapp = models.CharField(
-		'WhatsApp', max_length=75, blank=True, default="wa.me",
-		help_text='Укажите номер телефона только цифрами'
+	max = models.CharField(
+		'Макс', max_length=75, blank=True, default="max.ru/u/",
+		help_text='Укажите уникальное имя пользователя'
 	)
 	telegram = models.CharField(
 		'Telegram', max_length=75, blank=True, default="t.me",
@@ -167,7 +167,7 @@ class Designer(BaseImageModel):
 			label = f.verbose_name
 			value = f.value_to_string(self)
 			link = None
-			if name in ['whatsapp', 'telegram'] and value and type(f.default) is str:
+			if name in ['max', 'telegram'] and value and type(f.default) is str:
 				value = value.strip('@')
 				value = value.rsplit('/', 1)[-1]
 				link = 'https://' + f.default + '/' + value
