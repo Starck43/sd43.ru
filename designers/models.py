@@ -129,7 +129,7 @@ class Designer(BaseImageModel):
 		help_text='Партнеры выставки, с которыми есть сотрудничество'
 	)
 	max = models.CharField(
-		'Макс', max_length=75, blank=True, default="max.ru/u/",
+		'Макс', max_length=255, blank=True, default="max.ru/u/",
 		help_text='Укажите уникальное имя пользователя'
 	)
 	telegram = models.CharField(
