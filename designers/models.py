@@ -170,7 +170,7 @@ class Designer(BaseImageModel):
 			if name in ['max', 'telegram'] and value and type(f.default) is str:
 				value = value.strip('@')
 				value = value.rsplit('/', 1)[-1]
-				link = 'https://' + f.default + '/' + value
+				link = 'https://' + f.default.rstrip('/') + '/' + value
 
 			yield (name, label, value, link)
 
