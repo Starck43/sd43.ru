@@ -16,6 +16,7 @@ media/*
 !media/site/**
 
 static/*
+!static/designers/*
 !static/fonts/
 !static/favicons/
 !static/fonts/*

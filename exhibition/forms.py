@@ -80,11 +80,12 @@ class MetaSeoForm(forms.ModelForm):
 	model = forms.ModelChoiceField(
 		label='Раздел',
 		queryset=MetaSEO.get_content_models(),
+		empty_label='--------',
 	)
 
 	post_id = forms.ModelChoiceField(
 		label='Запись раздела',
-		widget=forms.Select(),
+		widget=forms.Select(attrs={'class': 'form-control'}),
 		queryset=None,
 		required=False
 	)
@@ -93,91 +94,126 @@ class MetaSeoForm(forms.ModelForm):
 		model = MetaSEO
 		fields = '__all__'
 		widgets = {
-			'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Описание'}),
+			'description': forms.Textarea(attrs={
+				'class': 'vTextField',
+				'rows': 4,
+				'placeholder': 'Мета описание (70-80 символов)'
+			}),
+			'title': forms.TextInput(attrs={
+				'class': 'vTextField',
+				'placeholder': 'Заголовок страницы (до 100 символов)'
+			}),
+			'keywords': forms.TextInput(attrs={
+				'class': 'vTextField',
+				'placeholder': 'Ключевые слова через запятую'
+			}),
 		}
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
 		if not self.instance.pk:
-			choices = [[None, '--------']] + [
-				[obj.pk, obj.model_class()._meta.verbose_name_plural] for obj in
-				MetaSEO.get_content_models()
-			]
-			self.fields['model'].choices = choices
-			self.fields['post_id'].widget = forms.HiddenInput()  # скрыть поле post_id
-
+			self.fields['post_id'].widget = forms.HiddenInput()
 		else:
 			if self.instance.post_id:
 				self.fields['model'].disabled = True
 
 			if self.instance.model:
-				model = MetaSEO.get_model(self.instance.model.model)
-				queryset = model.objects.all()
-				self.fields['post_id'].queryset = queryset
-				choices = [[None, '--------']] + list((x.id, x.__str__()) for x in queryset)
-				self.fields['post_id'].choices = choices
+				model_class = MetaSEO.get_model(self.instance.model.model)
+				if model_class:
+					queryset = model_class.objects.all()
+					self.fields['post_id'].queryset = queryset
+					self.fields['post_id'].empty_label = '--------'
 
 	def clean(self):
 		cleaned_data = super().clean()
-		if self.cleaned_data['post_id']:
-			self.cleaned_data['post_id'] = self.cleaned_data['post_id'].id
+		post_id = cleaned_data.get('post_id')
+		if post_id and hasattr(post_id, 'id'):
+			cleaned_data['post_id'] = post_id.id
 		return cleaned_data
 
 
 class MetaSeoFieldsForm(forms.ModelForm):
+	"""Форма для добавления SEO-полей к любой модели (например, Exhibitions)"""
+
 	meta_title = forms.CharField(
 		label='Мета заголовок',
-		widget=forms.TextInput(attrs={'style': 'width:100%;box-sizing: border-box;'}),
+		widget=forms.TextInput(attrs={
+			'class': 'vTextField',
+			'style': 'width:100%;box-sizing: border-box;',
+			'placeholder': 'SEO заголовок страницы'
+		}),
 		required=False
 	)
+
 	meta_description = forms.CharField(
 		label='Мета описание',
-		widget=forms.TextInput(attrs={'style': 'width:100%;box-sizing: border-box;'}),
+		widget=forms.TextInput(attrs={
+			'class': 'vTextField',
+			'style': 'width:100%;box-sizing: border-box;',
+			'placeholder': 'SEO описание (70-80 символов)'
+		}),
 		required=False
 	)
+
 	meta_keywords = forms.CharField(
-		label='Ключевые фразы', widget=forms.TextInput(
-			attrs={'style': 'width:100%;box-sizing: border-box;', 'placeholder': 'введите ключевые слова через запятую'}
-		),
+		label='Ключевые фразы',
+		widget=forms.TextInput(attrs={
+			'class': 'vTextField',
+			'style': 'width:100%; box-sizing: border-box;',
+			'placeholder': 'ключевые слова через запятую (до 20 слов)'
+		}),
 		required=False
 	)
+
+	class Meta:
+		model = None  # Будет устанавливаться динамически
+		fields = []
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		model_name = self._meta.model.__name__.lower()
-		self.meta_model = ContentType.objects.get(model=model_name)
-		self.meta = None
-		if self.instance.pk:
-			try:
-				self.meta = MetaSEO.objects.get(model=self.meta_model, post_id=self.instance.id)
-				self.fields['meta_title'].initial = self.meta.title
-				self.fields['meta_description'].initial = self.meta.description
-				self.fields['meta_keywords'].initial = self.meta.keywords
-			except MetaSEO.DoesNotExist:
-				pass
+
+		# Получаем ContentType для текущей модели
+		if hasattr(self._meta, 'model') and self._meta.model:
+			model_name = self._meta.model._meta.model_name
+			self.meta_model = ContentType.objects.get(model=model_name)
+			self.meta = None
+
+			if self.instance.pk:
+				try:
+					self.meta = MetaSEO.objects.get(
+						model=self.meta_model,
+						post_id=self.instance.id
+					)
+					self.fields['meta_title'].initial = self.meta.title
+					self.fields['meta_description'].initial = self.meta.description
+					self.fields['meta_keywords'].initial = self.meta.keywords
+				except MetaSEO.DoesNotExist:
+					pass
 
 	def save(self, *args, **kwargs):
 		instance = super().save(*args, **kwargs)
-		meta_changed = any(s in ['meta_title', 'meta_keywords', 'meta_description'] for s in self.changed_data)
-		meta_title = self.cleaned_data['meta_title']
-		meta_description = self.cleaned_data['meta_description']
-		meta_keywords = self.cleaned_data['meta_keywords']
+		meta_fields = {'meta_title', 'meta_keywords', 'meta_description'}
+		meta_changed = bool(meta_fields.intersection(self.changed_data))
+
 		if meta_changed:
+			meta_data = {
+				'title': self.cleaned_data.get('meta_title', ''),
+				'description': self.cleaned_data.get('meta_description', ''),
+				'keywords': self.cleaned_data.get('meta_keywords', ''),
+			}
+
 			if self.meta:
-				self.meta.title = meta_title
-				self.meta.description = meta_description
-				self.meta.keywords = meta_keywords
+				# Обновляем существующую запись
+				for key, value in meta_data.items():
+					setattr(self.meta, key, value)
 				self.meta.save()
-			else:
+			elif any(meta_data.values()):  # Создаем только если есть хоть какие-то данные
 				MetaSEO.objects.create(
 					model=self.meta_model,
 					post_id=instance.id,
-					title=meta_title,
-					description=meta_description,
-					keywords=meta_keywords
+					**meta_data
 				)
-
 		return instance
 
 

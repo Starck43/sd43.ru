@@ -257,7 +257,6 @@ JAZZMIN_SETTINGS = {
 		'designers'
 	],
 	"changeform_format": "horizontal_tabs",
-	"related_modal_active": True,
 	# "custom_js": "admin/js/custom.js",
 	"topmenu_links": [
 		{"name": "Перейти на сайт", "url": DOMAIN_URL, "new_window": True, "permissions": ["auth.view_user"]},
@@ -277,6 +276,8 @@ JAZZMIN_SETTINGS = {
 		"auth.user": "fas fa-user",
 		"auth.Group": "fas fa-users",
 	},
+	"default_icon_parents": "fas fa-chevron-circle-right",
+	"default_icon_children": "fas fa-circle",
 	"show_ui_builder": False,
 }
 
@@ -301,7 +302,7 @@ JAZZMIN_UI_TWEAKS = {
 	"sidebar_nav_legacy_style": False,
 	"sidebar_nav_flat_style": False,
 	"theme": "lux",
-	"dark_mode_theme": None,
+	"dark_mode_theme": True,
 	"button_classes": {
 		"primary": "btn-primary",
 		"secondary": "btn-outline-secondary",
