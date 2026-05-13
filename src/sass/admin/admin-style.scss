@@ -18,11 +18,13 @@ label {
 
 .btn-group {
 	flex-wrap: wrap;
+
 	&[class*='-hierarchy'] {
-	    display: flex;
-	    width: 100%;
-	    gap: 2px;
-		>* {
+		display: flex;
+		width: 100%;
+		gap: 2px;
+
+		> * {
 			flex: 0 1 auto;
 			padding: 0.3rem 1rem;
 			font-size: 12px !important;
@@ -166,8 +168,8 @@ td.field-image_img, th.column-image_img span {
 	height: auto;
 }
 
-form .related-widget-wrapper ul {
-	width: 100%;
+.selector ul.selector-chooser {
+	width: min-content;
 }
 
 .hidden-label .add-related::before {
@@ -348,6 +350,15 @@ fieldset.aligned label + p {
 		background-color: transparent;
 		color: white;
 	}
+}
+
+.nav-tabs a.nav-link {
+	background-color: #eee;
+    border-radius: 6px;
+}
+
+.nav-tabs a.nav-link.active {
+	background-color: lightblue;
 }
 
 @media (max-width: 768px) {
