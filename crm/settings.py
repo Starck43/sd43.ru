@@ -374,6 +374,9 @@ LOGGING = {
 		'verbose': {
 			'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 		},
+		'sql': {
+			'format': '[SQL] %(duration).3fs %(sql)s %(params)s',
+		},
 	},
 	'handlers': {
 		'console': {
@@ -384,25 +387,50 @@ LOGGING = {
 			'class': 'logging.StreamHandler',
 			'formatter': 'verbose'
 		},
+		'sql_console': {
+			'class': 'logging.StreamHandler',
+			'formatter': 'sql',
+		},
 	},
 	'loggers': {
 		'': {
-			'level': 'INFO',
+			'level': 'INFO',  # INFO для продакшена
 			'handlers': ['console'],
 			'propagate': True
 		},
 		'sorl.thumbnail': {
-			'level': 'ERROR',  # Только ошибки
+			'level': 'ERROR',
 			'handlers': ['thumbnail_console'],
-			'propagate': False,  # Не передавать родителю
+			'propagate': False,
 		},
 		'django': {
 			'level': 'INFO',
 			'handlers': ['console'],
 			'propagate': False,
 		},
+		'django.request': {
+			'level': 'WARNING',  # только ошибки запросов (404, 500)
+			'handlers': ['console'],
+			'propagate': False,
+		},
+		'django.security': {
+			'level': 'WARNING',  # попытки взлома
+			'handlers': ['console'],
+			'propagate': False,
+		},
+		'django.db.backends': {
+			'level': 'ERROR',  # только ошибки БД (не SQL запросы)
+			'handlers': ['console'],
+			'propagate': False,
+		},
 		'exhibition': {
 			'level': 'DEBUG',
+			'handlers': ['console'],
+			'propagate': False,
+		},
+		# Отключить логи staticfiles (мусор)
+		'django.contrib.staticfiles': {
+			'level': 'ERROR',
 			'handlers': ['console'],
 			'propagate': False,
 		},

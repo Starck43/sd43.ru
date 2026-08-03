@@ -9,6 +9,7 @@ from exhibition.sitemap import sitemaps as exhibition_sitemaps
 from exhibition.views import robots_txt
 
 handler404 = 'exhibition.views.__404__'
+handler500 = 'exhibition.views.__500__'
 
 urlpatterns = [
 	path('admin/', admin.site.urls),

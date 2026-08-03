@@ -25,7 +25,6 @@ from django.views.generic.list import ListView
 from watson.views import SearchMixin
 
 from blog.models import Article
-from crm.context_processors import common_context
 from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
@@ -1171,6 +1170,22 @@ class HealthCheckView(View):
 
 def __404__(request, exception):
 	"""Кастомный обработчик 404"""
+
+	# Логировать 404 (особенно важные)
+	user_agent = request.META.get('HTTP_USER_AGENT', '')
+	referer = request.META.get('HTTP_REFERER', '')
+
+	# Не логировать ботов и статику
+	if not any(bot in user_agent.lower() for bot in [
+		'bot', 'crawler', 'spider', 'facebookexternalhit', 'meta-externalagent'
+	]):
+		logger.warning(
+			f"404 Not Found: {request.path} | "
+			f"User: {request.user if request.user.is_authenticated else 'Anonymous'} | "
+			f"Referer: {referer} | "
+			f"UA: {user_agent[:100]}"
+		)
+
 	from django.http import HttpResponseNotFound
 
 	# Для статики - простой 404
@@ -1231,6 +1246,17 @@ def __404__(request, exception):
 		logger.error(f"Ошибка в __404__: {e}")
 
 		return HttpResponseNotFound("404 - Страница не найдена")
+
+
+def __500__(request):
+	"""Кастомный обработчик 500"""
+	logger.error(f"500 Internal Server Error: {request.path} | User: {request.user}")
+
+	context = {
+		'title': '500 - Ошибка сервера',
+		'message': 'Произошла внутренняя ошибка сервера. Мы уже работаем над исправлением.'
+	}
+	return render(request, '500.html', context, status=500)
 
 
 @cache_page(3600)
