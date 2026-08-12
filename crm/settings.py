@@ -391,10 +391,13 @@ LOGGING = {
 			'class': 'logging.StreamHandler',
 			'formatter': 'sql',
 		},
+		'null': {
+			'class': 'logging.NullHandler',
+		},
 	},
 	'loggers': {
 		'': {
-			'level': 'INFO',  # INFO для продакшена
+			'level': 'INFO',
 			'handlers': ['console'],
 			'propagate': True
 		},
@@ -409,17 +412,17 @@ LOGGING = {
 			'propagate': False,
 		},
 		'django.request': {
-			'level': 'WARNING',  # только ошибки запросов (404, 500)
+			'level': 'WARNING',
 			'handlers': ['console'],
 			'propagate': False,
 		},
 		'django.security': {
-			'level': 'WARNING',  # попытки взлома
+			'level': 'WARNING',
 			'handlers': ['console'],
 			'propagate': False,
 		},
 		'django.db.backends': {
-			'level': 'ERROR',  # только ошибки БД (не SQL запросы)
+			'level': 'ERROR',
 			'handlers': ['console'],
 			'propagate': False,
 		},
@@ -428,9 +431,23 @@ LOGGING = {
 			'handlers': ['console'],
 			'propagate': False,
 		},
-		# Отключить логи staticfiles (мусор)
 		'django.contrib.staticfiles': {
 			'level': 'ERROR',
+			'handlers': ['console'],
+			'propagate': False,
+		},
+		# Настройка Gunicorn
+		'gunicorn': {
+			'level': 'WARNING',  # Только WARNING и выше
+			'handlers': ['console'],
+			'propagate': False,
+		},
+		'gunicorn.access': {
+			'handlers': ['null'],  # access-логи полностью отключены
+			'propagate': False,
+		},
+		'gunicorn.error': {
+			'level': 'WARNING',  # Ошибки Gunicorn
 			'handlers': ['console'],
 			'propagate': False,
 		},
