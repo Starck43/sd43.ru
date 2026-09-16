@@ -92,6 +92,18 @@ npm run watch:dev
 
 Эта команда будет автоматически пересобирать файлы при любых изменениях в `src/js/` и `src/sass/`.
 
+## Gotchas
+
+- `npm run build` rewrites tracked legacy bundles (`static/css/base.min.css`,
+  `static/js/base.min.js`). If the diff is unintentional, restore with
+  `git checkout -- static/css/base.min.css static/js/base.min.js`.
+- `static/css/swiper.min.css` is **built, not vendored**: it is emitted from
+  the JS entry that imports `swiper/css` (`src/js/components/slider.js`) and is
+  referenced from templates. Do not delete it as an "orphan".
+- In production, `static/` and `media/` are served by nginx directly —
+  `collectstatic` runs on the server during deploy (`STATIC_ROOT` is set only
+  when `DEBUG=False`).
+
 ## Технологии
 
 - **esbuild** - быстрый бандлер для JavaScript
