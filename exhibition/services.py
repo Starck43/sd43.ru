@@ -328,7 +328,3 @@ def is_mobile(request):
 		return True
 	else:
 		return False
-
-
-def update_google_sitemap():
-	...

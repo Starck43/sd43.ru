@@ -25,7 +25,6 @@ from .fields import SVGField
 from .logic import (
 	MediaFileStorage, portfolio_upload_to, cover_upload_to, gallery_upload_to, limit_file_size
 )
-from .services import update_google_sitemap
 
 LOGO_FOLDER = 'logos/'
 BANNER_FOLDER = 'banners/'
@@ -181,10 +180,6 @@ class Jury(Person):
 		ordering = [Coalesce("sort", F('id') + 500)]  # сортировка в приоритете по полю sort, а потом уже по-умолчанию
 		db_table = 'jury'
 
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-		update_google_sitemap()
-
 	def get_absolute_url(self):
 		return reverse('exhibition:jury-detail-url', kwargs={'slug': self.slug})
 
@@ -195,10 +190,6 @@ class Partners(Person, Profile):
 		verbose_name_plural = 'Партнеры'
 		db_table = 'partners'
 		ordering = [Coalesce("sort", F('id') + 500)]  # сортировка в приоритете по полю sort, а потом уже по-умолчанию
-
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-		update_google_sitemap()
 
 	def get_absolute_url(self):
 		return reverse('exhibition:partner-detail-url', kwargs={'slug': self.slug})
@@ -230,7 +221,6 @@ class Categories(models.Model):
 		if not self.slug:
 			self.slug = uuslug(self.title.lower(), instance=self)
 		super().save(*args, **kwargs)
-		update_google_sitemap()
 
 	def __str__(self):
 		return self.title if self.title else '<без категории>'
@@ -257,7 +247,6 @@ class Nominations(models.Model):
 		if not self.slug:
 			self.slug = uuslug(self.title.lower(), instance=self)
 		super().save(*args, **kwargs)
-		update_google_sitemap()
 
 	def __str__(self):
 		return self.title
@@ -441,10 +430,6 @@ class Winners(models.Model):
 		db_table = 'winners'
 		unique_together = ['exhibition', 'exhibitor', 'nomination']
 
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-		update_google_sitemap()
-
 	def __str__(self):
 		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
 
@@ -485,10 +470,6 @@ class Events(models.Model):
 		verbose_name = 'Мероприятие'
 		verbose_name_plural = 'Мероприятия'
 		db_table = 'events'
-
-	def save(self, *args, **kwargs):
-		super().save(*args, **kwargs)
-		update_google_sitemap()
 
 	def __str__(self):
 		return self.title
