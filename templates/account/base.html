@@ -23,10 +23,22 @@
         <p>
             [<a class="mx-1" href="{% url 'account_logout' %}">{% trans 'Sign Out' %}</a>]
             [<a class="mx-1" href="{% url 'account_email' %}">Сменить e-mail</a>]
-            {% if not user.is_staff %}
-                [<a class="mx-1" href="{% url 'exhibition:deactivate-user' %}">Удалить аккаунт</a>]
-            {% endif %}
         </p>
+    </section>
+
+    <section class="p-2 mt-2">
+        <h2>Безопасность и персональные данные</h2>
+        <p>
+            Мы обрабатываем персональные данные в соответствии с
+            <a href="{% url 'exhibition:privacy-url' %}" target="_blank" rel="noopener">Политикой
+            в отношении обработки персональных данных</a>.
+            Отозвать согласие на обработку персональных данных вы можете в любой момент (п. 6.1 Политики).
+        </p>
+        {% if not user.is_staff %}
+            <a class="btn btn-outline-danger" href="{% url 'exhibition:deactivate-user' %}">
+                Удалить аккаунт и отозвать согласие на обработку персональных данных
+            </a>
+        {% endif %}
     </section>
 
 

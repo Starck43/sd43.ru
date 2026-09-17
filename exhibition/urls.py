@@ -1,4 +1,6 @@
 from django.urls import path, re_path
+from django.views.generic import RedirectView
+
 from . import views
 
 app_name = 'exhibition'
@@ -40,8 +42,11 @@ urlpatterns = [
 
 	# path('exhibition/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
 	# path('exhibition/<exh_year>/events/<pk>/', views.event_detail.as_view(), name='event-detail-url'),
-	# path('contacts/', views.contacts, name='contacts-url'),
-	path('policy/', views.registration_policy, name='policy-url'),
+	path('contacts/', views.contacts, name='contacts-url'),
+	# Канонический адрес политики обработки персональных данных (см. п. 9.2 Политики)
+	path('privacy/', views.registration_policy, name='privacy-url'),
+	# Старый адрес политики — 301 на /privacy/
+	path('policy/', RedirectView.as_view(url='/privacy/', permanent=True), name='policy-url'),
 
 	re_path(r'^search/', views.SearchSite.as_view(), name='search-results'),
 	re_path(r'^success/$', views.success_message, name='success-message-url'),

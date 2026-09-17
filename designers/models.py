@@ -1,4 +1,4 @@
-from ckeditor.fields import RichTextField
+from django_ckeditor_5.fields import CKEditor5Field
 from django.db import models
 from django.db.models import Count, Q
 from django.urls import reverse
@@ -96,7 +96,7 @@ class Designer(BaseImageModel):
 		null=True,
 		blank=True
 	)
-	about = RichTextField('О себе', blank=True)
+	about = CKEditor5Field('О себе', blank=True)
 	background = models.ImageField(
 		'Основное изображение',
 		upload_to=designers_upload_to,

@@ -19,6 +19,8 @@ static/*
 !static/designers/*
 !static/fonts/
 !static/favicons/
+!static/docs/
+!static/docs/*
 !static/fonts/*
 !static/favicons/*
 
@@ -47,8 +49,4 @@ venv/
 
 # Agent workspace — split ignore (see AGENTS.md)
 # Knowledge is shared -> tracked. Session state is ephemeral -> ignored.
-.agent/*
-!.agent/index.md
-!.agent/lessons/
-!.agent/decisions/
-!.agent/modules/
+.agent/

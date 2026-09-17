@@ -166,6 +166,13 @@ def send_message(request, slug):
 			recipients = [designer.owner.user.email]
 
 		if request.is_ajax():
+			# Обязательное согласие на обработку персональных данных (152-ФЗ, п. 4.1 Политики)
+			if request.GET.get('privacy_consent') not in ('on', 'true', '1'):
+				return JsonResponse({
+					'status': 'error',
+					'message': 'Для отправки сообщения необходимо согласие на обработку персональных данных.'
+				}, safe=False)
+
 			data = {
 				'subdomain': designer.slug,
 				'name': request.GET.get("name", None),
@@ -208,3 +215,4 @@ def email_confirmation(data, recipients):
 		})
 		# отправка письма на почту дизайнера
 		return send_email('Сообщение с сайта', template, recipients)
+	return None

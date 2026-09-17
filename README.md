@@ -9,7 +9,7 @@
 - **PostgreSQL** (прод) / **SQLite** (дефолт дева) — подключение через `dj-database-url` (`DATABASE_URL`)
 - **Redis** — кэш (`django-redis`, отдельный `THUMBNAIL_REDIS_URL` для sorl-thumbnail)
 - **Gunicorn** + **nginx** — прод-окружение (см. `.deploy/`)
-- **CKEditor** + **Jazzmin** — админ-интерфейс
+- **CKEditor 5** (`django-ckeditor-5`) + **Jazzmin** — админ-интерфейс
 - **django-allauth** — вход через VK, Одноклассники, Google
 
 ### Frontend

@@ -1,0 +1,742 @@
+@use "sass:color"
+
+@use "main/mixins"
+@use "main/vars" as *
+
+// Hero Section
+.hero-section
+	position: relative
+	min-height: 70vh
+	display: flex
+	align-items: center
+	overflow: hidden
+
+.hero-banner
+	position: absolute
+	inset: 0
+	z-index: 0
+
+.hero-bg
+	width: 100%
+	height: 100%
+	object-fit: cover
+
+.hero-bg--placeholder
+	background: linear-gradient(135deg, $main-color 0%, color.adjust($main-color, $lightness: 20%) 100%)
+
+.hero-overlay
+	position: absolute
+	inset: 0
+	background: linear-gradient(to right, rgba($main-color, 0.85) 0%, rgba($main-color, 0.4) 100%)
+
+.hero-content
+	position: relative
+	z-index: 1
+	width: 100%
+	padding: 6rem 0
+
+	+mixins.media-max(md)
+		padding: 4rem 0
+
+	+mixins.media-max(sm)
+		padding: 3rem 0
+
+	&--centered
+		background: linear-gradient(135deg, $main-color 0%, color.adjust($main-color, $lightness: 15%) 100%)
+
+.hero-badge
+	display: inline-block
+	padding: 0.4rem 1rem
+	background: $primary-color
+	color: $main-color
+	font-size: 0.875rem
+	font-weight: 600
+	text-transform: uppercase
+	letter-spacing: 1px
+	margin-bottom: 1.5rem
+
+.hero-title
+	font-size: clamp(2.5rem, 5vw, 4rem)
+	font-weight: 300
+	color: #fff
+	text-transform: uppercase
+	letter-spacing: 2px
+	margin-bottom: 1.5rem
+	line-height: 1.1
+
+.hero-description
+	font-size: 1.25rem
+	color: rgba(255, 255, 255, 0.9)
+	margin-bottom: 2rem
+	line-height: 1.6
+
+.hero-actions
+	margin-bottom: 2rem
+
+.hero-partners
+	margin-top: 2rem
+	padding-top: 1.5rem
+	border-top: 1px solid rgba(255, 255, 255, 0.2)
+
+.hero-partners-grid
+	display: flex
+	flex-wrap: wrap
+	gap: 0.75rem
+	align-items: center
+
+.hero-partner-logo
+	display: flex
+	align-items: center
+	justify-content: center
+	width: 120px
+	height: 120px
+	background: rgba(255, 255, 255, 0.2)
+	border-radius: var(--border-radius)
+	transition: background 200ms ease, transform 200ms ease
+
+	+mixins.media-max(sm)
+		width: 96px
+		height: 96px
+
+	&:hover
+		background: rgba(255, 255, 255, 0.2)
+		transform: translateY(-2px)
+
+	img
+		width: 100px
+		height: 100px
+		object-fit: contain
+
+		+mixins.media-max(sm)
+			width: 80px
+			height: 80px
+
+// Stats Section
+.stats-section
+	background: $main-color
+	color: $menu-text-color
+	padding: 2rem 0
+
+.stats-grid
+	display: grid
+	grid-template-columns: repeat(4, 1fr)
+	gap: 2rem
+	text-align: center
+
+	+mixins.media-max(lg)
+		grid-template-columns: repeat(4, 1fr)
+		gap: 1.5rem
+
+	+mixins.media-max(md)
+		grid-template-columns: repeat(2, 1fr)
+		gap: 1.5rem
+
+	+mixins.media-max(sm)
+		grid-template-columns: repeat(2, 1fr)
+		gap: 1rem
+
+.stat-item
+	display: flex
+	flex-direction: column
+	gap: 0.5rem
+
+.stat-number
+	font-size: clamp(2rem, 4vw, 3rem)
+	font-weight: 300
+	color: $primary-color
+
+.stat-label
+	font-size: 0.9rem
+	color: #fff
+	text-transform: uppercase
+	letter-spacing: 1px
+
+// Section common styles
+.section-header
+	display: flex
+	align-items: center
+	justify-content: space-between
+	margin-bottom: 2.5rem
+	gap: 1rem
+
+	+mixins.media-max(sm)
+		flex-direction: column
+		align-items: flex-start
+		margin-bottom: 1.5rem
+
+	h2
+		margin-bottom: 0
+
+// Unified section headings
+.section-header h2,
+.about-org-name,
+.cta-content h2,
+.partners-section h2
+	font-family: $font-family-header
+	font-size: clamp(1.5rem, 2.5vw, 2rem)
+	font-weight: 600
+	text-transform: uppercase
+	letter-spacing: 1px
+	color: $header-color
+	margin: 0
+
+.partners-section h2
+	text-align: center
+	margin-bottom: 2rem
+
+// About Section
+.about-section
+	padding: 3rem 0
+	background: $body-bg
+
+	.container
+		max-width: 900px
+
+.about-card
+	background: $highlight-block-bg
+	border-radius: var(--border-radius)
+	padding: 2.5rem
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06)
+
+	+mixins.media-max(sm)
+		padding: 1.5rem
+
+.about-card-header
+	display: flex
+	align-items: center
+	gap: 1.5rem
+	margin-bottom: 1.5rem
+	padding-bottom: 1.5rem
+	border-bottom: 1px solid rgba($main-color, 0.1)
+
+	+mixins.media-max(sm)
+		flex-direction: column
+		text-align: center
+
+.about-org-logo
+	width: 80px
+	height: 80px
+	object-fit: contain
+	border-radius: 50%
+	background: $body-bg
+	padding: 0.5rem
+	flex-shrink: 0
+
+.about-description
+	font-size: 1rem
+	line-height: 1.8
+	color: $text-color
+
+	ul
+		padding-left: 1.5rem
+
+	li
+		list-style-type: inherit
+		margin-bottom: 0.5rem
+
+	p
+		margin-bottom: 1rem
+
+		&:last-child
+			margin-bottom: 0
+
+// Projects Section
+.projects-section
+	padding: 5rem 0
+	background: $highlight-block-bg
+
+.projects-grid
+	display: grid
+	grid-template-columns: repeat(4, 1fr)
+	gap: 1.5rem
+
+	+mixins.media-max(lg)
+		grid-template-columns: repeat(3, 1fr)
+
+	+mixins.media-max(md)
+		grid-template-columns: repeat(2, 1fr)
+
+	+mixins.media-max(sm)
+		grid-template-columns: 1fr
+		gap: 1rem
+
+.project-card
+	background: $body-bg
+	border-radius: var(--border-radius)
+	overflow: hidden
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)
+	transition: transform 200ms ease, box-shadow 200ms ease
+
+	&:hover
+		transform: translateY(-4px)
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15)
+
+.project-link
+	display: block
+	color: inherit
+	text-decoration: none
+
+.project-image
+	overflow: hidden
+
+	img
+		transition: transform 300ms ease
+
+.project-card:hover .project-image img
+	transform: scale(1.05)
+
+.project-placeholder
+	width: 100%
+	height: 100%
+	background: color.adjust($primary-color, $lightness: 20%)
+
+.project-info
+	padding: 1rem
+
+.project-title
+	font-size: 1rem
+	margin-bottom: 0.25rem
+	color: $main-color
+	line-height: 1.3
+
+.project-author
+	font-size: 0.875rem
+	color: $light-text-color
+
+// Winners Section
+.winners-section
+	padding: 5rem 0
+	background: $body-bg
+
+.winners-grid
+	display: grid
+	grid-template-columns: repeat(3, 1fr)
+	gap: 2rem
+
+	+mixins.media-max(lg)
+		grid-template-columns: repeat(2, 1fr)
+
+	+mixins.media-max(sm)
+		grid-template-columns: repeat(2, 1fr)
+		gap: 1rem
+
+.winner-card
+	text-align: center
+
+.winner-link
+	display: block
+	color: inherit
+	text-decoration: none
+
+.winner-image
+	position: relative
+	overflow: hidden
+	border-radius: 50%
+	max-width: 200px
+	margin: 0 auto 1rem
+
+	img
+		transition: transform 300ms ease
+
+.winner-card:hover .winner-image img
+	transform: scale(1.05)
+
+.winner-placeholder
+	width: 100%
+	height: 100%
+	background: color.adjust($primary-color, $lightness: 20%)
+
+.winner-badge
+	position: absolute
+	bottom: 0
+	right: 0
+	width: 48px
+	height: 48px
+	background: $star-on-color
+	border-radius: 50%
+	display: flex
+	align-items: center
+	justify-content: center
+	border: 3px solid $body-bg
+
+.award-icon
+	width: 24px
+	height: 24px
+	fill: #fff
+	stroke: #fff
+
+.winner-title
+	font-size: 1rem
+	color: $main-color
+	margin-bottom: 0.25rem
+
+.winner-author
+	font-size: 0.875rem
+	color: $light-text-color
+
+// Partners Section
+.partners-section
+	padding: 3rem 0
+	background: $body-bg
+
+	+mixins.media-max(md)
+		padding: 2rem 0
+
+	.hero-partners
+		margin: 0
+		padding: 0
+		border-top: none
+
+	.hero-partners-label
+		text-align: center
+		color: $header-color
+		margin-bottom: 1rem
+
+	.hero-partners-grid
+		justify-content: center
+
+	.hero-partner-logo
+		background: $highlight-block-bg
+
+		&:hover
+			background: color.adjust($highlight-block-bg, $lightness: -3%)
+
+.partners-grid
+	display: grid
+	grid-template-columns: repeat(5, 1fr)
+	gap: 1.5rem
+
+	+mixins.media-max(lg)
+		grid-template-columns: repeat(4, 1fr)
+
+	+mixins.media-max(md)
+		grid-template-columns: repeat(3, 1fr)
+
+	+mixins.media-max(sm)
+		grid-template-columns: repeat(2, 1fr)
+
+.partner-card
+	display: flex
+	align-items: center
+	justify-content: center
+	padding: 1.5rem
+	background: $body-bg
+	border-radius: var(--border-radius)
+	aspect-ratio: 1
+	transition: transform 200ms ease, box-shadow 200ms ease
+
+	&:hover
+		transform: translateY(-2px)
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)
+
+	img
+		max-width: 100%
+		max-height: 80px
+		object-fit: contain
+
+// Articles Section
+.articles-section
+	padding: 3rem 0 5rem
+	background: $body-bg
+
+	+mixins.media-max(md)
+		padding: 2rem 0 3rem
+
+.articles-grid
+	display: grid
+	grid-template-columns: repeat(3, 1fr)
+	gap: 2rem
+
+	+mixins.media-max(lg)
+		grid-template-columns: repeat(2, 1fr)
+
+	+mixins.media-max(sm)
+		grid-template-columns: 1fr
+		gap: 1.5rem
+
+.article-card
+	background: $highlight-block-bg
+	border-radius: var(--border-radius)
+	overflow: hidden
+	transition: transform 200ms ease, box-shadow 200ms ease
+
+	&:hover
+		transform: translateY(-4px)
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1)
+
+.article-link
+	display: block
+	color: inherit
+	text-decoration: none
+
+.article-image
+	overflow: hidden
+
+	img
+		transition: transform 300ms ease
+
+.article-card:hover .article-image img
+	transform: scale(1.05)
+
+.article-placeholder
+	width: 100%
+	height: 100%
+	background: color.adjust($primary-color, $lightness: 20%)
+
+.article-content
+	padding: 1.5rem
+
+.article-category
+	display: inline-block
+	padding: 0.2rem 0.75rem
+	background: color.adjust($primary-color, $lightness: 12%)
+	color: $main-color
+	font-size: 0.75rem
+	font-weight: 600
+	text-transform: uppercase
+	letter-spacing: 1px
+	border-radius: var(--border-radius)
+	margin-bottom: 0.75rem
+
+.article-date
+	display: block
+	font-size: 0.8rem
+	color: $light-text-color
+	margin-bottom: 0.5rem
+
+.article-title
+	font-size: 1.1rem
+	color: $main-color
+	margin-bottom: 0.75rem
+	line-height: 1.4
+
+.article-excerpt
+	font-size: 0.9rem
+	color: $light-text-color
+	line-height: 1.6
+	margin: 0 0 1rem
+
+.article-more
+	color: $main-color
+	font-weight: 600
+	font-size: 0.875rem
+
+	&::after
+		content: " →"
+
+// CTA Section
+.cta-section
+	padding: 5rem 0
+	background: $main-color
+
+	+mixins.media-max(md)
+		padding: 3rem 0
+
+	&:last-child
+		padding-bottom: 3rem
+
+.cta-box
+	display: flex
+	align-items: center
+	justify-content: space-between
+	gap: 3rem
+	// Боковые поля секции: 5rem на десктопе, меньше на планшете и мобильном
+	padding: 0 5rem
+
+	+mixins.media-max(md)
+		padding: 0 2rem
+		flex-direction: column
+		text-align: center
+		gap: 1.5rem
+
+	+mixins.media-max(sm)
+		padding: 0 $container-margin-xs
+
+.cta-content
+	color: #fff
+
+	h2
+		color: #fff
+		margin-bottom: 1rem
+
+	p
+		font-size: 1.1rem
+		color: rgba(255, 255, 255, 0.85)
+		max-width: 600px
+		margin: 0
+
+.cta-actions
+	display: flex
+	gap: 1rem
+	flex-shrink: 0
+
+	+mixins.media-max(sm)
+		flex-direction: column
+		width: 100%
+
+// Buttons
+.btn
+	display: inline-flex
+	align-items: center
+	gap: 0.5rem
+	padding: 0.75rem 1.5rem
+	font-size: 1rem
+	font-weight: 500
+	text-decoration: none
+	border-radius: var(--border-radius)
+	transition: all 200ms ease
+	cursor: pointer
+
+	.icon
+		width: 1.25rem
+		height: 1.25rem
+
+.btn-primary
+	background: $primary-color
+	color: $main-color
+	border: 2px solid $primary-color
+
+	&:hover
+		background: color.adjust($primary-color, $lightness: -10%)
+		border-color: color.adjust($primary-color, $lightness: -10%)
+		color: $main-color
+
+.btn-outline
+	background: transparent
+	color: $main-color
+	border: 2px solid $main-color
+
+	&:hover
+		background: $main-color
+		color: #fff
+
+	.cta-section &,
+	.hero-section &
+		color: #fff
+		border-color: rgba(255, 255, 255, 0.5)
+
+		&:hover
+			background: rgba(255, 255, 255, 0.1)
+			border-color: #fff
+
+.btn-lg
+	padding: 1rem 2rem
+	font-size: 1.1rem
+
+// Exh Description override
+.exh-description
+	padding: 3rem 0
+	text-align: center
+
+	ul
+		padding-left: 1rem
+
+	li
+		list-style-type: inherit
+
+// Home page container override
+.home
+	.content
+		padding: 0
+		max-width: 100%
+
+	// Единая ширина всех секций главной: без боковых полей,
+	// на планшете/мобильном — компактные поля из переменных
+	.container
+		width: 100%
+		max-width: $container-max_w
+		padding: 0
+		margin: 0 auto
+
+		+mixins.media-max(md)
+			padding: 0 $container-margin-md
+
+		+mixins.media-max(sm)
+			padding: 0 $container-margin-xs
+
+.hero-text
+	max-width: 650px
+	color: #fff
+	padding: 0 $container-margin-lg
+
+	+mixins.media-max(md)
+		padding: 0 $container-margin-md
+
+	+mixins.media-max(sm)
+		padding: 0 $container-margin-xs
+
+// Apply (заявка) page
+.apply-section
+	padding: 3rem 0 5rem
+
+.apply-box
+	max-width: 760px
+	margin: 0 auto
+
+.apply-intro
+	text-align: center
+	margin-bottom: 2.5rem
+
+	h1
+		margin-bottom: 1rem
+
+	p
+		color: $light-text-color
+		font-size: 1.05rem
+		line-height: 1.6
+		max-width: 560px
+		margin: 0 auto
+
+.apply-form-container
+	background: $highlight-block-bg
+	border-radius: var(--border-radius)
+	padding: 2rem
+
+	+mixins.media-max(sm)
+		padding: 1.25rem
+
+// Success (сообщение отправлено) page
+.success-section
+	padding: 3rem 0 5rem
+
+.success-card
+	max-width: 560px
+	margin: 0 auto
+	padding: 3rem 2rem
+	text-align: center
+	background: $highlight-block-bg
+	border-radius: var(--border-radius)
+
+	+mixins.media-max(sm)
+		padding: 2rem 1.25rem
+
+.success-icon-wrap
+	display: flex
+	align-items: center
+	justify-content: center
+	width: 88px
+	height: 88px
+	margin: 0 auto 1.5rem
+	border-radius: 50%
+	background: $primary-color
+	color: $main-color
+
+	.icon
+		width: 44px
+		height: 44px
+
+.success-title
+	margin-bottom: 1rem
+
+.success-text
+	color: $light-text-color
+	font-size: 1.05rem
+	line-height: 1.6
+	max-width: 440px
+	margin: 0 auto 2rem
+
+.success-actions
+	display: flex
+	justify-content: center
+	flex-wrap: wrap
+	gap: 1rem

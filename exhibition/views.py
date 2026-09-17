@@ -6,11 +6,12 @@ from os import SEEK_END
 from allauth.account.views import PasswordResetView
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.files.uploadhandler import FileUploadHandler
-from django.db import connection, OperationalError
+from django.db import connection, OperationalError, transaction
 from django.db.models import Q, OuterRef, Subquery, CharField, Case, When, Max
 from django.forms import inlineformset_factory
 from django.http import HttpResponse, JsonResponse, Http404
@@ -28,7 +29,7 @@ from blog.models import Article
 from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
-from .forms import PortfolioForm, ImageForm, ImageFormHelper, FeedbackForm, UsersListForm, DeactivateUserForm
+from .forms import PortfolioForm, ImageForm, ImageFormHelper, UsersListForm, DeactivateUserForm, ApplicationForm
 from .logic import send_email
 from .mixins import BannersMixin, MetaSeoMixin, ExhibitionsYearsMixin, ProjectsLazyLoadMixin
 from .models import *
@@ -36,22 +37,43 @@ from .services import ProjectsQueryService
 from .utils import is_exhibitor_of_exhibition, is_jury_member, get_exhibitor_for_user, can_rate_portfolio
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 def success_message(request):
-	return HttpResponse('<h1>Сообщение отправлено!</h1><p>Спасибо за обращение</p>')
+	""" Страница подтверждения отправки сообщения """
+	return render(request, 'success.html', {'html_classes': ['success']})
 
 
 def registration_policy(request):
-	""" Policy page """
+	""" Политика в отношении обработки персональных данных """
 	return render(request, 'policy.html')
 
 
 def index(request):
 	""" Main page """
+	latest_exhibition = Exhibitions.get_unfinished_exhibition()
+
+	organizers = Organizer.objects.all().order_by('sort', 'name')
+
+	stats_years = int(latest_exhibition.exh_year) - 2008 + 1 if latest_exhibition else 18
+	stats_designers = Exhibitors.objects.filter(status=True).count()
+	stats_projects = Portfolio.objects.filter(nominations__isnull=False).distinct().count()
+	stats_winners = Winners.objects.count()
+
+	articles = Article.objects.all().order_by('-modified_date')[:3]
+
 	context = {
 		'html_classes': ['home'],
-		'organizers': Organizer.objects.all().order_by('sort', 'name'),
+		'organizers': organizers,
+		'latest_exhibition': latest_exhibition,
+		'articles': articles,
+		'stats': {
+			'years': stats_years,
+			'designers': stats_designers,
+			'projects': stats_projects,
+			'winners': stats_winners,
+		}
 	}
 
 	return render(request, 'index.html', context)
@@ -696,22 +718,23 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 
 def contacts(request):
-	""" Отправка сообщения с формы обратной связи """
+	""" Заявка на участие: отправка формы на EMAIL_RECIPIENTS """
 	if request.method == 'POST':
 		# если метод POST, проверим форму и отправим письмо
-		form = FeedbackForm(request.POST)
+		form = ApplicationForm(request.POST)
 		if form.is_valid():
-			template = render_to_string('contacts/confirm_email.html', {
+			template = render_to_string('contacts/apply_email.html', {
 				'name': form.cleaned_data['name'],
-				'email': form.cleaned_data['from_email'],
+				'email': form.cleaned_data['email'],
+				'phone': form.cleaned_data['phone'],
 				'message': form.cleaned_data['message'],
 			})
 
-			if send_email('Получено новое сообщение с сайта sd43.ru!', template):
+			if send_email('Заявка на участие с сайта sd43.ru!', template):
 				return redirect('/success/')
 
 	else:
-		form = FeedbackForm()
+		form = ApplicationForm()
 
 	context = {
 		'html_classes': ['contacts'],
@@ -873,11 +896,19 @@ def send_reset_password_email(request):
 
 @login_required
 def deactivate_user(request):
+	"""Деактивация аккаунта и отзыв согласия на обработку ПД (152-ФЗ, п. 6.1 Политики).
+
+	Минимальный вариант: только is_active = False. Связанные данные
+	(Exhibitors, Portfolio, Jury, статьи и т.д.) намеренно не трогаем —
+	иначе разрушатся публичные архивы выставок и привязанные проекты.
+	"""
 	if request.method == 'POST':
 		form = DeactivateUserForm(request.POST)
 		if form.is_valid():
-			request.user.is_active = False
-			request.user.save()
+			with transaction.atomic():
+				user = User.objects.select_for_update().get(pk=request.user.pk)
+				user.is_active = False
+				user.save(update_fields=['is_active'])
 
 			return redirect('account_logout')
 	else:

@@ -11,6 +11,7 @@ class StaticViewSitemap(Sitemap):
 	def items(self):
 		return [
 			'exhibition:index',
+			'exhibition:privacy-url',
 			# 'exhibition:contacts-url',
 			'exhibition:exhibitions-list-url',
 			'exhibition:category-list-url',

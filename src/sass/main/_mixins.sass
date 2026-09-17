@@ -24,7 +24,7 @@ $default-fonts: Arial, Tahoma
 		font-style: $f-style
 		@if $f-weight != 0
 			font-weight: $f-weight
-		src: url($local-url) if($url != none, #{','} $url format('woff2'), format('woff2'))
+		src: url($local-url) if(sass($url != none): #{','} $url format('woff2'); else: format('woff2'))
 
 @mixin font-settings($font:false, $colour:false, $size:false, $case:false, $weight:false, $lh:false)
 	@if $font
@@ -99,16 +99,16 @@ $default-fonts: Arial, Tahoma
 	@keyframes animation-#{$name}
 		0%
 			@if $fade != no-fade
-				opacity: if($fade == Out, 1, 0)
+				opacity: if(sass($fade == Out): 1; else: 0)
 			@if strip-units($x)+strip-units($y) != 0
 				transform: translate($x, $y)
 		50%
 			@if $fade != no-fade
-				opacity: if($fade == In, 0, 0.5)
+				opacity: if(sass($fade == In): 0; else: 0.5)
 
 		100%
 			@if $fade != no-fade
-				opacity: if($fade == Out, 0, 1)
+				opacity: if(sass($fade == Out): 0; else: 1)
 			@if strip-units($x1)+strip-units($y1) != 0
 				transform: translate($x1, $y1)
 
@@ -281,7 +281,7 @@ $parallax-ios         : true !default
 @mixin media-max($breakpoint)
 	@if map.has-key($breakpoints, $breakpoint)
 		$value: map.get($breakpoints, $breakpoint)
-		@media (max-width: #{if($value == 320px, 320px, $value - 0.01px)})
+		@media (max-width: #{if(sass($value == 320px): 320px; else: $value - 0.01px)})
 			@content
 
 	@else

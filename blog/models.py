@@ -6,7 +6,7 @@ from django.db.models import F, Q
 from django.db.models.functions import Coalesce
 
 from uuslug import uuslug
-from ckeditor_uploader.fields import RichTextUploadingField
+from django_ckeditor_5.fields import CKEditor5Field
 
 from exhibition.models import Exhibitors, Partners, Jury
 
@@ -38,7 +38,7 @@ class Article(models.Model):
 	owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='Автор статьи')
 	title = models.CharField('Название статьи', max_length=150)
 	slug = models.SlugField('Ярлык', max_length=150, unique=True, null=True)
-	content = RichTextUploadingField('Статья', blank=True)
+	content = CKEditor5Field('Статья', blank=True)
 	modified_date = models.DateField('Дата изменения', auto_now_add=True)
 
 	class Meta:

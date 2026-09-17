@@ -2,8 +2,7 @@ import re
 from datetime import timedelta
 from os import path, rename, rmdir, listdir
 
-from ckeditor.fields import RichTextField
-from ckeditor_uploader.fields import RichTextUploadingField
+from django_ckeditor_5.fields import CKEditor5Field
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -53,7 +52,7 @@ class Person(UserModel, BaseImageModel, models.Model):
 	)
 	name = models.CharField('Имя контакта', max_length=100)
 	slug = models.SlugField('Ярлык', max_length=100, unique=True)
-	description = RichTextUploadingField('Информация о контакте', blank=True)
+	description = CKEditor5Field('Информация о контакте', blank=True)
 	status = models.BooleanField('Видимость на сайте', choices=CHOICES, default=True)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
 
@@ -234,7 +233,7 @@ class Nominations(models.Model):
 	category = models.ForeignKey(Categories, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Категория')
 	title = models.CharField('Номинация', max_length=150)
 	slug = models.SlugField('Ярлык', max_length=150, unique=True)
-	description = RichTextUploadingField('Описание номинации', blank=True)
+	description = CKEditor5Field('Описание номинации', blank=True)
 	sort = models.IntegerField('Индекс сортировки', null=True, blank=True)
 
 	class Meta:
@@ -271,7 +270,7 @@ class Exhibitions(BaseImageModel):
 		null=True,
 		blank=True
 	)
-	description = RichTextUploadingField('Описание выставки', blank=True)
+	description = CKEditor5Field('Описание выставки', blank=True)
 	date_start = models.DateTimeField('Начало выставки', unique=True)
 	date_end = models.DateTimeField('Окончание выставки', unique=True)
 	location = models.CharField('Расположение выставки', max_length=200, blank=True)
@@ -342,7 +341,7 @@ class Exhibitions(BaseImageModel):
 		"""Получить текущую или предстоящую выставку (не завершенную)"""
 		return (
 			cls.objects
-			.filter(date_end__gte=now)
+			.filter(date_end__gte=now())
 			.order_by('date_start')
 			.first()
 		)
@@ -462,7 +461,7 @@ class Events(models.Model):
 	location = models.CharField('Зона проведения', max_length=75, blank=True)
 	hoster = models.CharField('Участник мероприятия', max_length=75)
 	lector = models.CharField('Ведущий мероприятия', max_length=75)
-	description = RichTextUploadingField('Описание мероприятия', blank=True)
+	description = CKEditor5Field('Описание мероприятия', blank=True)
 
 	# Metadata
 	class Meta:
@@ -583,7 +582,7 @@ class Portfolio(BaseImageModel):
 	)
 
 	title = models.CharField('Название', max_length=200, blank=True)
-	description = RichTextField('Описание портфолио', blank=True)
+	description = CKEditor5Field('Описание портфолио', blank=True)
 	cover = models.ImageField(
 		'Обложка',
 		upload_to=cover_upload_to,

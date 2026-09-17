@@ -96,23 +96,12 @@ h3, h4
 	.filter-toggler
 		position: absolute
 		top: 0
-		right: 0	
+		right: 0
 		gap: 4px
 
 		svg
 			width: 1.5rem
 			height: 1.5rem
-
-#back2top
-	bottom: $container-margin-xs
-	right: $container-margin-xs
-
-	+mixins.media-min(sm)
-		bottom: $container-margin-md
-		right: $container-margin-md
-	+mixins.media-min(lg)
-		bottom: $container-margin-lg
-		right: $container-margin-lg
 
 #main-title
 	overflow: visible
@@ -132,13 +121,13 @@ h3, h4
 	flex-wrap: wrap
 	align-items: center
 	column-gap: calc(#{$col-width-xxl} - #{$brand-logo-width - 10px})
-	margin: 0 $container-margin-xs $container-margin-xs
+	margin: 4rem $container-margin-xs $container-margin-xs
 	padding-top: 1.5vh !important
 
 	+mixins.media-min(sm)
-		margin: 0 $container-margin-md
+		margin: 5rem $container-margin-md
 	+mixins.media-min(lg)
-		margin: 0 $container-margin-lg
+		margin: 4rem $container-margin-lg 1rem
 
 	.brand-logo
 		position: relative
@@ -236,13 +225,17 @@ h3, h4
 	gap: var(--gap)
 	width: 100%
 	max-width: $container-max_w
-	padding: 0 $container-margin-xs
+	padding-left: $container-margin-xs
+	padding-right: $container-margin-xs
 	+mixins.media-min(sm)
-		padding: 0 $container-margin-md
+		padding-left: $container-margin-md
+		padding-right: $container-margin-md
+
 	+mixins.media-min(lg)
 		flex-direction: row
-		padding: 0 $container-margin-lg
-		margin-bottom: $container-margin-lg
+		padding-left: $container-margin-lg
+		padding-right: $container-margin-lg
+
 	+mixins.media-min(xxl)
 		+mixins.push--auto
 
@@ -265,13 +258,17 @@ h3, h4
 
 .flex-content
 	+mixins.media-min(lg)
-		margin: 0 $col-width-lg !important
+		margin-left: $col-width-lg !important
+		margin-right: $col-width-lg !important
+		margin-bottom: 0
 
 	+mixins.media-min(xl)
-		margin: 0 $col-width-xl !important
+		margin-left: $col-width-xl !important
+		margin-right: $col-width-xl !important
 
 	+mixins.media-min(xxl)
-		margin: 0 $col-width-xxl !important
+		margin-left: $col-width-xxl !important
+		margin-right: $col-width-xxl !important
 
 .home
 	.content
@@ -457,7 +454,7 @@ svg.award
 		text-align: center
 
 .upload-form
-	select, .django-ckeditor-widget
+	select, .ck-editor-container
 		width: 100%
 
 	input[type="text"]

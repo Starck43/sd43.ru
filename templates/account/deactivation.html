@@ -7,15 +7,25 @@
 
 {% block content %}
 
-    <h1>Удаление аккаунта</h1>
-    <form method="post" action="{% url 'deactivate-user' %}">
+    <h1>Удаление аккаунта и отзыв согласия</h1>
+    <p>
+        В соответствии с <a href="{% url 'exhibition:privacy-url' %}" target="_blank" rel="noopener">Политикой
+        в отношении обработки персональных данных</a> (п. 6.1) вы можете в любой момент отозвать согласие
+        на обработку персональных данных и удалить свой аккаунт.
+    </p>
+    <p>
+        После подтверждения вход в аккаунт будет заблокирован, публикация ваших данных на сайте прекратится,
+        а согласие на их обработку будет считаться отозванным.
+    </p>
+
+    <form method="post" action="{% url 'exhibition:deactivate-user' %}">
 
         {% csrf_token %}
         {{ form|crispy }}
 
         <div class="d-flex gap-2 mb-2">
-            <button class="btn btn-primary" type="submit">{% trans 'Confirm' %}</button>
-            <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-outline-primary">Вернуться</a>
+            <button class="btn btn-danger" type="submit">Удалить аккаунт</button>
+            <a href="{% url 'exhibition:account-url' %}" class="btn btn-outline-primary">Вернуться в личный кабинет</a>
         </div>
 
     </form>

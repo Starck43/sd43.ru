@@ -16,6 +16,7 @@ from django.http import HttpResponse
 from django.conf import settings
 from django.core.mail import EmailMessage, BadHeaderError
 from django.core.files.storage import FileSystemStorage, default_storage
+from urllib.parse import urljoin
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 
@@ -217,6 +218,16 @@ class MediaFileStorage(FileSystemStorage):
 		return super()._save(name, content)
 
 
+class CkeditorFileStorage(FileSystemStorage):
+	"""Хранилище медиа-файлов, загружаемых через редактор (CKEditor 5)"""
+
+	def __init__(self):
+		super().__init__(
+			location=path.join(settings.MEDIA_ROOT, settings.FILES_UPLOAD_FOLDER),
+			base_url=urljoin(settings.MEDIA_URL, settings.FILES_UPLOAD_FOLDER),
+		)
+
+
 def designers_upload_to(instance, filename):
 	""" Designer files will be uploaded to MEDIA_ROOT/uploads/<author>/<filename> """
 	return '{0}{1}/{2}'.format(
@@ -346,7 +357,7 @@ def send_email(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
 	email = EmailMessage(
 		subject,
 		template,
-		settings.EMAIL_HOST_USER,
+		getattr(settings, 'DEFAULT_FROM_EMAIL', None),
 		email_recipients,
 	)
 

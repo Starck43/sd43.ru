@@ -18,7 +18,7 @@ urlpatterns = [
 	path('', include('exhibition.urls')),
 	path('', include('rating.urls')),
 	path('', include('blog.urls')),
-	re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
+	path('ckeditor5/', include('django_ckeditor_5.urls')),
 	re_path(r'^chaining/', include('smart_selects.urls')),
 	# Sitemap для основного домена (выставка)
 	path('sitemap.xml', sitemap, {'sitemaps': exhibition_sitemaps}, name='exhibition-sitemap'),

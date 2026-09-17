@@ -133,7 +133,7 @@
 </div>
 
 
-<main class="container d-flex mt-4 loading">
+<main class="container d-flex mb-4 loading">
 
     <aside id="sidebarPrimary" class="sidebar sidebar-primary left-side offcanvas offcanvas-start">
         <button type="button" class="btn-close btn-md d-lg-none" data-dismiss="offcanvas" aria-label="Закрыть">
@@ -159,6 +159,9 @@
         {% now "Y" as current_year %}
         <small>
             2008-{{ current_year }} © Права принадлежат компании Арт-Сервис
+        </small>
+        <small>
+            <a href="{% url 'exhibition:privacy-url' %}">Политика обработки персональных данных</a>
         </small>
         <small class="text-muted">
             {% site_version %}

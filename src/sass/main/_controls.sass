@@ -4,6 +4,8 @@
 
 #back2top
 	position: fixed
+	bottom: $container-margin-xs
+	right: $container-margin-xs
 	transition: all 300ms ease-in-out
 	opacity: 1
 	z-index: 1000
@@ -35,6 +37,12 @@
 			.arrow-icon
 				& + span
 					display: block
+
+	+mixins.media-min(sm)
+		bottom: $container-margin-md
+		right: $container-margin-md
+	+mixins.media-min(lg)
+		bottom: $container-margin-lg
 
 .controls-block
 	+mixins.push--absolute

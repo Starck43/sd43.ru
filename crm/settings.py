@@ -30,8 +30,7 @@ INSTALLED_APPS = [
 	'django.contrib.staticfiles',
 	'django.contrib.sitemaps',
 	'django.forms',
-	'ckeditor',
-	'ckeditor_uploader',
+	'django_ckeditor_5',
 	'sorl.thumbnail',
 	'crispy_forms',
 	'crispy_bootstrap5',
@@ -117,6 +116,11 @@ CACHES = {
 	}
 }
 
+# Dev: template fragment cache ({% cache %}) must not survive page refreshes.
+# DummyCache stores nothing, so {% cache %} fragments re-render on every request.
+if DEBUG:
+	CACHES['default'] = {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}
+
 AUTH_PASSWORD_VALIDATORS = [
 	{
 		'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -190,13 +194,20 @@ if EMAIL_URL:
 	import urllib.parse
 
 	url = urllib.parse.urlparse(EMAIL_URL)
-	EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-	EMAIL_HOST = url.hostname
-	EMAIL_PORT = url.port or 587
-	EMAIL_HOST_USER = url.username
-	EMAIL_HOST_PASSWORD = url.password
-	EMAIL_USE_TLS = True if url.scheme == 'smtps' else False
-	DEFAULT_FROM_EMAIL = EMAIL_HOST_USER if 'EMAIL_HOST_USER' in locals() else 'webmaster@localhost'
+	MAILERS = {
+		"default": {
+			"BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+			"OPTIONS": {
+				"host": url.hostname,
+				"port": url.port or 587,
+				"username": url.username,
+				"password": url.password,
+				"use_tls": True if url.scheme == 'smtps' else False,
+				"use_ssl": True if url.port == 465 else False,
+			},
+		},
+	}
+	DEFAULT_FROM_EMAIL = url.username if url.username else 'webmaster@localhost'
 
 EMAIL_RECIPIENTS = os.getenv('EMAIL_RECIPIENTS', 'saloon.as@gmail.com').split(',')
 ADMINS = [('Starck', email) for email in EMAIL_RECIPIENTS]
@@ -330,33 +341,92 @@ DJANGORESIZED_DEFAULT_KEEP_META = False
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-CKEDITOR_UPLOAD_PATH = 'attachments/'
-CKEDITOR_IMAGE_BACKEND = 'pillow'
-AWS_QUERYSTRING_AUTH = False
-CKEDITOR_CONFIGS = {
-	'default': {
-		'toolbar': [
-			{'name': 'styles', 'items': ['Styles', 'Format', 'Font', 'FontSize']},
-			{
-				'name': 'basicstyles',
-				'items': ['Bold', 'Italic', 'Underline', 'Strike', 'Superscript', '-', 'RemoveFormat']
-			},
-			{'name': 'colors', 'items': ['TextColor', 'BGColor']},
-			{
-				'name': 'paragraph',
-				'items': [
-					'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote', '-',
-					'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock', '-', 'BidiLtr', 'BidiRtl',
-				]
-			},
-			{'name': 'tools', 'items': ['Image', 'Link', 'Maximize', 'ShowBlocks', 'Undo', 'Redo', ]},
-		],
-		'font_names': 'Corbel;Calibri;Arial;Tahoma;Sans serif;Helvetica;Symbol',
-		'width': '100%',
-		'height': 400,
-		'tabSpaces': 4,
-		'removePlugins': 'flash,iframe',
+# CKEditor 5 (django-ckeditor-5)
+CKEDITOR_5_FILE_STORAGE = 'exhibition.logic.CkeditorFileStorage'
+CKEDITOR_5_ALLOW_ALL_FILE_TYPES = True
+CKEDITOR_5_UPLOAD_FILE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'avi', 'mkv', 'mov', 'webm']
+CKEDITOR_5_MAX_FILE_SIZE = 5
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
+
+customColorPalette = [
+	{
+		'color': 'hsl(4, 90%, 58%)',
+		'label': 'Red'
 	},
+	{
+		'color': 'hsl(340, 82%, 52%)',
+		'label': 'Pink'
+	},
+	{
+		'color': 'hsl(291, 64%, 42%)',
+		'label': 'Purple'
+	},
+	{
+		'color': 'hsl(262, 52%, 47%)',
+		'label': 'Deep Purple'
+	},
+	{
+		'color': 'hsl(231, 48%, 48%)',
+		'label': 'Indigo'
+	},
+	{
+		'color': 'hsl(207, 90%, 54%)',
+		'label': 'Blue'
+	},
+	{
+		'color': '#478631',
+		'label': 'Green'
+	},
+	{
+		'color': '#a3c626',
+		'label': 'Lime'
+	},
+]
+
+CKEDITOR_5_CONFIGS = {
+	'default': {
+		'language': 'ru',
+		'blockToolbar': ['paragraph', '|', 'bulletedList', 'numberedList',],
+		'toolbar': [
+			'heading', 'bold', 'italic', 'underline', 'strikethrough', '|',
+			'alignment', 'fontFamily', 'fontColor', 'fontBackgroundColor', 'highlight', '|',
+			'outdent', 'indent', 'bulletedList', 'numberedList', 'todoList', '|',
+			'removeFormat', 'link', 'blockQuote', 'superscript', 'specialCharacters', 'horizontalLine', '|',
+			'insertTable', 'insertImage', 'mediaEmbed', 'fileUpload', '|',
+			'code', 'codeBlock', 'htmlEmbed', 'sourceEditing', '|',
+			'findAndReplace', 'undo', 'redo',
+		],
+		'image': {
+			'toolbar': ['imageTextAlternative', 'insertImage', '|', 'link', ],
+		},
+		'table': {
+			'contentToolbar': ['tableColumn', 'tableRow', 'mergeTableCells', 'tableCellProperties'],
+			'tableProperties': {
+				'borderColors': customColorPalette,
+				'backgroundColors': customColorPalette
+			},
+			'tableCellProperties': {
+				'borderColors': customColorPalette,
+				'backgroundColors': customColorPalette
+			}
+		},
+		'heading': {
+			'options': [
+				{'model': 'paragraph', 'view': 'p', 'title': 'Paragraph', 'class': 'ck-heading_paragraph'},
+				{'model': 'heading1', 'view': 'h1', 'title': 'Heading 1', 'class': 'ck-heading_heading1'},
+				{'model': 'heading2', 'view': 'h2', 'title': 'Heading 2', 'class': 'ck-heading_heading2'},
+				{'model': 'heading3', 'view': 'h3', 'title': 'Heading 3', 'class': 'ck-heading_heading3'},
+				{'model': 'heading4', 'view': 'h4', 'title': 'Heading 4', 'class': 'ck-heading_heading4'},
+			]
+		}
+	},
+	'list': {
+		'properties': {
+			'styles': 'true',
+			'startIndex': 'true',
+			'reversed': 'true',
+		}
+	}
 }
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'

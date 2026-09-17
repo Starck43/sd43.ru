@@ -1,12 +1,30 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load custom_tags %}
 
-{% block meta_og_title %}{{ default_meta.title }} - Контакты{% endblock %}
-{% block meta_description %}Для того, чтобы стать участником или партнером выставки "Сфера дизайна", заполните форму обратной связи{% endblock %}
-{% block meta_og_meta_og_description %}Для того, чтобы стать участником или партнером выставки "Сфера дизайна", заполните форму обратной связи{% endblock %}
-{% block meta_keywords %}как стать участником выставки, как стать партнером выставки{% endblock %}
+{% block styles %}
+<link href="{% md5url 'css/home.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
+{% endblock %}
 
-{% block title %}{{ block.super }} | Контакты{% endblock %}
+{% block meta_og_title %}{{ default_meta.title }} - Заявка на участие{% endblock %}
+{% block meta_description %}Заявка на участие в выставке "Сфера дизайна". Заполните форму, и мы свяжемся с вами{% endblock %}
+{% block meta_og_description %}Для того, чтобы стать участником выставки "Сфера дизайна", заполните форму заявки{% endblock %}
+{% block meta_keywords %}как стать участником выставки, заявка на участие, подать заявку{% endblock %}
 
-{% block page_title %}Обратная связь{% endblock page_title %}
+{% block title %}{{ block.super }} | Заявка на участие{% endblock %}
 
-{% block content %}{% include "contacts/feedback.html" %}{% endblock content %}
+{% block content %}
+<section class="apply-section">
+    <div class="container">
+        <div class="apply-box">
+            <div class="apply-intro">
+                <h1>Заявка на участие</h1>
+                <p>Заполните форму — организаторы выставки «Сфера дизайна» свяжутся с вами и расскажут, как представить свои работы.</p>
+            </div>
+            <div class="apply-form-container">
+                {% include "contacts/feedback.html" %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

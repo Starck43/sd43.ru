@@ -1,13 +1,12 @@
-Django==5.2.8
+Django
 django-allauth
-django-ckeditor==6.5.1
+django-ckeditor-5
 crispy-bootstrap5
 django-cleanup
 django-cors-headers
 django-crispy-forms
 django-jazzmin
 django-debug-toolbar
-django-js-asset
 django-redis
 django-smart-selects
 django-static-jquery-ui
@@ -18,13 +17,11 @@ dj-database-url
 PyJWT
 cryptography
 Pillow
-psycopg[binary]
+psycopg
 redis
 sorl-thumbnail
 openpyxl
 Wand
 zipp
 requests
-gunicorn # only for production
-
-
+gunicorn

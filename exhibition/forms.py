@@ -69,9 +69,11 @@ class CategoriesAdminForm(forms.ModelForm):
 
 
 class DeactivateUserForm(forms.Form):
+	"""Подтверждение удаления аккаунта и отзыва согласия (152-ФЗ, п. 6.1 Политики)"""
 	deactivate = forms.BooleanField(
-		label='Удалить?',
-		help_text='Пожалуйста, поставьте галочку, если желаете удалить аккаунт',
+		label='Подтверждаю удаление аккаунта и отзыв согласия на обработку персональных данных',
+		help_text='Вход в аккаунт будет заблокирован, публикация ваших данных на сайте прекращена. '
+		          'Дальнейшая обработка и уничтожение персональных данных — в соответствии с Политикой.',
 		required=True
 	)
 
@@ -699,6 +701,53 @@ class FeedbackForm(forms.Form):
 	)
 
 
+class PrivacyConsentMixin(forms.Form):
+	"""Обязательное согласие на обработку персональных данных (152-ФЗ, п. 4.1 Политики).
+
+	Ссылка в label строится от DOMAIN_URL, чтобы чекбокс работал
+	и на поддоменах дизайнеров (<slug>.sd43.ru).
+	"""
+
+	privacy_consent = forms.BooleanField(
+		label='Я принимаю условия Политики конфиденциальности и даю согласие на обработку персональных данных',
+		required=True,
+		error_messages={
+			'required': 'Для отправки формы необходимо согласие на обработку персональных данных.'
+		}
+	)
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.fields['privacy_consent'].label = format_html(
+			'Я принимаю <a href="{}" target="_blank" rel="noopener">условия '
+			'Политики конфиденциальности</a> и даю согласие на обработку персональных данных',
+			f'{settings.DOMAIN_URL}/privacy/',
+		)
+
+
+class ApplicationForm(PrivacyConsentMixin, forms.Form):
+	"""Форма заявки на участие в выставке"""
+
+	field_order = ['name', 'email', 'phone', 'message', 'privacy_consent']
+
+	name = forms.CharField(
+		label='Имя', required=True,
+		widget=forms.TextInput(attrs={'placeholder': 'Ваше имя', 'class': 'form-control'})
+	)
+	email = forms.EmailField(
+		label='E-mail', required=True,
+		widget=forms.TextInput(attrs={'placeholder': 'Ваш почтовый ящик', 'class': 'form-control'})
+	)
+	phone = forms.CharField(
+		label='Телефон', required=False,
+		widget=forms.TextInput(attrs={'placeholder': '+7 (___) ___-__-__', 'class': 'form-control'})
+	)
+	message = forms.CharField(
+		label='Расскажите о себе и ваших работах', required=True,
+		widget=forms.Textarea(attrs={'placeholder': 'Опишите ваш опыт в дизайне интерьеров, количество реализованных проектов и т.д.', 'class': 'form-control', 'rows': 5})
+	)
+
+
 class UserMultipleModelChoiceField(ModelMultipleChoiceField):
 	""" Mixin: Переопределение отображения списка пользователей в UsersListForm """
 
@@ -741,7 +790,7 @@ class UsersListForm(forms.Form):
 		super().__init__(*args, **kwargs)
 
 
-class CustomSocialSignupForm(SocialSignupForm):
+class CustomSocialSignupForm(PrivacyConsentMixin, SocialSignupForm):
 	"""Форма регистрации через соцсети с капчей"""
 
 	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
@@ -754,7 +803,7 @@ class CustomSocialSignupForm(SocialSignupForm):
 	exhibitor = forms.BooleanField(label="Участник выставки?", required=False)
 
 	def __init__(self, *args, **kwargs):
-		self.field_order = ['first_name', 'last_name', 'email', 'exhibitor']
+		self.field_order = ['first_name', 'last_name', 'email', 'exhibitor', 'privacy_consent']
 		super().__init__(*args, **kwargs)
 		# Сохраняем request для получения IP
 		if 'request' in kwargs:
@@ -768,7 +817,7 @@ class CustomSocialSignupForm(SocialSignupForm):
 		return user
 
 
-class AccountSignupForm(CaptchaValidationMixin, SignupForm):
+class AccountSignupForm(PrivacyConsentMixin, CaptchaValidationMixin, SignupForm):
 	"""Форма обычной регистрации с капчей"""
 
 	first_name = forms.CharField(label='Имя', widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
@@ -780,7 +829,7 @@ class AccountSignupForm(CaptchaValidationMixin, SignupForm):
 	def __init__(self, *args, **kwargs):
 		self.field_order = [
 			'first_name', 'last_name', 'email', 'exhibitor',
-			'password1', 'password2', 'smart_token'
+			'password1', 'password2', 'privacy_consent', 'smart_token'
 		]
 		super().__init__(*args, **kwargs)
 		self.fields["password2"].widget.attrs['placeholder'] = 'Пароль повторно'
