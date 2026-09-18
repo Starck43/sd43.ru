@@ -5,158 +5,166 @@
 {% load cache %}
 
 {% block styles %}
-<link href="{% md5url 'css/home.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
+    <link href="{% md5url 'css/home.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
 {% endblock %}
 
 {% block meta_og_title %}{{ default_meta.title }}{% endblock %}
 
 {% block site_title %}
+    <svg class="brand-text">
+        <use xlink:href="#main-title"></use>
+    </svg>
 {% endblock site_title %}
 
 {% block content %}
 
-{% cache 86400 index_page %}
+    {% cache 86400 index_page %}
 
-{% if latest_exhibition %}
-<section class="hero-section">
-    <div class="hero-banner">
-        {% if latest_exhibition.banner %}
-            {% thumbnail latest_exhibition.banner "1800x800" as banner_img %}
-            <img src="{{ banner_img.url }}" alt="{{ latest_exhibition.title }}" class="hero-bg">
-            {% endthumbnail %}
-        {% else %}
-            <div class="hero-bg hero-bg--placeholder"></div>
-        {% endif %}
-        <div class="hero-overlay"></div>
-    </div>
-    <div class="hero-content">
-        <div class="container">
-            <div class="hero-text">
-                <h1 class="hero-title">{{ latest_exhibition.title }}</h1>
-                <p class="hero-description">
-                    {{ latest_exhibition.date_start|date:"d E Y" }} — {{ latest_exhibition.date_end|date:"d E Y" }}
-                    {% if latest_exhibition.location %}<br>{{ latest_exhibition.location }}{% endif %}
-                </p>
-                <div class="hero-actions">
-                    <a href="{{ latest_exhibition.get_absolute_url }}" class="btn btn-primary btn-lg">
-                        Подробнее о выставке
-                        <svg class="icon"><use xlink:href="#arrow-icon"></use></svg>
-                    </a>
+        {% if latest_exhibition %}
+            <section class="hero-section">
+                <div class="hero-banner">
+                    {% if latest_exhibition.banner %}
+                        {% thumbnail latest_exhibition.banner "1800x800" as banner_img %}
+                            <img src="{{ banner_img.url }}" alt="{{ latest_exhibition.title }}" class="hero-bg">
+                        {% endthumbnail %}
+                    {% else %}
+                        <div class="hero-bg hero-bg--placeholder"></div>
+                    {% endif %}
+                    <div class="hero-overlay"></div>
                 </div>
-            </div>
-        </div>
-    </div>
-</section>
-{% endif %}
-
-{% if latest_exhibition.partners.first %}
-<section class="partners-section">
-    <div class="container">
-        <div class="hero-partners">
-            <h2>Партнёры выставки</h2>
-            <div class="hero-partners-grid">
-                {% for partner in latest_exhibition.partners.all %}
-                <a href="{{ partner.get_absolute_url }}" class="hero-partner-logo" title="{{ partner.name }}">
-                    {% thumbnail partner.logo "100x100" as logo %}
-                    <img src="{{ logo.url }}" alt="{{ partner.name }}" loading="lazy">
-                    {% endthumbnail %}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</section>
-{% endif %}
-
-{% if organizers %}
-<section class="about-section">
-    <div class="container">
-        {% for org in organizers %}
-            {% if org.description %}
-            <div class="about-card">
-                <div class="about-card-header">
-                    {% thumbnail org.logo "80x80" as logo %}
-                    <img src="{{ logo.url }}" alt="{{ org.name }}" class="about-org-logo">
-                    {% endthumbnail %}
-                    <h2 class="about-org-name">{{ org.name }}</h2>
-                </div>
-                <div class="about-description">
-                    {{ org.description|safe }}
-                </div>
-            </div>
-            {% endif %}
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-<section class="stats-section">
-    <div class="container">
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-number">{{ stats.years }}</span>
-                <span class="stat-label">лет выставок</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">{{ stats.designers }}</span>
-                <span class="stat-label">дизайнеров</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">{{ stats.projects }}</span>
-                <span class="stat-label">проектов</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">{{ stats.winners }}</span>
-                <span class="stat-label">победителей</span>
-            </div>
-        </div>
-    </div>
-</section>
-
-{% if articles %}
-<section class="articles-section">
-    <div class="container">
-        <div class="section-header">
-            <h2>Новости и статьи</h2>
-            <a href="{% url 'blog:article-list-url' %}" class="btn btn-outline">Все статьи</a>
-        </div>
-        <div class="articles-grid">
-            {% for article in articles %}
-            <article class="article-card">
-                <a href="{{ article.get_absolute_url }}" class="article-link">
-                    <div class="article-content">
-                        {% with article.category as category %}
-                            {% if category %}
-                                <span class="article-category">{{ category.name }}</span>
-                            {% endif %}
-                        {% endwith %}
-                        <time class="article-date">{{ article.modified_date|date:"d E Y" }}</time>
-                        <h3 class="article-title">{{ article.title }}</h3>
-                        <p class="article-excerpt">{{ article.content|striptags|truncatewords:20 }}</p>
-                        <span class="article-more">Читать далее</span>
+                <div class="hero-content">
+                    <div class="container">
+                        <div class="hero-text">
+                            <h1 class="hero-title">{{ latest_exhibition.title }}</h1>
+                            <p class="hero-description">
+                                {{ latest_exhibition.date_start|date:"d E Y" }}
+                                — {{ latest_exhibition.date_end|date:"d E Y" }}
+                                {% if latest_exhibition.location %}<br>{{ latest_exhibition.location }}{% endif %}
+                            </p>
+                            <div class="hero-actions">
+                                <a href="{{ latest_exhibition.get_absolute_url }}" class="btn btn-primary btn-lg">
+                                    Подробнее о выставке
+                                    <svg class="icon">
+                                        <use xlink:href="#arrow-icon"></use>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </a>
-            </article>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
+                </div>
+            </section>
+        {% endif %}
 
-<section class="cta-section">
-    <div class="container">
-        <div class="cta-box">
-            <div class="cta-content">
-                <h2>Станьте участником выставки</h2>
-                <p>Представьте свои работы на ежегодной выставке Сфера Дизайна и получите возможность войти в число победителей</p>
-            </div>
-            <div class="cta-actions">
-                <a href="{% url 'exhibition:contacts-url' %}" class="btn btn-primary btn-lg">Подать заявку</a>
-            </div>
-        </div>
-    </div>
-</section>
+        {% if latest_exhibition.partners.first %}
+            <section class="partners-section">
+                <div class="container">
+                    <div class="hero-partners">
+                        <h2>Партнёры выставки</h2>
+                        <div class="hero-partners-grid">
+                            {% for partner in latest_exhibition.partners.all %}
+                                <a href="{{ partner.get_absolute_url }}" class="hero-partner-logo"
+                                   title="{{ partner.name }}">
+                                    {% thumbnail partner.logo "100x100" as logo %}
+                                        <img src="{{ logo.url }}" alt="{{ partner.name }}" loading="lazy">
+                                    {% endthumbnail %}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
 
-{% endcache %}
+        {% if organizers %}
+            <section class="about-section">
+                <div class="container">
+                    {% for org in organizers %}
+                        {% if org.description %}
+                            <div class="about-card">
+                                <div class="about-card-header">
+                                    {% thumbnail org.logo "80x80" as logo %}
+                                        <img src="{{ logo.url }}" alt="{{ org.name }}" class="about-org-logo">
+                                    {% endthumbnail %}
+                                    <h2 class="about-org-name">{{ org.name }}</h2>
+                                </div>
+                                <div class="about-description">
+                                    {{ org.description|safe }}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="stats-section">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.years }}</span>
+                        <span class="stat-label">лет выставок</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.designers }}</span>
+                        <span class="stat-label">дизайнеров</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.projects }}</span>
+                        <span class="stat-label">проектов</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ stats.winners }}</span>
+                        <span class="stat-label">победителей</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if articles %}
+            <section class="articles-section">
+                <div class="container">
+                    <div class="section-header">
+                        <h2>Новости и статьи</h2>
+                        <a href="{% url 'blog:article-list-url' %}" class="btn btn-outline">Все статьи</a>
+                    </div>
+                    <div class="articles-grid">
+                        {% for article in articles %}
+                            <article class="article-card">
+                                <a href="{{ article.get_absolute_url }}" class="article-link">
+                                    <div class="article-content">
+                                        {% with article.category as category %}
+                                            {% if category %}
+                                                <span class="article-category">{{ category.name }}</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                        <time class="article-date">{{ article.modified_date|date:"d E Y" }}</time>
+                                        <h3 class="article-title">{{ article.title }}</h3>
+                                        <p class="article-excerpt">{{ article.content|striptags|truncatewords:20 }}</p>
+                                        <span class="article-more">Читать далее</span>
+                                    </div>
+                                </a>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-box">
+                    <div class="cta-content">
+                        <h2>Станьте участником выставки</h2>
+                        <p>Представьте свои работы на ежегодной выставке Сфера Дизайна и получите возможность войти в
+                            число победителей</p>
+                    </div>
+                    <div class="cta-actions">
+                        <a href="{% url 'exhibition:contacts-url' %}" class="btn btn-primary btn-lg">Подать заявку</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    {% endcache %}
 
 {% endblock content %}
