@@ -47,6 +47,5 @@ venv/
 # misc
 .DS_Store
 
-# Agent workspace — split ignore (see AGENTS.md)
-# Knowledge is shared -> tracked. Session state is ephemeral -> ignored.
+# Agent workspace — fully ignored and untracked (see AGENTS.md)
 .agent/
