@@ -96,7 +96,9 @@ These traps cost time. They are invariants, not preferences.
    migration needs a different delivery mechanism entirely.
 2. **`static/*` is gitignored, so built assets are mostly not in git.** CI builds
    them (`npm run build`) and rsyncs `static/` to the server. Deliberate exceptions
-   that *are* tracked: `static/designers/**`, `static/fonts/`, `static/favicons/`.
+   that *are* tracked: `static/designers/**`, `static/fonts/`, `static/favicons/`,
+   `static/docs/` (privacy policy PDF — deployed by the dedicated `rsync static/`
+   step, see `.agent/modules/deployment.md`).
    Two legacy artifacts, `static/css/base.min.css` and `static/js/base.min.js`, were
    committed before the ignore rule and remain tracked, so a local build dirties them.
 3. **`DEBUG` parsing is strict.** `.env` uses `DEBUG=true`; `prod.env` uses
@@ -113,7 +115,7 @@ These traps cost time. They are invariants, not preferences.
 6. **Thumbnails need Redis.** `THUMBNAIL_KVSTORE` points at the sorl Redis kvstore,
    so a missing or unreachable `THUMBNAIL_REDIS_URL` breaks image rendering, not
    just caching. Templates rely on sorl everywhere.
-7. **`STATICFILES_STORAGE` was removed from settings (2026-09-16).** Django 5.x has
+7. **`STATICFILES_STORAGE` was removed from settings (2026-09-16).** Django 5+ has
    no such setting — the effective storage comes from `STORAGES['staticfiles']`
    (plain `StaticFilesStorage`), and nginx serves `static/` in production. Verify
    the effective class instead of assuming:
@@ -141,10 +143,10 @@ These traps cost time. They are invariants, not preferences.
 
 ## Documentation Layout
 
-- `.agent/index.md`, `.agent/modules/`, `.agent/lessons/`, `.agent/decisions/` —
-  agent knowledge, **tracked in git** (shared across machines and CI).
-- `.agent/task.md`, `.agent/state.json`, `.agent/plans/`, `.agent/archive/` —
-  ephemeral session state, gitignored.
+- The entire `.agent/` directory is ignored and **not tracked in git**
+  (untracked 2026-09-19): agent knowledge stays local per machine. If `.agent/`
+  paths reappear in `git status`, they were tracked before the ignore rule —
+  `git rm -r --cached .agent` removes them from the index (files stay on disk).
 - `README.md`, `BUILD.md` — human-facing docs at the repo root.
 - `.gitignore` also ignores `docs/` and `resources/`, so `docs/` cannot currently
   be committed; `resources/` holds source design assets (PDFs, logos, backups) that
@@ -156,7 +158,7 @@ These traps cost time. They are invariants, not preferences.
 
 | Claim in docs | Reality |
 |---|---|
-| Django 4.x | Requirements pin Django 5.x — check `requirements.txt` |
+| Django 4.x | venv runs Django 6.x; `requirements.txt` carries no version pins — check the repo-local `venv/` (`pip list`) |
 | Gulp task runner, `gulpfile.js` | Replaced by `build.mjs` (esbuild); no gulpfile exists |
 | MySQL 5.7+ as the database | Production is PostgreSQL; MySQL lines are commented-out history |
 | Python 3.8+, Node 14+ | Local venv is Python 3.12, CI uses Node 22 |

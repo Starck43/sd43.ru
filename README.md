@@ -5,7 +5,7 @@
 ## Технологический стек
 
 ### Backend
-- **Django 5.x** — точная версия зафиксирована в `requirements.txt`
+- **Django 6.x** — `requirements.txt` перечисляет состав зависимостей без пинов версий; фактические версии — в окружении `venv/` (`pip list`)
 - **PostgreSQL** (прод) / **SQLite** (дефолт дева) — подключение через `dj-database-url` (`DATABASE_URL`)
 - **Redis** — кэш (`django-redis`, отдельный `THUMBNAIL_REDIS_URL` для sorl-thumbnail)
 - **Gunicorn** + **nginx** — прод-окружение (см. `.deploy/`)
@@ -15,7 +15,7 @@
 ### Frontend
 - **esbuild** — сборка JS и CSS через `build.mjs` (Gulp не используется)
 - **SASS/SCSS**, **PostCSS** (autoprefixer, import)
-- **Swiper**, **jQuery**, **lazysizes**, **isotope-layout**, **highlight.js**
+- **Swiper**, **jQuery**, **lazysizes**, **isotope-layout**, **imagesloaded**, **highlight.js**
 
 ### Прочее
 - **sorl-thumbnail** — миниатюры
@@ -58,8 +58,9 @@
 
 ## Установка и запуск (локально)
 
-Требования: Python 3.12+, Node LTS, Redis. PostgreSQL опционален — без
-`DATABASE_URL` проект работает на SQLite.
+Требования: Python 3.12+, Node LTS (в CI — 22), Redis. PostgreSQL опционален — без
+`DATABASE_URL` проект работает на SQLite. `requirements.txt` задаёт состав
+зависимостей без версий; фактические версии — в окружении `venv/` в корне проекта.
 
 ```bash
 git clone https://github.com/Starck43/sd43.ru.git sd43
