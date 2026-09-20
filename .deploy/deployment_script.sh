@@ -211,10 +211,11 @@ setup_python_environment() {
 
         print_success "Virtual environment created"
         return 0  # Первый запуск
+
     else
         print_step "Updating dependencies..."
         "$PIP" install pip --upgrade
-        "$PIP" install -r "$PROJECT_DIR/requirements.txt" --upgrade
+        "$PIP" install -r "$PROJECT_DIR/requirements.txt"
         print_success "Packages updated"
         return 1  # Обновление
     fi

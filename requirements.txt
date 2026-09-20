@@ -17,7 +17,6 @@ django-environ
 PyJWT
 cryptography
 Pillow
-psycopg
 redis
 sorl-thumbnail
 openpyxl
@@ -25,3 +24,5 @@ Wand
 zipp
 requests
 gunicorn
+psycopg[binary]==3.2.3
+
