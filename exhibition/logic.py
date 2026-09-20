@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from glob import glob
 
 from threading import Thread
+from typing import overload, TypeVar, cast
+
 from PIL import ImageFile, Image as Im
 from io import BytesIO
 from os import path, SEEK_END
@@ -11,7 +13,6 @@ from os import path, SEEK_END
 from PIL import Image as PILImage, ImageOps
 from django.core.files.base import ContentFile
 from django.db.models.fields.files import ImageFieldFile
-from django.http import HttpResponse
 from django.conf import settings
 from django.core.mail import EmailMessage, BadHeaderError
 from django.core.files.storage import FileSystemStorage, default_storage
@@ -351,23 +352,66 @@ def limit_file_size(file):
 		pass
 
 
-def send_email(subject, html_content, recipients=None, reply_to=None):
+T = TypeVar('T', str, list[str])
+
+
+@overload
+def clean_header(value: str) -> str: ...
+
+
+@overload
+def clean_header(value: list[str]) -> list[str]: ...
+
+
+@overload
+def clean_header(value: None) -> None: ...
+
+
+def clean_header(value: T | None) -> T | None:
+	"""Очистка заголовков от символов переноса строки (защита от BadHeaderError)."""
+	if value is None:
+		return None
+	if isinstance(value, list):
+		return [item.replace('\n', '').replace('\r', '').strip() for item in value]
+	# mypy поймет, что если на входе str, то и на выходе str
+	return value.replace('\n', '').replace('\r', '').strip()
+
+
+def send_email(
+		subject: str,
+		html_content: str,
+		recipients: list[str] | None = None,
+		reply_to: str | None = None,
+) -> bool:
 	"""
-	Универсальная функция отправки HTML писем.
-	Возвращает True при успехе, False при ошибке.
+	Универсальная функция отправки HTML-писем с защитой от BadHeaderError.
+
+	Args:
+		subject: Тема письма.
+		html_content: HTML-содержимое письма.
+		recipients: Список получателей. По умолчанию settings.EMAIL_RECIPIENTS.
+		reply_to: Адрес для ответа. По умолчанию None.
+
+	Returns:
+		True при успешной отправке, False при ошибке.
 	"""
 	recipients = recipients or settings.EMAIL_RECIPIENTS
 
+	cleaned_subject = clean_header(subject)
+	cleaned_from = clean_header(cast(str, settings.DEFAULT_FROM_EMAIL))
+	cleaned_to = clean_header(recipients)
+	cleaned_reply_to = clean_header([reply_to]) if reply_to else None
+
 	email = EmailMessage(
-		subject=subject,
+		subject=cleaned_subject,
 		body=html_content,
-		from_email=settings.DEFAULT_FROM_EMAIL,
-		to=recipients,
-		reply_to=[reply_to] if reply_to else None,
+		from_email=cleaned_from,
+		to=cleaned_to,
+		reply_to=cleaned_reply_to,
 	)
 
-	email.content_subtype = "html"  # Говорим Django, что внутри HTML
-	email.fail_silently = False  # Заставляем Django кидать исключения при ошибках
+	email.content_subtype = "html"
+	email.fail_silently = False
 
 	try:
 		email.send()
@@ -378,12 +422,10 @@ def send_email(subject, html_content, recipients=None, reply_to=None):
 		return False
 
 	except smtplib.SMTPException as e:
-		# Ловим любые ошибки самого SMTP сервера (Яндекса)
 		logger.error(f"❌ SMTP Ошибка при отправке '{subject}': {e}")
 		return False
 
 	except Exception as e:
-		# Страховка от любых других непредвиденных ошибок
 		logger.exception(f"❌ Непредвиденная ошибка при отправке '{subject}'")
 		return False
 
