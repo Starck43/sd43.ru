@@ -60,20 +60,10 @@
             background-color: vars.$star-on-color
             mix-blend-mode: color
 
-    // Стили для DISABLED формы (нельзя голосовать)
-    &.disabled .rating
-        > label:hover:before,
-        > label:hover ~ label:before,
-        &:not(:hover) > :checked ~ label:before,
-        &:not(:hover) > label span
-            opacity: 1
-            background-color: vars.$star-off-color
-            mix-blend-mode: color
+    .summary-score
+        font-weight: bold
 
-.summary-score
-    font-weight: bold
-
-.comment-block-datetime
-    font-size: 0.8em
-    font-weight: bold
+    .comment-block-datetime
+        font-size: 0.8em
+        font-weight: bold
 

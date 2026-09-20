@@ -8,6 +8,7 @@
 	margin: 0
 	padding: 0
 	list-style-type: none
+
 	.icon
 		width: 2rem
 		height: 2rem
@@ -26,7 +27,6 @@
 	label:not(:last-child)
 		display: none
 
-// Grid для account layouts
 .account-grid
 	display: grid
 	grid-template-columns: 1fr
@@ -49,13 +49,12 @@
 		width: 100%
 		height: 100%
 		object-fit: cover
-		
+
 	.account-meta
 		flex: auto
-			
+
 	.account-actions
 		flex-shrink: 0
-
 
 .user-ratings
 	margin-top: 1rem
@@ -70,7 +69,6 @@
 
 		&:hover
 			background-color: $highlight-block-bg
-	//border: 1px solid $highlight-border-color
 
 	.rating-counter
 		+mixins.media-max(sm)
