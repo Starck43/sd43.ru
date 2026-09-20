@@ -13,7 +13,7 @@ django-static-jquery-ui
 django-uuslug
 django-watson
 python-dotenv
-dj-database-url
+django-environ
 PyJWT
 cryptography
 Pillow

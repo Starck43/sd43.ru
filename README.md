@@ -49,7 +49,9 @@
 
 Настройки читаются из `.env` (дев) / `prod.env` (прод). Ключи:
 `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `DATABASE_URL`, `REDIS_URL`,
-`THUMBNAIL_REDIS_URL`, `EMAIL_URL`, `EMAIL_RECIPIENTS`,
+`THUMBNAIL_REDIS_URL`, `EMAIL_URL`, `EMAIL_FROM` (адрес отправителя исходящих
+писем, например общий ящик `no-reply@`; по умолчанию — логин из `EMAIL_URL`),
+`EMAIL_RECIPIENTS`,
 `YANDEX_CAPTCHA_CLIENT_KEY`, `YANDEX_CAPTCHA_SERVER_KEY`,
 `PORTFOLIO_COUNT_PER_PAGE`, `ARTICLES_COUNT_PER_PAGE`.
 

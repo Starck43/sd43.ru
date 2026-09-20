@@ -1,20 +1,21 @@
 import os
-from os import getenv
 from pathlib import Path
-
-import dj_database_url
-from dotenv import load_dotenv
-
+import environ
 from .project import *
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()
+env = environ.Env(
+	DEBUG=(bool, False),
+	ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
+	INVISIBLE_CAPTCHA=(bool, False),
+)
+environ.Env.read_env(BASE_DIR / '.env')
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key')
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-DOMAIN_URL = 'http://localhost:9000' if DEBUG else f'https://{ALLOWED_HOSTS[0]}'
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-dev-key')
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+DOMAIN_URL = env('DOMAIN_URL', default='http://localhost:9000' if DEBUG else f'https://{ALLOWED_HOSTS[0]}')
 
 # Application definition
 INSTALLED_APPS = [
@@ -96,28 +97,26 @@ TEMPLATES = [
 WSGI_APPLICATION = 'crm.wsgi.application'
 
 # Database configuration
+# Database configuration
 DATABASES = {
-	"default": dj_database_url.config(
-		default='sqlite:///db.sqlite3',
-		conn_max_age=600,
-		conn_health_checks=True,
+	'default': env.db(
+		'DATABASE_URL',
+		default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'
 	)
 }
 
+DATABASES['default']['CONN_MAX_AGE'] = env.int('DB_CONN_MAX_AGE', default=600)
+DATABASES['default']['CONN_HEALTH_CHECKS'] = env.bool('DB_CONN_HEALTH_CHECKS', default=True)
+
 # Cache configuration
-REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')
 CACHES = {
-	'default': {
-		'BACKEND': 'django_redis.cache.RedisCache',
-		'LOCATION': REDIS_URL,
-		'OPTIONS': {
-			'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-		}
-	}
+	'default': env.cache(
+		'REDIS_URL',
+		default='redis://127.0.0.1:6379/0',
+	)
 }
 
-# Dev: template fragment cache ({% cache %}) must not survive page refreshes.
-# DummyCache stores nothing, so {% cache %} fragments re-render on every request.
+# Dev: DummyCache вместо Redis, чтобы {% cache %} не пережил перезагрузку
 if DEBUG:
 	CACHES['default'] = {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}
 
@@ -189,35 +188,26 @@ SOCIALACCOUNT_FORMS = {
 }
 
 # Email configuration
-EMAIL_URL = os.getenv('EMAIL_URL', '')
-if EMAIL_URL:
-	import urllib.parse
+email_config = env.email('EMAIL_URL', default='')
+if email_config:
+	globals().update(email_config)
 
-	url = urllib.parse.urlparse(EMAIL_URL)
-	MAILERS = {
-		"default": {
-			"BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-			"OPTIONS": {
-				"host": url.hostname,
-				"port": url.port or 587,
-				"username": url.username,
-				"password": url.password,
-				"use_tls": True if url.scheme == 'smtps' else False,
-				"use_ssl": True if url.port == 465 else False,
-			},
-		},
-	}
-	DEFAULT_FROM_EMAIL = url.username if url.username else 'webmaster@localhost'
+	EMAIL_USE_SSL = email_config.get('EMAIL_USE_SSL', False)
+	EMAIL_USE_TLS = not EMAIL_USE_SSL
 
-EMAIL_RECIPIENTS = os.getenv('EMAIL_RECIPIENTS', 'saloon.as@gmail.com').split(',')
+EMAIL_FROM = env('EMAIL_FROM', default='')
+DEFAULT_FROM_EMAIL = EMAIL_FROM or email_config.get('EMAIL_HOST_USER', 'webmaster@localhost')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+EMAIL_RECIPIENTS = env.list('EMAIL_RECIPIENTS', default=['saloon.as@gmail.com'])
 ADMINS = [('Starck', email) for email in EMAIL_RECIPIENTS]
 
-YANDEX_CAPTCHA_CLIENT_KEY = os.getenv('YANDEX_CAPTCHA_CLIENT_KEY', '')  # Публичный ключ
-YANDEX_CAPTCHA_SERVER_KEY = os.getenv('YANDEX_CAPTCHA_SERVER_KEY', '')  # Секретный ключ
-YANDEX_CAPTCHA_URL = "https://smartcaptcha.yandexcloud.net/validate"
-INVISIBLE_CAPTCHA = os.getenv('INVISIBLE_CAPTCHA', False)
-DISABLE_CAPTCHA_IN_DEBUG = False  # Отключать капчу в режиме отладки
-CAPTCHA_FAIL_SILENTLY = False  # Что делать при ошибке проверки (True = пропустить)
+YANDEX_CAPTCHA_CLIENT_KEY = env('YANDEX_CAPTCHA_CLIENT_KEY', default='')
+YANDEX_CAPTCHA_SERVER_KEY = env('YANDEX_CAPTCHA_SERVER_KEY', default='')
+YANDEX_CAPTCHA_URL = 'https://smartcaptcha.yandexcloud.net/validate'
+INVISIBLE_CAPTCHA = env('INVISIBLE_CAPTCHA')
+DISABLE_CAPTCHA_IN_DEBUG = False
+CAPTCHA_FAIL_SILENTLY = False
 
 FILE_UPLOAD_HANDLERS = [
 	"django.core.files.uploadhandler.MemoryFileUploadHandler",
@@ -323,9 +313,14 @@ JAZZMIN_UI_TWEAKS = {
 }
 
 # sorl-thumbnail settings
-THUMBNAIL_REDIS_URL = os.getenv('THUMBNAIL_REDIS_URL', 'redis://127.0.0.1:6379/1')
+THUMBNAIL_REDIS_URL = env.str('THUMBNAIL_REDIS_URL', default='redis://127.0.0.1:6379/1')
+
 if THUMBNAIL_REDIS_URL:
 	THUMBNAIL_KVSTORE = 'sorl.thumbnail.kvstores.redis_kvstore.KVStore'
+
+THUMBNAIL_REDIS_HOST = env.str('THUMBNAIL_REDIS_HOST', default='127.0.0.1')
+THUMBNAIL_REDIS_PORT = env.int('THUMBNAIL_REDIS_PORT', default=6379)
+THUMBNAIL_REDIS_DB = env.int('THUMBNAIL_REDIS_DB', default=1)
 
 THUMBNAIL_QUALITY = 80
 THUMBNAIL_UPSCALE = False
@@ -386,7 +381,7 @@ customColorPalette = [
 CKEDITOR_5_CONFIGS = {
 	'default': {
 		'language': 'ru',
-		'blockToolbar': ['paragraph', '|', 'bulletedList', 'numberedList',],
+		'blockToolbar': ['paragraph', '|', 'bulletedList', 'numberedList', ],
 		'toolbar': [
 			'heading', 'bold', 'italic', 'underline', 'strikethrough', '|',
 			'alignment', 'fontFamily', 'fontColor', 'fontBackgroundColor', 'highlight', '|',
@@ -552,6 +547,7 @@ if os.path.exists(os.path.join(MEDIA_ROOT, 'tmp')):
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # It uses in exhibition.views.ProjectsList as parameter for queryset
-PORTFOLIO_COUNT_PER_PAGE = int(os.getenv('PORTFOLIO_COUNT_PER_PAGE', 20))
+PORTFOLIO_COUNT_PER_PAGE = env.int('PORTFOLIO_COUNT_PER_PAGE', default=20)
+
 # It uses in blog.views.ArticleList as parameter for queryset
-ARTICLES_COUNT_PER_PAGE = int(os.getenv('ARTICLES_COUNT_PER_PAGE', 10))
+ARTICLES_COUNT_PER_PAGE = env.int('ARTICLES_COUNT_PER_PAGE', default=10)
