@@ -50,7 +50,7 @@ def can_rate_portfolio(user, portfolio: 'Portfolio', is_jury=None):
 		return False, "Войдите в систему, чтобы участвовать в голосовании", 0
 
 	if user:
-		user_rating: 'Rating' = portfolio.ratings.filter(user=user).first()
+		user_rating: 'Rating|None' = portfolio.ratings.filter(user=user).first()
 
 		# Фаза голосования жюри
 		if is_jury and exhibition.is_jury_voting_active:
