@@ -718,9 +718,7 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 
 def contacts(request):
-	""" Заявка на участие: отправка формы на EMAIL_RECIPIENTS """
 	if request.method == 'POST':
-		# если метод POST, проверим форму и отправим письмо
 		form = ApplicationForm(request.POST)
 		if form.is_valid():
 			template = render_to_string('contacts/apply_email.html', {
@@ -730,8 +728,17 @@ def contacts(request):
 				'message': form.cleaned_data['message'],
 			})
 
-			if send_email('Заявка на участие с сайта sd43.ru!', template):
+			is_sent = send_email(
+				subject='Заявка на участие с сайта sd43.ru!',
+				html_content=template,
+				reply_to=form.cleaned_data['email']
+			)
+
+			if is_sent:
+				# messages.success(request, 'Ваша заявка успешно отправлена!')
 				return redirect('/success/')
+			else:
+				messages.error(request, 'К сожалению, не удалось отправить заявку. Попробуйте позже или позвоните нам.')
 
 	else:
 		form = ApplicationForm()

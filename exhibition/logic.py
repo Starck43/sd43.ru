@@ -1,4 +1,5 @@
 import logging
+import smtplib
 from dataclasses import dataclass
 from glob import glob
 
@@ -6,9 +7,7 @@ from threading import Thread
 from PIL import ImageFile, Image as Im
 from io import BytesIO
 from os import path, SEEK_END
-from sys import getsizeof
 
-import PIL
 from PIL import Image as PILImage, ImageOps
 from django.core.files.base import ContentFile
 from django.db.models.fields.files import ImageFieldFile
@@ -352,43 +351,70 @@ def limit_file_size(file):
 		pass
 
 
-def send_email(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
-	""" Sending email """
+def send_email(subject, html_content, recipients=None, reply_to=None):
+	"""
+	Универсальная функция отправки HTML писем.
+	Возвращает True при успехе, False при ошибке.
+	"""
+	recipients = recipients or settings.EMAIL_RECIPIENTS
+
 	email = EmailMessage(
-		subject,
-		template,
-		getattr(settings, 'DEFAULT_FROM_EMAIL', None),
-		email_recipients,
+		subject=subject,
+		body=html_content,
+		from_email=settings.DEFAULT_FROM_EMAIL,
+		to=recipients,
+		reply_to=[reply_to] if reply_to else None,
 	)
 
-	email.content_subtype = "html"
-	email.html_message = True
-	email.fail_silently = False
+	email.content_subtype = "html"  # Говорим Django, что внутри HTML
+	email.fail_silently = False  # Заставляем Django кидать исключения при ошибках
 
 	try:
 		email.send()
-	except BadHeaderError:
-		return HttpResponse('Ошибка в заголовке письма!')
+		return True
 
-	return True
+	except BadHeaderError:
+		logger.error(f"❌ BadHeaderError: Ошибка в заголовках письма '{subject}'")
+		return False
+
+	except smtplib.SMTPException as e:
+		# Ловим любые ошибки самого SMTP сервера (Яндекса)
+		logger.error(f"❌ SMTP Ошибка при отправке '{subject}': {e}")
+		return False
+
+	except Exception as e:
+		# Страховка от любых других непредвиденных ошибок
+		logger.exception(f"❌ Непредвиденная ошибка при отправке '{subject}'")
+		return False
 
 
 class EmailThread(Thread):
 	""" Async email sending class """
 
-	def __init__(self, subject, template, email_recipients):
+	def __init__(self, subject, html_content, recipient_list):
 		self.subject = subject
-		self.html_content = template
-		self.recipient_list = email_recipients
-		Thread.__init__(self)
+		self.html_content = html_content
+		self.recipient_list = recipient_list
+		super().__init__()  # Более современный синтаксис вызова родителя
 
 	def run(self):
-		return send_email(self.subject, self.html_content, self.recipient_list)
+		try:
+			# Важно: send_email уже умеет возвращать False при ошибках SMTP,
+			# но мы оборачиваем в try на случай непредвиденных сбоев (NameError и т.д.)
+			success = send_email(self.subject, self.html_content, self.recipient_list)
+			if not success:
+				logger.error(f"📧 [Async] Письмо не отправлено (SMTP ошибка): {self.subject}")
+		except Exception as e:
+			# Критически важно для потоков: логировать любые исключения
+			logger.exception(f"📧 [Async] Критическая ошибка в потоке отправки: {e}")
 
 
-def send_email_async(subject, template, email_recipients=settings.EMAIL_RECIPIENTS):
-	""" Sending email to recipients """
-	EmailThread(subject, template, email_recipients).start()
+def send_email_async(subject, html_content, email_recipients=None):
+	""" Sending email to recipients in background thread """
+	if email_recipients is None:
+		email_recipients = settings.EMAIL_RECIPIENTS
+
+	EmailThread(subject, html_content, email_recipients).start()
 
 
 def portfolio_upload_confirmation(images, request, obj):

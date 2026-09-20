@@ -2,6 +2,7 @@ import logging
 
 from allauth.account.models import EmailAddress
 from allauth.account.signals import user_signed_up
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models.signals import post_save, m2m_changed, post_delete
@@ -61,17 +62,19 @@ def portfolio_victory_changed(sender, instance, **kwargs):
 
 
 @receiver(user_signed_up, dispatch_uid="new_user_notification")
-def user_signed_up_(request, user, sociallogin=None, **kwargs):
+def user_signed_up_handler(request, user, sociallogin=None, **kwargs):
 	"""Обработчик регистрации нового пользователя"""
 
+	# 1. Назначение группы
 	user = set_user_group(request, user)
-	user.save()
+
+	# Если set_user_group меняет поля самой модели (например, user.is_staff = True)
+	# user.save(update_fields=['is_staff', 'is_active'])
 
 	logger.info(f'Регистрация пользователя{" через соцсети" if sociallogin else ""}: {user.email}.')
 
-	# Отправляем письмо администратору
-	protocol = 'https' if request.is_secure() else 'http'
-	host_url = f"{protocol}://{request.get_host()}"
+	# 2. Формирование URL
+	host_url = settings.DOMAIN_URL
 
 	template = render_to_string('account/admin_email_confirm.html', {
 		'user': user,
@@ -79,4 +82,8 @@ def user_signed_up_(request, user, sociallogin=None, **kwargs):
 		'admin_url': f"{host_url}/admin/auth/user/{user.id}/change/"
 	})
 
-	send_email_async('Регистрация нового пользователя на сайте sd43.ru!', template)
+	# 3. Отправка
+	send_email_async(
+		subject='Регистрация нового пользователя на сайте sd43.ru!',
+		html_content=template
+	)
