@@ -392,8 +392,10 @@ class WinnersAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 		for exh in exhibitions:
 			delete_cached_fragment('persons', 'winners', exh.slug)
 
-		delete_cached_fragment('exhibition_content', obj.exhibition.slug)
-		delete_cached_fragment('participant_detail', obj.portfolio.id)
+		if obj.exhibition:
+			delete_cached_fragment('exhibition_content', obj.exhibition.slug)
+		if obj.portfolio:
+			delete_cached_fragment('participant_detail', obj.portfolio.id)
 
 	def get_urls(self):
 		urls = super().get_urls()
@@ -523,9 +525,17 @@ class EventsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 	save_as = True
 
 	def save_model(self, request, obj, form, change):
+		old_exhibition = None
+		if change:
+			old_exhibition = Events.objects.filter(pk=obj.pk).values_list('exhibition__slug', flat=True).first()
+
 		super().save_model(request, obj, form, change)
 
-		delete_cached_fragment('exhibition_events', obj.exhibition.slug)
+		if change and old_exhibition and old_exhibition != (obj.exhibition.slug if obj.exhibition else None):
+			delete_cached_fragment('exhibition_events', old_exhibition.slug)
+
+		if obj.exhibition:
+			delete_cached_fragment('exhibition_events', obj.exhibition.slug)
 
 
 @admin.register(Portfolio)

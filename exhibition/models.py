@@ -430,7 +430,10 @@ class Winners(models.Model):
 		unique_together = ['exhibition', 'exhibitor', 'nomination']
 
 	def __str__(self):
-		return '%s | %s, %s' % (self.exhibitor.name, self.nomination.title, self.exhibition.slug)
+		exhibitor = self.exhibitor.name if self.exhibitor else '—'
+		nomination = self.nomination.title if self.nomination else '—'
+		exhibition = self.exhibition.slug if self.exhibition else '—'
+		return '%s | %s, %s' % (exhibitor, nomination, exhibition)
 
 	def name(self):
 		return self.exhibitor.name
@@ -438,6 +441,8 @@ class Winners(models.Model):
 	name.short_description = 'Победитель'
 
 	def get_absolute_url(self):
+		if not self.exhibition or not self.nomination:
+			return reverse('exhibition:winners-list-all')
 		return reverse(
 			'exhibition:winner-detail-url',
 			kwargs={'exh_year': self.exhibition.slug, 'slug': self.nomination.slug}
@@ -479,6 +484,8 @@ class Events(models.Model):
 	time_event.short_description = 'Время мероприятия'
 
 	def get_absolute_url(self):
+		if not self.exhibition:
+			return reverse('exhibition:events-list-all')
 		return reverse('exhibition:event-detail-url', kwargs={'exh_year': self.exhibition.slug, 'pk': self.id})
 
 
