@@ -4,6 +4,16 @@
 
 {% block styles %}
 <link href="{% md5url 'css/home.min.css' %}" rel="stylesheet" type="text/css" media="screen"/>
+{% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}
+<script src="https://smartcaptcha.yandexcloud.net/captcha.js" async defer></script>
+<style>
+	.smart-captcha {
+		min-height: 100px;
+		margin: 20px 0;
+		max-width: max-content;
+	}
+</style>
+{% endif %}
 {% endblock %}
 
 {% block meta_og_title %}{{ default_meta.title }} - Заявка на участие{% endblock %}

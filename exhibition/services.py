@@ -324,7 +324,7 @@ def is_mobile(request):
 
 	agent = re.compile(r".*(iphone|mobile|androidtouch)", re.IGNORECASE)
 
-	if agent.match(request.META['HTTP_USER_AGENT']):
+	if agent.match(request.META.get('HTTP_USER_AGENT', '')):
 		return True
 	else:
 		return False

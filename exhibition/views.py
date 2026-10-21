@@ -26,6 +26,7 @@ from django.views.generic.list import ListView
 from watson.views import SearchMixin
 
 from blog.models import Article
+from crm.antispam import is_rate_limited
 from designers.models import Designer
 from rating.forms import RatingForm
 from rating.models import Rating, Reviews
@@ -719,8 +720,21 @@ class ProjectDetail(MetaSeoMixin, DetailView):
 
 def contacts(request):
 	if request.method == 'POST':
-		form = ApplicationForm(request.POST)
+		form = ApplicationForm(request.POST, request=request)
+
 		if form.is_valid():
+			# Ограничение частоты заявок с одного IP (считаем только валидные)
+			if is_rate_limited(request, 'application', limit=5, period=3600):
+				form.add_error(
+					None,
+					'Слишком много заявок с вашего адреса за последний час. '
+					'Попробуйте позже или позвоните нам.'
+				)
+				return render(request, 'contacts.html', {
+					'html_classes': ['contacts'],
+					'form': form,
+				}, status=429)
+
 			template = render_to_string('contacts/apply_email.html', {
 				'name': form.cleaned_data['name'],
 				'email': form.cleaned_data['email'],
@@ -738,10 +752,10 @@ def contacts(request):
 				# messages.success(request, 'Ваша заявка успешно отправлена!')
 				return redirect('/success/')
 			else:
-				messages.error(request, 'К сожалению, не удалось отправить заявку. Попробуйте позже или позвоните нам.')
+				form.add_error(None, 'К сожалению, не удалось отправить заявку. Попробуйте позже или позвоните нам.')
 
 	else:
-		form = ApplicationForm()
+		form = ApplicationForm(request=request)
 
 	context = {
 		'html_classes': ['contacts'],

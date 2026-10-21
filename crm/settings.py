@@ -206,8 +206,10 @@ YANDEX_CAPTCHA_CLIENT_KEY = env('YANDEX_CAPTCHA_CLIENT_KEY', default='')
 YANDEX_CAPTCHA_SERVER_KEY = env('YANDEX_CAPTCHA_SERVER_KEY', default='')
 YANDEX_CAPTCHA_URL = 'https://smartcaptcha.yandexcloud.net/validate'
 INVISIBLE_CAPTCHA = env('INVISIBLE_CAPTCHA')
-DISABLE_CAPTCHA_IN_DEBUG = False
-CAPTCHA_FAIL_SILENTLY = False
+# Локально капчу можно отключить через .env (в проде — значение по умолчанию False)
+DISABLE_CAPTCHA_IN_DEBUG = env.bool('DISABLE_CAPTCHA_IN_DEBUG', default=False)
+# Fail-open при сбоях API капчи: заявки важнее, спам сдерживают honeypot и лимит по IP
+CAPTCHA_FAIL_SILENTLY = env.bool('CAPTCHA_FAIL_SILENTLY', default=True)
 
 FILE_UPLOAD_HANDLERS = [
 	"django.core.files.uploadhandler.MemoryFileUploadHandler",

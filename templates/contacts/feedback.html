@@ -1,16 +1,60 @@
 {% load crispy_forms_tags %}
 
-<form id="feedback-form" class="form-container" method="post">
+<form id="feedback-form" class="form-container" method="post" novalidate>
 	{% csrf_token %}
 
-	{% for field in form %}
-	{% if field.errors %}
+	{% if form.non_field_errors %}
 	<div class="alert-danger">
-		{{ field.errors }}
+		{% for error in form.non_field_errors %}
+		<p>{{ error }}</p>
+		{% endfor %}
 	</div>
 	{% endif %}
-	{{ field|as_crispy_field }}
+
+	{% for field in form %}
+		{% if field.name != 'website' and field.name != 'smart_token' %}
+			{% if field.errors %}
+			<div class="alert-danger">
+				{{ field.errors }}
+			</div>
+			{% endif %}
+			{{ field|as_crispy_field }}
+		{% endif %}
 	{% endfor %}
+
+	{# Служебные поля: honeypot и токен капчи #}
+	{{ form.smart_token }}
+	{{ form.website }}
+
+	{% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}
+	<div
+			id="captcha-container"
+			class="smart-captcha"
+			data-sitekey="{{ YANDEX_CAPTCHA_CLIENT_KEY }}"
+			data-hl="ru"
+			data-callback="applyCaptchaCallback"
+			data-expired-callback="applyCaptchaExpired"
+	></div>
+
+	<script>
+		function applyCaptchaCallback(token) {
+			var tokenField = document.getElementById('id_smart_token');
+			if (tokenField) {
+				tokenField.value = token;
+			}
+		}
+
+		function applyCaptchaExpired() {
+			var tokenField = document.getElementById('id_smart_token');
+			if (tokenField) {
+				tokenField.value = '';
+			}
+			if (window.smartCaptcha) {
+				window.smartCaptcha.reset();
+			}
+		}
+	</script>
+	{% endif %}
 
 	<div class="form-actions"><button type="submit" class="send-button form-control">Отправить</button></div>
 </form>

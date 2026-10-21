@@ -59,7 +59,8 @@
             <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
         {% endif %}
 
-        <button class="btn btn-primary" type="submit" id="submit-btn" disabled>
+        <button class="btn btn-primary" type="submit" id="submit-btn"
+                {% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}disabled{% endif %}>
             {% trans "Sign Up" %}
         </button>
     </form>

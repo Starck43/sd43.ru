@@ -15,6 +15,7 @@ from django.forms import ClearableFileInput, SelectMultiple
 from django.forms.models import ModelMultipleChoiceField
 from django.utils.html import format_html
 
+from crm.antispam import HoneypotMixin
 from crm.captcha import CaptchaValidationMixin
 from .logic import is_image_file
 from .models import Exhibitors, Exhibitions, Portfolio, Image, MetaSEO, Nominations, Gallery
@@ -725,10 +726,10 @@ class PrivacyConsentMixin(forms.Form):
 		)
 
 
-class ApplicationForm(PrivacyConsentMixin, forms.Form):
-	"""Форма заявки на участие в выставке"""
+class ApplicationForm(HoneypotMixin, CaptchaValidationMixin, PrivacyConsentMixin, forms.Form):
+	"""Форма заявки на участие в выставке (с капчей и honeypot)"""
 
-	field_order = ['name', 'email', 'phone', 'message', 'privacy_consent']
+	field_order = ['name', 'email', 'phone', 'message', 'privacy_consent', 'smart_token']
 
 	name = forms.CharField(
 		label='Имя', required=True,
@@ -745,6 +746,10 @@ class ApplicationForm(PrivacyConsentMixin, forms.Form):
 	message = forms.CharField(
 		label='Расскажите о себе и ваших работах', required=True,
 		widget=forms.Textarea(attrs={'placeholder': 'Опишите ваш опыт в дизайне интерьеров, количество реализованных проектов и т.д.', 'class': 'form-control', 'rows': 5})
+	)
+	smart_token = forms.CharField(
+		label='', required=False,
+		widget=forms.HiddenInput(attrs={'name': 'smart-token'})
 	)
 
 
