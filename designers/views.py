@@ -1,20 +1,24 @@
+import logging
 from itertools import chain
 
+from django.contrib import messages
 from django.db.models import Q, OuterRef, Subquery, Prefetch, CharField, Case, When
 from django.db.models.expressions import F
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.detail import DetailView
 
+from crm.antispam import is_rate_limited
 from exhibition.logic import send_email
 from exhibition.mixins import MetaSeoMixin
 from exhibition.models import Categories, Nominations, Winners, Portfolio, Image
 from .forms import FeedbackForm
 from .mixins import DesignerAccessMixin
 from .models import Designer, Achievement
+
+logger = logging.getLogger(__name__)
 
 
 class MainPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
@@ -155,53 +159,70 @@ class PortfolioDetailPage(DesignerAccessMixin, MetaSeoMixin, DetailView):
 		return context
 
 
-@csrf_exempt
 def send_message(request, slug):
-	""" Отправка сообщения с формы обратной связи """
+	""" Отправка сообщения с формы обратной связи (только POST, с капчей и honeypot) """
 	try:
 		designer = Designer.objects.get_by_slug(slug=slug)
-		if designer.owner.email:
-			recipients = [designer.owner.email]
-		else:
-			recipients = [designer.owner.user.email]
-
-		if request.is_ajax():
-			# Обязательное согласие на обработку персональных данных (152-ФЗ, п. 4.1 Политики)
-			if request.GET.get('privacy_consent') not in ('on', 'true', '1'):
-				return JsonResponse({
-					'status': 'error',
-					'message': 'Для отправки сообщения необходимо согласие на обработку персональных данных.'
-				}, safe=False)
-
-			data = {
-				'subdomain': designer.slug,
-				'name': request.GET.get("name", None),
-				'email': request.GET.get("from_email", None),
-				'message': request.GET.get("message", None)
-			}
-
-			if email_confirmation(data, recipients):
-				return JsonResponse({'status': 'success'}, safe=False)
-			# return HttpResponse(status=201)
-			else:
-				return JsonResponse({'status': 'error'}, safe=False)
-
-	# return HttpResponse(status=400)
-
-	# form = FeedbackForm(request.POST)
-	# if form.is_valid():
-	# 	data = {
-	# 		'subdomain' :designer.slug,
-	# 		'name'		:form.cleaned_data['name'],
-	# 		'email'		:form.cleaned_data['from_email'],
-	# 		'message'	:form.cleaned_data['message']
-	# 	}
-	# 	print(data, recipients)
-	# 	if email_confirmation(data, recipients):
-	# 		return redirect('/success/')
-
 	except Designer.DoesNotExist:
-		redirect('/')
+		raise Http404('Дизайнер не найден')
+
+	owner_email = designer.owner.email or (
+		designer.owner.user.email if designer.owner.user else ''
+	)
+	recipients = [owner_email] if owner_email else []
+	is_ajax = request.is_ajax()
+
+	if request.method != 'POST':
+		return JsonResponse(
+			{'status': 'error', 'message': 'Метод не поддерживается.'},
+			status=405,
+		)
+
+	def error_response(message, status=400):
+		if is_ajax:
+			return JsonResponse({'status': 'error', 'message': message}, status=status)
+		messages.error(request, message)
+		return redirect(designer.get_absolute_url())
+
+	if not recipients:
+		logger.error('У дизайнера %s не указан e-mail для обратной связи', designer.slug)
+		return error_response('К сожалению, не удалось отправить сообщение. Попробуйте позже.', status=500)
+
+	form = FeedbackForm(request.POST, request=request)
+	if not form.is_valid():
+		errors = form.errors.get_json_data()
+		messages_list = [
+			error['message']
+			for field_errors in errors.values()
+			for error in field_errors
+		]
+		return error_response(
+			' '.join(messages_list) or 'Проверьте правильность заполнения формы.',
+		)
+
+	# Ограничение частоты сообщений с одного IP (считаем только валидные)
+	if is_rate_limited(request, 'designer_feedback', limit=10, period=3600):
+		return error_response(
+			'Слишком много сообщений с вашего адреса. Попробуйте позже.',
+			status=429,
+		)
+
+	data = {
+		'subdomain': designer.slug,
+		'name': form.cleaned_data['name'],
+		'email': form.cleaned_data['from_email'],
+		'message': form.cleaned_data['message'],
+	}
+
+	if email_confirmation(data, recipients):
+		if is_ajax:
+			return JsonResponse({'status': 'success'}, safe=False)
+		return redirect('/success/')
+
+	return error_response(
+		'К сожалению, не удалось отправить сообщение. Попробуйте позже.',
+		status=500,
+	)
 
 
 def email_confirmation(data, recipients):
@@ -214,5 +235,5 @@ def email_confirmation(data, recipients):
 			'message': data['message'],
 		})
 		# отправка письма на почту дизайнера
-		return send_email('Сообщение с сайта', template, recipients)
+		return send_email('Сообщение с сайта', template, recipients, reply_to=data['email'])
 	return None

@@ -3,6 +3,8 @@ from .models import Designer
 
 from exhibition.models import Portfolio
 from exhibition.forms import MetaSeoFieldsForm, PrivacyConsentMixin
+from crm.antispam import HoneypotMixin
+from crm.captcha import CaptchaValidationMixin
 
 
 class DesignerForm(MetaSeoFieldsForm, forms.ModelForm):
@@ -18,11 +20,14 @@ class DesignerForm(MetaSeoFieldsForm, forms.ModelForm):
 			# self.fields['owner'].choices = [(owner.id, owner.name) for owner in owners]
 
 
-class FeedbackForm(PrivacyConsentMixin, forms.Form):
-	field_order = ['name', 'from_email', 'message', 'privacy_consent']
+class FeedbackForm(HoneypotMixin, CaptchaValidationMixin, PrivacyConsentMixin, forms.Form):
+	field_order = ['name', 'from_email', 'message', 'privacy_consent', 'smart_token']
 
 	name = forms.CharField(label='', required=True, widget=forms.TextInput(attrs={'placeholder': 'Ваше имя'}))
 	#from_phone = forms.EmailField(label='Телефон', required=False, widget=forms.TextInput(attrs={'placeholder': 'Ваш номер для связи'}))
 	from_email = forms.EmailField(label='', required=True, widget=forms.TextInput(attrs={'placeholder': 'Ваш почтовый ящик'}))
 	message = forms.CharField(label='', required=True, widget=forms.Textarea(attrs={'placeholder': 'Сообщение', 'rows': 6}))
-
+	smart_token = forms.CharField(
+		label='', required=False,
+		widget=forms.HiddenInput(attrs={'name': 'smart-token'})
+	)

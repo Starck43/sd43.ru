@@ -104,6 +104,17 @@
 
     {% block styles %}{% endblock %}
 
+    {% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" async defer></script>
+    <style>
+        .smart-captcha {
+            min-height: 100px;
+            margin: 20px 0;
+            max-width: max-content;
+        }
+    </style>
+    {% endif %}
+
     <!-- Yandex & Google Analytics block -->
 
     <title>{% block title %}{{ object.owner.name }}{% endblock %}</title>
@@ -218,6 +229,13 @@
 
 
 <div id="content" class="content">
+    {% if messages %}
+    <div class="container" style="padding: 20px 15px 0;">
+        {% for message in messages %}
+        <div class="alert-danger" style="margin-bottom: 10px;">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock content %}
 </div>
 
@@ -328,13 +346,49 @@
                     {% csrf_token %}
 
                     {% for field in form %}
-                        {% if field.errors %}
-                            <div class="alert-danger">
-                                {{ field.errors }}
-                            </div>
+                        {% if field.name != 'website' and field.name != 'smart_token' %}
+                            {% if field.errors %}
+                                <div class="alert-danger">
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                            {{ field|as_crispy_field }}
                         {% endif %}
-                        {{ field|as_crispy_field }}
                     {% endfor %}
+
+                    {# Служебные поля: honeypot и токен капчи #}
+                    {{ form.smart_token }}
+                    {{ form.website }}
+
+                    {% if not DISABLE_CAPTCHA_IN_DEBUG and YANDEX_CAPTCHA_CLIENT_KEY %}
+                    <div
+                            id="designer-captcha-container"
+                            class="smart-captcha"
+                            data-sitekey="{{ YANDEX_CAPTCHA_CLIENT_KEY }}"
+                            data-hl="ru"
+                            data-callback="designerCaptchaCallback"
+                            data-expired-callback="designerCaptchaExpired"
+                    ></div>
+
+                    <script>
+                        function designerCaptchaCallback(token) {
+                            var tokenField = document.getElementById('id_smart_token');
+                            if (tokenField) {
+                                tokenField.value = token;
+                            }
+                        }
+
+                        function designerCaptchaExpired() {
+                            var tokenField = document.getElementById('id_smart_token');
+                            if (tokenField) {
+                                tokenField.value = '';
+                            }
+                            if (window.smartCaptcha) {
+                                window.smartCaptcha.reset();
+                            }
+                        }
+                    </script>
+                    {% endif %}
 
                 </form>
             </div>
