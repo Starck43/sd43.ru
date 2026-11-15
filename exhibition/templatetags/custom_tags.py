@@ -231,11 +231,6 @@ def date_with_declension(value):
 
 
 @register.filter
-def get_item(dictionary, key):
-	return dictionary.get(key)
-
-
-@register.filter
 def sum_total(items, field):
 	"""Суммирует значения поля в списке словарей"""
 	return sum(item.get(field, 0) for item in items)

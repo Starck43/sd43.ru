@@ -1,10 +1,13 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from exhibition.forms import ApplicationForm
+from exhibition.models import Exhibitions
 
 LOCMEM_CACHE = {
 	'default': {
@@ -112,3 +115,23 @@ class ContactsViewTests(TestCase):
 		response = self.client.get(self.url)
 		self.assertContains(response, 'smartcaptcha.yandexcloud.net/captcha.js')
 		self.assertContains(response, 'id_smart_token')
+
+
+@override_settings(CACHES=LOCMEM_CACHE, DISABLE_CAPTCHA_IN_DEBUG=True)
+class ExhibitionDetailTests(TestCase):
+    def test_non_ended_exhibition_detail_opens_for_public(self):
+        """Новая (незавершённая) выставка открывается для публики без 500.
+
+        Раньше при show_projects=False переменная projects_by_nomination не
+        попадала в контекст, в шаблоне резолвилась в строку, и фильтр
+        get_item падал с AttributeError: 'str' object has no attribute 'get'.
+        """
+        exhibition = Exhibitions.objects.create(
+            title='Текущая выставка',
+            slug='test-exhibition-current',
+            date_start=timezone.now() - timedelta(days=5),
+            date_end=timezone.now() + timedelta(days=30),
+        )
+        url = reverse('exhibition:exhibition-detail-url', kwargs={'exh_year': exhibition.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

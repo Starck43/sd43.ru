@@ -490,11 +490,11 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 		)
 
 		# Загружаем проекты для показа
+		projects_by_nomination = {}
 		if context['show_projects']:
 			portfolios = Portfolio.objects.get_visible_projects(user, exhibition=exhibition)
 
 			# Группируем проекты по номинациям вручную
-			projects_by_nomination = {}
 			for portfolio in portfolios:
 				for nomination in portfolio.nominations.all():
 					if nomination.id not in projects_by_nomination:
@@ -509,7 +509,7 @@ class ExhibitionDetail(MetaSeoMixin, BannersMixin, DetailView):
 						'owner_name': portfolio.owner.name
 					})
 
-			context['projects_by_nomination'] = projects_by_nomination
+		context['projects_by_nomination'] = projects_by_nomination
 
 		# Баннер слайдер
 		banner_slider = []
