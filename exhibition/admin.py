@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import path
-from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from blog.models import Article
 from rating.admin import RatingInline, ReviewInline
@@ -212,7 +212,7 @@ class OrganizerAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, ad
 
 	@admin.display(description='Описание для главной страницы', empty_value='')
 	def description_html(self, obj):
-		return format_html(obj.description)
+		return mark_safe(obj.description or '')
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
@@ -335,7 +335,7 @@ class NominationsAdmin(MetaSeoFieldsAdmin, admin.ModelAdmin):
 
 	@admin.display(description='Описание', empty_value='')
 	def description_html(self, obj):
-		return format_html(obj.description)
+		return mark_safe(obj.description or '')
 
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
