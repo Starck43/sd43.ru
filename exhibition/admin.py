@@ -183,11 +183,7 @@ class JuryAdmin(PersonAdminMixin, MetaSeoFieldsAdmin, admin.ModelAdmin):
 	def save_model(self, request, obj, form, change):
 		super().save_model(request, obj, form, change)
 
-		delete_cached_fragment('persons', 'jury', None)
-		exhibitions = Exhibitions.objects.filter(jury=obj.id).only('slug')
-		for exh in exhibitions:
-			delete_cached_fragment('persons', 'jury', exh.slug)
-			delete_cached_fragment('exhibition_content', exh.slug)
+		self.clear_person_cache(obj)
 
 
 @admin.register(Partners)
@@ -197,12 +193,7 @@ class PartnersAdmin(PersonAdminMixin, ProfileAdminMixin, MetaSeoFieldsAdmin, adm
 		super().save_model(request, obj, form, change)
 
 		delete_cached_fragment('index_page')
-		delete_cached_fragment('persons', 'partners', None)
-
-		exhibitions = Exhibitions.objects.filter(partners=obj).only('slug')
-		for exh in exhibitions:
-			delete_cached_fragment('persons', 'partners', exh.slug)
-			delete_cached_fragment('exhibition_content', exh.slug)
+		self.clear_person_cache(obj)
 
 
 @admin.register(Organizer)
@@ -290,6 +281,19 @@ class ExhibitionsAdmin(ImagePreviewMixin, MediaWidgetMixin, MetaSeoFieldsAdmin, 
 		delete_cached_fragment('exhibition_overlay', obj.slug)
 		if not change:
 			delete_cached_fragment('exhibitions_list')
+
+		# Инвалидация кэшей списков персон и главной при изменении состава
+		changed = getattr(form, 'changed_data', []) or []
+		if not change or 'partners' in changed:
+			delete_cached_fragment('index_page')
+			for value in (None, '', 'all', obj.slug):
+				delete_cached_fragment('persons', 'partners', value)
+		if not change or 'jury' in changed:
+			for value in (None, '', 'all', obj.slug):
+				delete_cached_fragment('persons', 'jury', value)
+		if not change or 'exhibitors' in changed:
+			for value in (None, '', 'all', obj.slug):
+				delete_cached_fragment('persons', 'exhibitors', value)
 
 
 @admin.register(Categories)
